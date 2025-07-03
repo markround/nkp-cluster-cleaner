@@ -33,7 +33,12 @@ def cli():
     '--namespace',
     help='Limit operation to specific namespace (default: examine all namespaces)'
 )
-def list_clusters(kubeconfig, config, namespace):
+@click.option(
+    '--no-exclusions',
+    is_flag=True,
+    help='Skip showing excluded clusters (only show clusters for deletion)'
+)
+def list_clusters(kubeconfig, config, namespace, no_exclusions):
     """List CAPI clusters that match deletion criteria."""
     if namespace:
         click.echo(f"{Fore.BLUE}Listing CAPI clusters for deletion in namespace '{namespace}'...{Style.RESET_ALL}")
@@ -72,29 +77,30 @@ def list_clusters(kubeconfig, config, namespace):
         else:
             click.echo(f"\n{Fore.GREEN}No clusters found matching deletion criteria.{Style.RESET_ALL}")
         
-        # Display excluded clusters
-        if excluded_clusters:
-            excluded_table_data = []
-            for cluster_info, reason in excluded_clusters:
-                capi_cluster_name = cluster_info.get("capi_cluster_name", "N/A")
-                capi_cluster_namespace = cluster_info.get("capi_cluster_namespace", "N/A")
-                labels = cluster_info.get("labels", {})
-                owner = labels.get("owner", "N/A")
-                expires = labels.get("expires", "N/A")
+        # Display excluded clusters (unless --no-exclusions is specified)
+        if not no_exclusions:
+            if excluded_clusters:
+                excluded_table_data = []
+                for cluster_info, reason in excluded_clusters:
+                    capi_cluster_name = cluster_info.get("capi_cluster_name", "N/A")
+                    capi_cluster_namespace = cluster_info.get("capi_cluster_namespace", "N/A")
+                    labels = cluster_info.get("labels", {})
+                    owner = labels.get("owner", "N/A")
+                    expires = labels.get("expires", "N/A")
+                    
+                    excluded_table_data.append([
+                        capi_cluster_name,
+                        capi_cluster_namespace,
+                        owner,
+                        expires,
+                        reason
+                    ])
                 
-                excluded_table_data.append([
-                    capi_cluster_name,
-                    capi_cluster_namespace,
-                    owner,
-                    expires,
-                    reason
-                ])
-            
-            headers = ["Cluster Name", "Namespace", "Owner", "Expires", "Exclusion Reason"]
-            click.echo(f"\n{Fore.GREEN}Found {len(excluded_clusters)} clusters excluded from deletion:{Style.RESET_ALL}")
-            click.echo(tabulate(excluded_table_data, headers=headers, tablefmt="grid"))
-        else:
-            click.echo(f"\n{Fore.CYAN}No clusters were excluded from deletion.{Style.RESET_ALL}")
+                headers = ["Cluster Name", "Namespace", "Owner", "Expires", "Exclusion Reason"]
+                click.echo(f"\n{Fore.GREEN}Found {len(excluded_clusters)} clusters excluded from deletion:{Style.RESET_ALL}")
+                click.echo(tabulate(excluded_table_data, headers=headers, tablefmt="grid"))
+            else:
+                click.echo(f"\n{Fore.CYAN}No clusters were excluded from deletion.{Style.RESET_ALL}")
         
     except Exception as e:
         click.echo(f"{Fore.RED}Error: {e}{Style.RESET_ALL}")
