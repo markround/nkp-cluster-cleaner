@@ -112,21 +112,35 @@ def list_clusters(kubeconfig, config, namespace):
     help='Path to configuration file for protection rules'
 )
 @click.option(
-    '--dry-run',
+    '--namespace',
+    help='Limit operation to specific namespace (default: examine all namespaces)'
+)
+@click.option(
+    '--delete',
     is_flag=True,
-    help='Show what would be deleted without actually deleting'
+    help='Actually delete clusters (default: dry-run mode)'
 )
 @click.option(
     '--confirm',
     is_flag=True,
     help='Skip confirmation prompts (use with caution!)'
 )
-def delete_clusters(kubeconfig, config, dry_run, confirm):
+def delete_clusters(kubeconfig, config, namespace, delete, confirm):
     """Delete CAPI clusters that match deletion criteria."""
+    # Default behavior is dry-run unless --delete is specified
+    dry_run = not delete
+    
     if dry_run:
-        click.echo(f"{Fore.YELLOW}[DRY RUN] Simulating cluster deletion...{Style.RESET_ALL}")
+        if namespace:
+            click.echo(f"{Fore.YELLOW}[DRY RUN MODE] Simulating cluster deletion in namespace '{namespace}'...{Style.RESET_ALL}")
+        else:
+            click.echo(f"{Fore.YELLOW}[DRY RUN MODE] Simulating cluster deletion across all namespaces...{Style.RESET_ALL}")
+        click.echo(f"{Fore.CYAN}Note: Running in dry-run mode. Use --delete to actually delete clusters.{Style.RESET_ALL}")
     else:
-        click.echo(f"{Fore.RED}Deleting CAPI clusters...{Style.RESET_ALL}")
+        if namespace:
+            click.echo(f"{Fore.RED}Deleting CAPI clusters in namespace '{namespace}'...{Style.RESET_ALL}")
+        else:
+            click.echo(f"{Fore.RED}Deleting CAPI clusters across all namespaces...{Style.RESET_ALL}")
     
     try:
         # Initialize configuration and cluster manager
@@ -134,10 +148,13 @@ def delete_clusters(kubeconfig, config, dry_run, confirm):
         cluster_manager = ClusterManager(kubeconfig, config_manager)
         
         # Get clusters that match deletion criteria
-        clusters_to_delete = cluster_manager.get_clusters_for_deletion()
+        clusters_to_delete, excluded_clusters = cluster_manager.get_clusters_with_exclusions(namespace)
         
         if not clusters_to_delete:
-            click.echo(f"{Fore.GREEN}No clusters found matching deletion criteria.{Style.RESET_ALL}")
+            if dry_run:
+                click.echo(f"\n{Fore.GREEN}No clusters found matching deletion criteria (dry-run mode).{Style.RESET_ALL}")
+            else:
+                click.echo(f"\n{Fore.GREEN}No clusters found matching deletion criteria.{Style.RESET_ALL}")
             return
         
         # Show what will be deleted
@@ -158,17 +175,20 @@ def delete_clusters(kubeconfig, config, dry_run, confirm):
             ])
         
         headers = ["Cluster Name", "Namespace", "Owner", "Expires", "Reason"]
-        click.echo(f"\n{Fore.YELLOW}Found {len(clusters_to_delete)} clusters for deletion:{Style.RESET_ALL}")
+        if dry_run:
+            click.echo(f"\n{Fore.YELLOW}Found {len(clusters_to_delete)} clusters that would be deleted:{Style.RESET_ALL}")
+        else:
+            click.echo(f"\n{Fore.YELLOW}Found {len(clusters_to_delete)} clusters for deletion:{Style.RESET_ALL}")
         click.echo(tabulate(table_data, headers=headers, tablefmt="grid"))
         
-        # Confirmation prompt (unless --confirm is used or dry-run)
+        # Confirmation prompt (only for actual deletion and when --confirm is not used)
         if not dry_run and not confirm:
             click.echo(f"\n{Fore.RED}WARNING: This will permanently delete the clusters listed above!{Style.RESET_ALL}")
             if not click.confirm("Are you sure you want to proceed?"):
                 click.echo("Deletion cancelled.")
                 return
         
-        # Delete clusters
+        # Delete clusters (or simulate deletion)
         deleted_count = 0
         failed_count = 0
         
@@ -188,6 +208,7 @@ def delete_clusters(kubeconfig, config, dry_run, confirm):
         # Summary
         if dry_run:
             click.echo(f"\n{Fore.CYAN}Dry run completed. {deleted_count} clusters would be deleted.{Style.RESET_ALL}")
+            click.echo(f"{Fore.CYAN}To actually delete these clusters, run the command again with --delete{Style.RESET_ALL}")
         else:
             click.echo(f"\n{Fore.GREEN}Deletion completed. {deleted_count} clusters deleted successfully.{Style.RESET_ALL}")
             if failed_count > 0:
