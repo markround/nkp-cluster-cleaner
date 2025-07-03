@@ -99,7 +99,20 @@ Found 1 clusters that would be deleted:
 [DRY RUN] Would delete: mdr-test in emea-prod-w5pb8-fn9dg (Missing 'expires' label)
 ```
 
-To actually delete the clusters you must pass in the `--delete` flag.
+To actually delete the clusters you must pass in the `--delete` flag:
+
+```
+$ nkp-cluster-cleaner delete-clusters --namespace emea-prod-w5pb8-fn9dg --delete
+Found 1 clusters for deletion:
++----------------+-----------------------+---------+-----------+-------------------------+
+| Cluster Name   | Namespace             | Owner   | Expires   | Reason                  |
++================+=======================+=========+===========+=========================+
+| mdr-test       | emea-prod-w5pb8-fn9dg | mdr     | N/A       | Missing 'expires' label |
++----------------+-----------------------+---------+-----------+-------------------------+
+Successfully deleted cluster: mdr-test in namespace emea-prod-w5pb8-fn9dg
+
+Deletion completed. 1 clusters deleted successfully.
+```
 
 
 ## Docker Usage
