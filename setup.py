@@ -8,13 +8,13 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 
 setup(
     name="nkp-cluster-cleaner",
-    version="0.1.0",
-    author="Your Name",
-    author_email="your.email@example.com",
+    version="0.1.2",
+    author="Mark Dastmalchi-Round",
+    author_email="github@markround.com",
     description="A tool to delete CAPI-provided Kubernetes clusters based on label criteria",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/nkp-cluster-cleaner",
+    url="https://github.com/markround/nkp-cluster-cleaner",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     classifiers=[
@@ -33,7 +33,7 @@ setup(
     install_requires=requirements,
     entry_points={
         "console_scripts": [
-            "nkp-cluster-cleaner=cluster_cleaner.main:cli",
+            "nkp-cluster-cleaner=nkp_cluster_cleaner.main:cli",
         ],
     },
 )
