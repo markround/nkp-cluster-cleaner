@@ -41,6 +41,8 @@ Commands:
   list-clusters    List CAPI clusters that match deletion criteria.
 ```
 
+You must pass in a valid `kubeconfig` context to the management cluster. This can be done by e.g. setting the `KUBECONFIG` environment variable or using the `--kubeconfig` parameter to commands. 
+
 ### list-clusters
 `list-clusters` - Show a list of clusters that would be deleted. Optional `--namespace` can be passed in to limit the scan to a particular namespace (e.g. a specific Kommander workspace):
 
