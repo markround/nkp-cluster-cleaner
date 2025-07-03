@@ -3,7 +3,7 @@
 
 A simple tool to automatically delete Nutanix NKP clusters that do not meet a specific criteria in a lab/demo environment.
 
-_Disclaimer: This is a personal project and is in no way supported, endorsed or otherwise connected to Nutanix_
+_Disclaimer: This is a personal project and is in no way supported/endorsed by, or otherwise connected to Nutanix_
 
 ## Strategy
 - Any cluster without an `owner` or `expires` label will be deleted.
