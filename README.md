@@ -86,6 +86,24 @@ Found 2 clusters excluded from deletion:
 +----------------+-----------------------+---------+-----------+-------------------------------------------------------------+
 ```
 
+For any clusters that have an `expires` label, it will display how long until they are considered for deletion:
+
+```
++----------------+-----------------------------+---------+-----------+----------------------------------------------+
+| workload-1     | kommander-default-workspace | mdr     | 12d       | Cluster has not expired yet (expires in ~1d) |
++----------------+-----------------------------+---------+-----------+----------------------------------------------+
+```
+
+And if they have expired will show the creation date along with the expiry policy:
+
+```
++----------------+-----------------------------+---------+-----------+--------------------------------------------------------------+
+| Cluster Name   | Namespace                   | Owner   | Expires   | Reason                                                       |
++================+=============================+=========+===========+==============================================================+
+| workload-1     | kommander-default-workspace | mdr     | 9d        | Cluster has expired (created: 2025-06-23, expires after: 9d) |
++----------------+-----------------------------+---------+-----------+--------------------------------------------------------------+
+```
+
 ### delete-clusters
 Default is to just show what would be deleted:
 ```
