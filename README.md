@@ -1,4 +1,5 @@
 # nkp-cluster-cleaner
+![](scorpio.png)
 
 A simple tool to automatically delete NKP clusters that do not meet a specific criteria in a lab/demo environment.
 
