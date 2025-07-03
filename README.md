@@ -1,4 +1,5 @@
 # nkp-cluster-cleaner
+![](scorpio.png)
 
 A simple tool to automatically delete NKP clusters that do not meet a specific criteria in a lab/demo environment.
 
@@ -40,17 +41,99 @@ Commands:
   list-clusters    List CAPI clusters that match deletion criteria.
 ```
 
+### list-clusters
+`list-clusters` - Show a list of clusters that would be deleted. Optional `--namespace` can be passed in to limit the scan to a particular namespace (e.g. a specific Kommander workspace):
+
+```
+$ nkp-cluster-cleaner list-clusters
+Listing CAPI clusters for deletion across all namespaces...
+
+Found 2 clusters for deletion:
++----------------+--------------------------+---------+-----------+-----------------------+
+| Cluster Name   | Namespace                | Owner   | Expires   | Reason                |
++================+==========================+=========+===========+=======================+
+| ahv-nkp-01     | hybrid-cloud-dh5nj-lvdq7 | N/A     | N/A       | Missing 'owner' label |
++----------------+--------------------------+---------+-----------+-----------------------+
+| ndk-local      | ndk-test-8jq94-wg7st     | N/A     | N/A       | Missing 'owner' label |
++----------------+--------------------------+---------+-----------+-----------------------+
+
+Found 3 clusters excluded from deletion:
++----------------+-----------------------+---------+-----------+-------------------------------------------------------------+
+| Cluster Name   | Namespace             | Owner   | Expires   | Exclusion Reason                                            |
++================+=======================+=========+===========+=============================================================+
+| emea-prod-01   | emea-prod-w5pb8-fn9dg | eric    | 1y        | KommanderCluster emea-prod-01 is protected by configuration |
++----------------+-----------------------+---------+-----------+-------------------------------------------------------------+
+| mdr-test       | emea-prod-w5pb8-fn9dg | mdr     | 1d        | Cluster has not expired yet (expires in ~23h)               |
++----------------+-----------------------+---------+-----------+-------------------------------------------------------------+
+| nkp            | default               | N/A     | N/A       | Cluster is a management cluster                             |
++----------------+-----------------------+---------+-----------+-------------------------------------------------------------+
+
+
+$ nkp-cluster-cleaner list-clusters --namespace emea-prod-w5pb8-fn9dg
+Listing CAPI clusters for deletion in namespace 'emea-prod-w5pb8-fn9dg'...
+
+No clusters found matching deletion criteria.
+
+Found 2 clusters excluded from deletion:
++----------------+-----------------------+---------+-----------+-------------------------------------------------------------+
+| Cluster Name   | Namespace             | Owner   | Expires   | Exclusion Reason                                            |
++================+=======================+=========+===========+=============================================================+
+| emea-prod-01   | emea-prod-w5pb8-fn9dg | eric    | 1y        | KommanderCluster emea-prod-01 is protected by configuration |
++----------------+-----------------------+---------+-----------+-------------------------------------------------------------+
+| mdr-test       | emea-prod-w5pb8-fn9dg | mdr     | 1d        | Cluster has not expired yet (expires in ~23h)               |
++----------------+-----------------------+---------+-----------+-------------------------------------------------------------+
+```
+
+### delete-clusters
+Default is to just show what would be deleted:
+```
+$ nkp-cluster-cleaner delete-clusters --namespace emea-prod-w5pb8-fn9dg
+[DRY RUN MODE] Simulating cluster deletion in namespace 'emea-prod-w5pb8-fn9dg'...
+Note: Running in dry-run mode. Use --delete to actually delete clusters.
+
+Found 1 clusters that would be deleted:
++----------------+-----------------------+---------+-----------+-------------------------+
+| Cluster Name   | Namespace             | Owner   | Expires   | Reason                  |
++================+=======================+=========+===========+=========================+
+| mdr-test       | emea-prod-w5pb8-fn9dg | mdr     | N/A       | Missing 'expires' label |
++----------------+-----------------------+---------+-----------+-------------------------+
+[DRY RUN] Would delete: mdr-test in emea-prod-w5pb8-fn9dg (Missing 'expires' label)
+```
+
+To actually delete the clusters you must pass in the `--delete` flag:
+
+```
+$ nkp-cluster-cleaner delete-clusters --namespace emea-prod-w5pb8-fn9dg --delete
+Found 1 clusters for deletion:
++----------------+-----------------------+---------+-----------+-------------------------+
+| Cluster Name   | Namespace             | Owner   | Expires   | Reason                  |
++================+=======================+=========+===========+=========================+
+| mdr-test       | emea-prod-w5pb8-fn9dg | mdr     | N/A       | Missing 'expires' label |
++----------------+-----------------------+---------+-----------+-------------------------+
+Successfully deleted cluster: mdr-test in namespace emea-prod-w5pb8-fn9dg
+
+Deletion completed. 1 clusters deleted successfully.
+```
+
+
 ## Docker Usage
+### Tags
+`ghcr.io/markround/nkp-cluster-cleaner:<TAG>`
+
+- Branch (e.g. `main`, `dev`, etc.)
+- Release tag (e.g. `0.1.0`) 
+- Latest released version (e.g. `latest`)
+
 ### Show help
 ```bash
-docker run --rm nkp-cluster-cleaner:latest
+docker run --rm ghcr.io/markround/nkp-cluster-cleaner:latest
 ```
 
 ### List clusters (requires kubeconfig volume mount)
 ```bash
 docker run --rm \
   -v ~/.kube/config:/app/config/kubeconfig:ro \
-  nkp-cluster-cleaner:latest \
+  ghcr.io/markround/nkp-cluster-cleaner:latest \
   list-clusters --kubeconfig /app/config/kubeconfig
 ```
 
@@ -59,7 +142,7 @@ docker run --rm \
 docker run --rm \
   -v ~/.kube/config:/app/config/kubeconfig:ro \
   -v ./my-config.yaml:/app/config/config.yaml:ro \
-  nkp-cluster-cleaner:latest \
+  ghcr.io/markround/nkp-cluster-cleaner:latest \
   list-clusters \
   --kubeconfig /app/config/kubeconfig \
   --config /app/config/config.yaml
@@ -69,7 +152,7 @@ docker run --rm \
 ```bash
 docker run --rm \
   -v ~/.kube/config:/app/config/kubeconfig:ro \
-  nkp-cluster-cleaner:latest \
+  ghcr.io/markround/nkp-cluster-cleaner:latest \
   delete-clusters --kubeconfig /app/config/kubeconfig
 ```
 
@@ -77,15 +160,15 @@ docker run --rm \
 ```bash
 docker run --rm \
   -v ~/.kube/config:/app/config/kubeconfig:ro \
-  nkp-cluster-cleaner:latest \
-  delete-clusters --kubeconfig /app/config/kubeconfig --delete --confirm
+  ghcr.io/markround/nkp-cluster-cleaner:latest \
+  delete-clusters --kubeconfig /app/config/kubeconfig --delete
 ```
 
 ### Generate example config file
 ```bash
 docker run --rm \
   -v $(pwd):/app/output \
-  nkp-cluster-cleaner:latest \
+  ghcr.io/markround/nkp-cluster-cleaner:latest \
   generate-config /app/output/my-config.yaml
 ```
 

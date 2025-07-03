@@ -120,12 +120,7 @@ def list_clusters(kubeconfig, config, namespace):
     is_flag=True,
     help='Actually delete clusters (default: dry-run mode)'
 )
-@click.option(
-    '--confirm',
-    is_flag=True,
-    help='Skip confirmation prompts (use with caution!)'
-)
-def delete_clusters(kubeconfig, config, namespace, delete, confirm):
+def delete_clusters(kubeconfig, config, namespace, delete):
     """Delete CAPI clusters that match deletion criteria."""
     # Default behavior is dry-run unless --delete is specified
     dry_run = not delete
@@ -182,11 +177,7 @@ def delete_clusters(kubeconfig, config, namespace, delete, confirm):
         click.echo(tabulate(table_data, headers=headers, tablefmt="grid"))
         
         # Confirmation prompt (only for actual deletion and when --confirm is not used)
-        if not dry_run and not confirm:
-            click.echo(f"\n{Fore.RED}WARNING: This will permanently delete the clusters listed above!{Style.RESET_ALL}")
-            if not click.confirm("Are you sure you want to proceed?"):
-                click.echo("Deletion cancelled.")
-                return
+        # NOTE: Removed interactive confirmation - if --delete is specified, proceed immediately
         
         # Delete clusters (or simulate deletion)
         deleted_count = 0
