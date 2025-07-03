@@ -91,8 +91,7 @@ class ConfigManager:
                 "critical-.*"
             ],
             "excluded_namespace_patterns": [
-                "^kube-.*",
-                "^production$",
+                "^default$",
                 ".*-prod$"
             ]
         }
