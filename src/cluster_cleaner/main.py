@@ -29,9 +29,16 @@ def cli():
     type=click.Path(exists=True),
     help='Path to configuration file for protection rules'
 )
-def list_clusters(kubeconfig, config):
+@click.option(
+    '--namespace',
+    help='Limit operation to specific namespace (default: examine all namespaces)'
+)
+def list_clusters(kubeconfig, config, namespace):
     """List CAPI clusters that match deletion criteria."""
-    click.echo(f"{Fore.BLUE}Listing CAPI clusters for deletion...{Style.RESET_ALL}")
+    if namespace:
+        click.echo(f"{Fore.BLUE}Listing CAPI clusters for deletion in namespace '{namespace}'...{Style.RESET_ALL}")
+    else:
+        click.echo(f"{Fore.BLUE}Listing CAPI clusters for deletion across all namespaces...{Style.RESET_ALL}")
     
     try:
         # Initialize configuration and cluster manager
@@ -39,7 +46,7 @@ def list_clusters(kubeconfig, config):
         cluster_manager = ClusterManager(kubeconfig, config_manager)
         
         # Get all clusters and categorize them
-        clusters_to_delete, excluded_clusters = cluster_manager.get_clusters_with_exclusions()
+        clusters_to_delete, excluded_clusters = cluster_manager.get_clusters_with_exclusions(namespace)
         
         # Display clusters for deletion
         if clusters_to_delete:

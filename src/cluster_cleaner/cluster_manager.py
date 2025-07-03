@@ -41,9 +41,12 @@ class ClusterManager:
         self.core_v1 = client.CoreV1Api()
         self.custom_api = client.CustomObjectsApi()
         
-    def list_all_kommander_clusters(self) -> List[Dict]:
+    def list_all_kommander_clusters(self, namespace: Optional[str] = None) -> List[Dict]:
         """
-        List all KommanderCluster objects across all namespaces.
+        List all KommanderCluster objects across all namespaces or in a specific namespace.
+        
+        Args:
+            namespace: If specified, only list KommanderClusters in this namespace
         
         Returns:
             List of KommanderCluster objects with their namespaces
@@ -51,12 +54,15 @@ class ClusterManager:
         all_kommander_clusters = []
         
         try:
-            # Get all namespaces first
-            namespaces = self.core_v1.list_namespace()
+            if namespace:
+                # List only in the specified namespace
+                namespaces_to_check = [namespace]
+            else:
+                # Get all namespaces
+                namespaces_response = self.core_v1.list_namespace()
+                namespaces_to_check = [ns.metadata.name for ns in namespaces_response.items]
             
-            for namespace in namespaces.items:
-                namespace_name = namespace.metadata.name
-                
+            for namespace_name in namespaces_to_check:
                 try:
                     # List KommanderClusters in this namespace
                     response = self.custom_api.list_namespaced_custom_object(
@@ -308,14 +314,17 @@ class ClusterManager:
             print(f"{Fore.RED}Failed to delete cluster {cluster_name} in namespace {cluster_namespace}: {e}{Style.RESET_ALL}")
             return False
     
-    def get_clusters_for_deletion(self) -> List[Tuple[str, str, str]]:
+    def get_clusters_for_deletion(self, namespace: Optional[str] = None) -> List[Tuple[str, str, str]]:
         """
         Get all clusters that should be deleted based on criteria.
+        
+        Args:
+            namespace: If specified, only examine clusters in this namespace
         
         Returns:
             List of tuples (cluster_name, cluster_namespace, reason) for clusters to be deleted
         """
-        all_kommander_clusters = self.list_all_kommander_clusters()
+        all_kommander_clusters = self.list_all_kommander_clusters(namespace)
         clusters_to_delete = []
         
         for kc in all_kommander_clusters:
@@ -337,15 +346,18 @@ class ClusterManager:
         
         return clusters_to_delete
     
-    def get_clusters_with_exclusions(self) -> Tuple[List[Tuple[Dict, str]], List[Tuple[Dict, str]]]:
+    def get_clusters_with_exclusions(self, namespace: Optional[str] = None) -> Tuple[List[Tuple[Dict, str]], List[Tuple[Dict, str]]]:
         """
         Get all clusters categorized into those for deletion and those excluded.
+        
+        Args:
+            namespace: If specified, only examine clusters in this namespace
         
         Returns:
             Tuple of (clusters_to_delete, excluded_clusters) where each contains 
             (kommander_cluster_with_capi_info, reason) tuples
         """
-        all_kommander_clusters = self.list_all_kommander_clusters()
+        all_kommander_clusters = self.list_all_kommander_clusters(namespace)
         clusters_to_delete = []
         excluded_clusters = []
         
