@@ -12,7 +12,8 @@ _Disclaimer: This is a personal project and is in no way supported/endorsed by, 
     - `h` - Hours
     - `d` - Days
     - `w` - Weeks
-  - For example, `12h` , `2d` , `1w`
+    - `y` - Years
+  - For example, `12h` , `2d` , `1w`, `1y`
 
 ## Protected clusters
 By default the management cluster is excluded from deletion, and a configuration file can be provided that accepts a list of regex-based namespaces or cluster names that will be excluded. For example:
