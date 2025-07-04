@@ -239,7 +239,7 @@ class ClusterManager:
         Parse expires label value and calculate actual expiry time based on creation timestamp.
         
         Args:
-            expires_value: String like "1d", "2w", "48h", etc.
+            expires_value: String like "1d", "2w", "48h", "1y", etc.
             creation_timestamp: ISO format timestamp like "2025-06-23T07:04:37Z"
             
         Returns:
@@ -252,11 +252,11 @@ class ClusterManager:
         expires_value = expires_value.strip()
         
         # Parse number and unit
-        pattern = r'^(\d+)([dwh])$'
+        pattern = r'^(\d+)([dhwy])$'
         match = re.match(pattern, expires_value.lower())
         
         if not match:
-            raise ValueError(f"Invalid format. Expected format: <number><unit> where unit is d/w/h (e.g., '1d', '2w', '48h')")
+            raise ValueError(f"Invalid format. Expected format: <number><unit> where unit is d/w/h/y (e.g., '1d', '2w', '48h', '1y')")
         
         number, unit = match.groups()
         number = int(number)
@@ -268,6 +268,8 @@ class ClusterManager:
             delta = timedelta(days=number)
         elif unit == 'w':
             delta = timedelta(weeks=number)
+        elif unit == 'y':
+            delta = timedelta(days=number * 365)
         else:
             raise ValueError(f"Unsupported time unit: {unit}")
         
