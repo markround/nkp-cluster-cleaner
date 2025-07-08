@@ -6,6 +6,8 @@ The Web UI can be installed as a NKP Catalog Application and makes use of featur
 - Traefik ingress controller (with optional authentication, enabled by default)
 - The default kommander kubeconfig secret for self-attachment. 
 
+Note that this currently does **not** enable the deletion logic, it is purely a read-only view of the deletion rules and cluster states. See https://github.com/markround/nkp-cluster-cleaner/issues/6.
+
 ## Installation
 
 To install the custom catalog, run the following command:
@@ -21,7 +23,7 @@ You can then select the application in the Management Cluster Workspace and enab
 
 ## Configuration
 
-Assuming a standard installation of NKP Ultimate, the application will work without any further configuration required. For a full reference of the Helm values, see the included [Chart documentation](/charts/nkp-cluster-cleaner/README.md). Note that the defaults will require an admin account to log-in and view the dashboard. More granular RBAC will be added in a future release.
+Assuming a standard installation of NKP Ultimate, the application will work without any further configuration required. For a full reference of the Helm values, see the included [Chart documentation](/charts/nkp-cluster-cleaner/README.md). Note that the defaults will require an admin account to log-in and view the dashboard. More granular RBAC will be added in a future release - see https://github.com/markround/nkp-cluster-cleaner/issues/4.
 
 ### Default rules
 
