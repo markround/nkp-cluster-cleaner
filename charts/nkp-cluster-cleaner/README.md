@@ -10,7 +10,7 @@ A simple tool to automatically delete Nutanix NKP clusters that do not meet a sp
 |-----|------|---------|-------------|
 | app.config | string | `"excluded_namespace_patterns:\n- ^default$\nprotected_cluster_patterns:\n- .*-prod-.*"` | Default set of exclusion rules |
 | app.kubeconfigSecretRef | string | `"kommander-self-attach-kubeconfig"` | Secret containing a valid kubeconfig for the management cluster |
-| deployment.image | string | `"ghcr.io/markround/nkp-cluster-cleaner:feature-nkp"` | Container image to use |
+| deployment.image | string | `"ghcr.io/markround/nkp-cluster-cleaner:0.3.0"` | Container image to use |
 | deployment.replicas | int | `1` | Number of replicas to deploy |
 | ingress.authentication.enabled | bool | `true` | If true, access to the dashboard will require logging in with an admin account. Setting to false will enable anonymous access. |
 | ingress.class | string | `"kommander-traefik"` | Ingress class to use |
