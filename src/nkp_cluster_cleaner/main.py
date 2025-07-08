@@ -12,6 +12,28 @@ from .config import ConfigManager
 # Initialize colorama for cross-platform colored output
 init()
 
+# Common options that are used across multiple commands
+def common_options(f):
+    """Decorator to add common kubeconfig and config options."""
+    f = click.option(
+        '--kubeconfig',
+        type=click.Path(exists=True),
+        help='Path to kubeconfig file (default: ~/.kube/config or $KUBECONFIG)'
+    )(f)
+    f = click.option(
+        '--config',
+        type=click.Path(exists=True),
+        help='Path to configuration file for protection rules'
+    )(f)
+    return f
+
+def namespace_option(f):
+    """Decorator to add namespace option."""
+    return click.option(
+        '--namespace',
+        help='Limit operation to specific namespace (default: examine all namespaces)'
+    )(f)
+
 @click.group()
 @click.version_option()
 def cli():
@@ -19,20 +41,8 @@ def cli():
     pass
 
 @cli.command()
-@click.option(
-    '--kubeconfig',
-    type=click.Path(exists=True),
-    help='Path to kubeconfig file (default: ~/.kube/config or $KUBECONFIG)'
-)
-@click.option(
-    '--config',
-    type=click.Path(exists=True),
-    help='Path to configuration file for protection rules'
-)
-@click.option(
-    '--namespace',
-    help='Limit operation to specific namespace (default: examine all namespaces)'
-)
+@common_options
+@namespace_option
 @click.option(
     '--no-exclusions',
     is_flag=True,
@@ -107,20 +117,8 @@ def list_clusters(kubeconfig, config, namespace, no_exclusions):
         raise click.Abort()
 
 @cli.command()
-@click.option(
-    '--kubeconfig',
-    type=click.Path(exists=True),
-    help='Path to kubeconfig file (default: ~/.kube/config or $KUBECONFIG)'
-)
-@click.option(
-    '--config',
-    type=click.Path(exists=True),
-    help='Path to configuration file for protection rules'
-)
-@click.option(
-    '--namespace',
-    help='Limit operation to specific namespace (default: examine all namespaces)'
-)
+@common_options
+@namespace_option
 @click.option(
     '--delete',
     is_flag=True,
@@ -182,9 +180,6 @@ def delete_clusters(kubeconfig, config, namespace, delete):
             click.echo(f"\n{Fore.YELLOW}Found {len(clusters_to_delete)} clusters for deletion:{Style.RESET_ALL}")
         click.echo(tabulate(table_data, headers=headers, tablefmt="grid"))
         
-        # Confirmation prompt (only for actual deletion and when --confirm is not used)
-        # NOTE: Removed interactive confirmation - if --delete is specified, proceed immediately
-        
         # Delete clusters (or simulate deletion)
         deleted_count = 0
         failed_count = 0
@@ -222,6 +217,40 @@ def generate_config(output_file):
     config_manager = ConfigManager()
     config_manager.save_example_config(output_file)
     click.echo(f"{Fore.GREEN}Example configuration saved to {output_file}{Style.RESET_ALL}")
+
+@cli.command()
+@common_options
+@click.option(
+    '--host',
+    default='127.0.0.1',
+    help='Host to bind to (default: 127.0.0.1)'
+)
+@click.option(
+    '--port',
+    default=8080,
+    help='Port to bind to (default: 8080)'
+)
+@click.option(
+    '--debug',
+    is_flag=True,
+    help='Enable debug mode'
+)
+def serve(kubeconfig, config, host, port, debug):
+    """Start the web server for the cluster cleaner UI."""
+    try:
+        from .web_server import run_server
+        run_server(
+            host=host,
+            port=port,
+            debug=debug,
+            kubeconfig_path=kubeconfig,
+            config_path=config
+        )
+    except KeyboardInterrupt:
+        click.echo(f"\n{Fore.YELLOW}Server stopped by user.{Style.RESET_ALL}")
+    except Exception as e:
+        click.echo(f"{Fore.RED}Error starting server: {e}{Style.RESET_ALL}")
+        raise click.Abort()
 
 if __name__ == '__main__':
     cli()

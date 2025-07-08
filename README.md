@@ -1,7 +1,7 @@
 # nkp-cluster-cleaner
 ![](scorpio.png)
 
-A simple tool to automatically delete Nutanix NKP clusters that do not meet a specific criteria in a lab/demo environment.
+A simple tool to automatically delete Nutanix NKP clusters that do not meet a specific criteria. Useful for cleaning up resources in a lab/demo environment, similar to common "cloud cleaner" tools.
 
 _Disclaimer: This is a personal project and is in no way supported/endorsed by, or otherwise connected to Nutanix_
 
@@ -42,9 +42,29 @@ Commands:
   delete-clusters  Delete CAPI clusters that match deletion criteria.
   generate-config  Generate an example configuration file.
   list-clusters    List CAPI clusters that match deletion criteria.
+  serve            Start the web server for the cluster cleaner UI.
 ```
 
 You must pass in a valid `kubeconfig` context with admin privileges to the NKP management cluster. This can be done by e.g. setting the `KUBECONFIG` environment variable or using the `--kubeconfig` parameter to commands. 
+
+### Web interface
+There is a simple read-only web interface that displays the cluster deletion status, protection rules and general configuration. Start the built-in Flask-based webserver with the `serve` command that takes the usual arguments to specify port and bind host etc:
+
+```
+Usage: nkp-cluster-cleaner serve [OPTIONS]
+
+  Start the web server for the cluster cleaner UI.
+
+Options:
+  --config PATH      Path to configuration file for protection rules
+  --kubeconfig PATH  Path to kubeconfig file (default: ~/.kube/config or
+                     $KUBECONFIG)
+  --host TEXT        Host to bind to (default: 127.0.0.1)
+  --port INTEGER     Port to bind to (default: 8080)
+  --debug            Enable debug mode
+  --help             Show this message and exit.
+```
+
 
 ### list-clusters
 `list-clusters` - Show a list of clusters that would be deleted. Optional `--namespace` can be passed in to limit the scan to a particular namespace (e.g. a specific Kommander workspace):
@@ -193,6 +213,19 @@ docker run --rm \
   -v $(pwd):/app/output \
   ghcr.io/markround/nkp-cluster-cleaner:latest \
   generate-config /app/output/my-config.yaml
+```
+
+### Start webserver
+```bash
+docker run --rm \
+  -v ~/.kube/config:/app/config/kubeconfig:ro \
+  -v ./my-config.yaml:/app/config/config.yaml:ro \
+  -p 8080:8080 \
+  ghcr.io/markround/nkp-cluster-cleaner:latest \
+  serve \
+  --kubeconfig /app/config/kubeconfig \
+  --config /app/config/config.yaml \
+  --host 0.0.0.0
 ```
 
 ## Installation / Development

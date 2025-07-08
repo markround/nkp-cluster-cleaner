@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block title %}NKP Cluster Cleaner - Cluster Status{% endblock %}
+
+{% block header_title %}Cluster Status{% endblock %}
+{% block header_subtitle %}View clusters that match deletion criteria{% endblock %}
+
+{% block extra_css %}
+<style>
+    .cluster-section {
+        margin-bottom: 30px;
+    }
+    .cluster-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .cluster-table th {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px 12px;
+        text-align: left;
+        font-weight: 600;
+        border: none;
+    }
+    .cluster-table td {
+        padding: 12px;
+        border-bottom: 1px solid #eee;
+        vertical-align: top;
+    }
+    .cluster-table tr:hover {
+        background-color: #f8f9fa;
+    }
+    .cluster-table tr:last-child td {
+        border-bottom: none;
+    }
+    .status-badge {
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 0.85em;
+        font-weight: 500;
+    }
+    .badge-delete {
+        background-color: #ffe6e6;
+        color: #d32f2f;
+        border: 1px solid #ffcdd2;
+    }
+    .badge-exclude {
+        background-color: #e8f5e8;
+        color: #2e7d32;
+        border: 1px solid #c8e6c9;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: #666;
+    }
+    .empty-state .icon {
+        font-size: 4em;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+    .refresh-info {
+        background-color: #f0f8ff;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        border-left: 4px solid #2196f3;
+    }
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+    }
+    .error-state {
+        background-color: #ffebee;
+        border-left: 4px solid #f44336;
+        padding: 20px;
+        border-radius: 8px;
+        margin: 20px 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    {% if error %}
+        <div class="error-state">
+            <h3>❌ Error Loading Clusters</h3>
+            <p><strong>Error:</strong> {{ error }}</p>
+            <p>Please check your kubeconfig and ensure the cluster is accessible.</p>
+            <a href="/clusters" onclick="location.reload()">🔄 Try Again</a>
+        </div>
+    {% else %}
+        <div class="refresh-info">
+            <strong>📊 Cluster Status Report</strong>
+            <p>Data refreshed at: <strong>{{ refresh_time }}</strong></p>
+            <p>Configuration: kubeconfig={{ kubeconfig_status }}, config={{ config_status }}</p>
+            {% if namespace_filter %}
+                <p>Filtered to namespace: <strong>{{ namespace_filter }}</strong></p>
+            {% endif %}
+        </div>
+
+        <!-- Clusters for Deletion -->
+        <div class="cluster-section">
+            <h2>🚨 Clusters for Deletion</h2>
+            {% if clusters_to_delete %}
+                <p>Found <strong>{{ clusters_to_delete|length }}</strong> clusters that match deletion criteria:</p>
+                <table class="cluster-table">
+                    <thead>
+                        <tr>
+                            <th>Cluster Name</th>
+                            <th>Namespace</th>
+                            <th>Owner</th>
+                            <th>Expires</th>
+                            <th>Reason</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cluster_info, reason in clusters_to_delete %}
+                        <tr>
+                            <td><strong>{{ cluster_info.capi_cluster_name or 'N/A' }}</strong></td>
+                            <td>{{ cluster_info.capi_cluster_namespace or 'N/A' }}</td>
+                            <td>{{ cluster_info.labels.get('owner', 'N/A') }}</td>
+                            <td>{{ cluster_info.labels.get('expires', 'N/A') }}</td>
+                            <td>{{ reason }}</td>
+                            <td><span class="status-badge badge-delete">For Deletion</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="empty-state">
+                    <div class="icon">✅</div>
+                    <h3>No Clusters for Deletion</h3>
+                    <p>All clusters are either protected or have not yet expired.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Excluded Clusters -->
+        <div class="cluster-section">
+            <h2>🛡️ Excluded Clusters</h2>
+            {% if excluded_clusters %}
+                <p>Found <strong>{{ excluded_clusters|length }}</strong> clusters excluded from deletion:</p>
+                <table class="cluster-table">
+                    <thead>
+                        <tr>
+                            <th>Cluster Name</th>
+                            <th>Namespace</th>
+                            <th>Owner</th>
+                            <th>Expires</th>
+                            <th>Exclusion Reason</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cluster_info, reason in excluded_clusters %}
+                        <tr>
+                            <td><strong>{{ cluster_info.capi_cluster_name or 'N/A' }}</strong></td>
+                            <td>{{ cluster_info.capi_cluster_namespace or 'N/A' }}</td>
+                            <td>{{ cluster_info.labels.get('owner', 'N/A') }}</td>
+                            <td>{{ cluster_info.labels.get('expires', 'N/A') }}</td>
+                            <td>{{ reason }}</td>
+                            <td><span class="status-badge badge-exclude">Protected</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="empty-state">
+                    <div class="icon">🤷</div>
+                    <h3>No Clusters Excluded</h3>
+                    <p>No clusters were excluded from deletion.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="refresh-info">
+            <h3>🎯 Quick Actions</h3>
+            <p>
+                <a href="/clusters">🔄 Refresh Data</a> |
+                <a href="/">🏠 Back to Dashboard</a> |
+                <a href="/health">❤️ Check Health</a>
+            </p>
+        </div>
+    {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Log when cluster data was loaded
+    console.log("Cluster data loaded at: {{ refresh_time }}");
+</script>
+{% endblock %}

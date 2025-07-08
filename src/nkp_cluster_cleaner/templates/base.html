@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}NKP Cluster Cleaner{% endblock %}</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            margin: 0;
+            font-size: 2.5em;
+        }
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        .status {
+            padding: 15px;
+            background-color: #e8f5e8;
+            border-left: 4px solid #4caf50;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .config-info {
+            background-color: #f0f8ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .warning {
+            padding: 15px;
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .error {
+            padding: 15px;
+            background-color: #f8d7da;
+            border-left: 4px solid #dc3545;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .nav {
+            margin-bottom: 20px;
+        }
+        .nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 15px;
+            padding: 8px 16px;
+            border-radius: 5px;
+            background-color: rgba(255,255,255,0.2);
+            transition: background-color 0.3s;
+        }
+        .nav a:hover {
+            background-color: rgba(255,255,255,0.3);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="header">
+        <h1>🚀 {% block header_title %}NKP Cluster Cleaner{% endblock %}</h1>
+        <p>{% block header_subtitle %}Web interface for automated CAPI cluster deletion{% endblock %}</p>
+        <div class="nav">
+            <a href="/">🏠 Home</a>
+            <a href="/clusters">📋 Clusters</a>
+            <a href="/rules">📖 Rules</a>
+            <a href="/health">❤️ Health</a>
+        </div>
+    </div>
+    
+    <div class="content">
+        {% block content %}{% endblock %}
+    </div>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
