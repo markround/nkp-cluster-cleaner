@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+
+{% block title %}NKP Cluster Cleaner - Deletion Rules{% endblock %}
+
+{% block header_title %}Deletion Rules{% endblock %}
+{% block header_subtitle %}Configuration and deletion criteria overview{% endblock %}
+
+{% block extra_css %}
+<style>
+    .rules-section {
+        margin-bottom: 30px;
+        background: white;
+        padding: 25px;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .rule-item {
+        background-color: #f8f9fa;
+        padding: 15px;
+        margin: 10px 0;
+        border-left: 4px solid #007bff;
+        border-radius: 5px;
+    }
+    .rule-type {
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 8px;
+    }
+    .rule-description {
+        color: #6c757d;
+        margin-bottom: 8px;
+    }
+    .rule-example {
+        background-color: #e9ecef;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.9em;
+        color: #495057;
+    }
+    .config-status {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.85em;
+        font-weight: 500;
+        margin-left: 10px;
+    }
+    .status-active {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    .status-default {
+        background-color: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeaa7;
+    }
+    .pattern-list {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 15px;
+        margin: 10px 0;
+    }
+    .pattern-item {
+        background-color: white;
+        padding: 8px 12px;
+        margin: 5px 0;
+        border-radius: 4px;
+        font-family: 'Courier New', monospace;
+        border-left: 3px solid #28a745;
+    }
+    .no-patterns {
+        color: #6c757d;
+        font-style: italic;
+        text-align: center;
+        padding: 20px;
+    }
+    .time-examples {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin: 15px 0;
+    }
+    .time-example {
+        background-color: #e3f2fd;
+        padding: 12px;
+        border-radius: 6px;
+        text-align: center;
+        border: 1px solid #bbdefb;
+    }
+    .time-value {
+        font-family: 'Courier New', monospace;
+        font-weight: bold;
+        color: #1565c0;
+    }
+    .time-desc {
+        color: #424242;
+        font-size: 0.9em;
+        margin-top: 5px;
+    }
+    .summary-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+    }
+    .summary-stat {
+        display: inline-block;
+        margin: 0 20px 10px 0;
+    }
+    .summary-number {
+        font-size: 1.8em;
+        font-weight: bold;
+    }
+    .summary-label {
+        font-size: 0.9em;
+        opacity: 0.9;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <!-- Configuration Summary -->
+    <div class="summary-box">
+        <h2 style="margin-top: 0;">📋 Configuration Summary</h2>
+        <div class="summary-stat">
+            <div class="summary-number">{{ rule_count }}</div>
+            <div class="summary-label">Active Rules</div>
+        </div>
+        <div class="summary-stat">
+            <div class="summary-number">{{ protected_cluster_count }}</div>
+            <div class="summary-label">Protected Patterns</div>
+        </div>
+        <div class="summary-stat">
+            <div class="summary-number">{{ excluded_namespace_count }}</div>
+            <div class="summary-label">Excluded Namespaces</div>
+        </div>
+        <div class="summary-stat">
+            <div class="summary-number">{{ time_format_count }}</div>
+            <div class="summary-label">Time Formats</div>
+        </div>
+    </div>
+
+    <!-- Protection Rules -->
+    <div class="rules-section">
+        <h2>🛡️ Protection Rules</h2>
+        <p>Clusters are <strong>excluded</strong> from deletion if they match any protection criteria:</p>
+
+        <!-- Management Cluster -->
+        <div class="rule-item">
+            <div class="rule-type">Management Cluster Protection</div>
+            <div class="rule-description">The management cluster is always protected</div>
+            <div class="rule-example">KommanderCluster name == "host-cluster"</div>
+        </div>
+
+        <!-- Protected Cluster Patterns -->
+        <div class="rule-item">
+            <div class="rule-type">Protected Cluster Patterns
+                <span class="config-status {{ 'status-active' if protected_cluster_patterns else 'status-default' }}">
+                    {{ protected_cluster_patterns|length }} patterns
+                </span>
+            </div>
+            <div class="rule-description">Regex patterns that match cluster names to protect</div>
+            <div class="pattern-list">
+                {% if protected_cluster_patterns %}
+                    {% for pattern in protected_cluster_patterns %}
+                        <div class="pattern-item">{{ pattern }}</div>
+                    {% endfor %}
+                {% else %}
+                    <div class="no-patterns">No protected cluster patterns configured</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Excluded Namespace Patterns -->
+        <div class="rule-item">
+            <div class="rule-type">Excluded Namespace Patterns
+                <span class="config-status {{ 'status-active' if excluded_namespace_patterns else 'status-default' }}">
+                    {{ excluded_namespace_patterns|length }} patterns
+                </span>
+            </div>
+            <div class="rule-description">Regex patterns that match namespaces to exclude from scanning</div>
+            <div class="pattern-list">
+                {% if excluded_namespace_patterns %}
+                    {% for pattern in excluded_namespace_patterns %}
+                        <div class="pattern-item">{{ pattern }}</div>
+                    {% endfor %}
+                {% else %}
+                    <div class="no-patterns">No excluded namespace patterns configured</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Non-Expired Clusters -->
+        <div class="rule-item">
+            <div class="rule-type">Non-Expired Clusters</div>
+            <div class="rule-description">Clusters with valid expires labels that have not yet reached expiration</div>
+            <div class="rule-example">current_time &lt; (creation + expires_duration)</div>
+        </div>
+    </div>
+
+    <!-- Core Deletion Rules -->
+    <div class="rules-section">
+        <h2>🎯 Core Deletion Rules</h2>
+        <p>Clusters are marked for deletion if they meet <strong>any</strong> of the following criteria:</p>
+        
+        <div class="rule-item">
+            <div class="rule-type">1. Missing Owner Label</div>
+            <div class="rule-description">Clusters without an "owner" label are considered orphaned</div>
+            <div class="rule-example">Missing: labels.owner</div>
+        </div>
+
+        <div class="rule-item">
+            <div class="rule-type">2. Missing Expires Label</div>
+            <div class="rule-description">Clusters without an "expires" label have no expiration policy</div>
+            <div class="rule-example">Missing: labels.expires</div>
+        </div>
+
+        <div class="rule-item">
+            <div class="rule-type">3. Expired Clusters</div>
+            <div class="rule-description">Clusters where current time >= creation time + expires duration</div>
+            <div class="rule-example">current_time >= (creation + expires_duration)</div>
+        </div>
+
+        <div class="rule-item">
+            <div class="rule-type">4. Invalid Expires Format</div>
+            <div class="rule-description">Clusters with malformed expires labels that cannot be parsed</div>
+            <div class="rule-example">Invalid: "1day", "2 weeks", "forever"</div>
+        </div>
+    </div>
+
+    <!-- Time Format Rules -->
+    <div class="rules-section">
+        <h2>⏰ Expires Label Format</h2>
+        <p>The "expires" label must follow the format: <strong>&lt;number&gt;&lt;unit&gt;</strong></p>
+        
+        <div class="time-examples">
+            <div class="time-example">
+                <div class="time-value">1h, 24h, 72h</div>
+                <div class="time-desc">Hours</div>
+            </div>
+            <div class="time-example">
+                <div class="time-value">1d, 7d, 30d</div>
+                <div class="time-desc">Days</div>
+            </div>
+            <div class="time-example">
+                <div class="time-value">1w, 2w, 4w</div>
+                <div class="time-desc">Weeks</div>
+            </div>
+            <div class="time-example">
+                <div class="time-value">1y, 2y, 5y</div>
+                <div class="time-desc">Years</div>
+            </div>
+        </div>
+        
+        <p><strong>Examples:</strong> A cluster created on 2025-06-23 with expires="7d" will be marked for deletion on 2025-06-30.</p>
+    </div>
+
+    <!-- Configuration Source -->
+    <div class="rules-section">
+        <h2>⚙️ Configuration Source</h2>
+        <div class="rule-item">
+            <div class="rule-type">Kubeconfig
+                <span class="config-status {{ 'status-active' if kubeconfig_path else 'status-default' }}">
+                    {{ 'Custom' if kubeconfig_path else 'Default' }}
+                </span>
+            </div>
+            <div class="rule-description">{{ kubeconfig_path or 'Using default (~/.kube/config or $KUBECONFIG)' }}</div>
+        </div>
+
+        <div class="rule-item">
+            <div class="rule-type">Protection Rules
+                <span class="config-status {{ 'status-active' if config_path else 'status-default' }}">
+                    {{ 'Loaded' if config_path else 'Default' }}
+                </span>
+            </div>
+            <div class="rule-description">{{ config_path or 'Using default rules (no additional protection)' }}</div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="refresh-info">
+        <h3>🎯 Quick Actions</h3>
+        <p>
+            <a href="/clusters">📋 View Clusters</a> |
+            <a href="/">🏠 Back to Dashboard</a> |
+            <a href="/health">❤️ Check Health</a>
+        </p>
+    </div>
+{% endblock %}

@@ -111,6 +111,57 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
                 error=str(e)
             )
     
+    @app.route('/rules')
+    def rules():
+        """Display deletion rules and configuration summary."""
+        try:
+            # Get cluster manager to access configuration
+            cluster_manager = get_cluster_manager()
+            config_manager = cluster_manager.config_manager
+            criteria = config_manager.get_criteria()
+            
+            # Count various configuration elements
+            protected_cluster_patterns = criteria.protected_cluster_patterns
+            excluded_namespace_patterns = criteria.excluded_namespace_patterns
+            
+            # Calculate summary statistics
+            rule_count = 4  # Core deletion rules (missing owner, missing expires, expired, invalid format)
+            protected_cluster_count = len(protected_cluster_patterns)
+            excluded_namespace_count = len(excluded_namespace_patterns)
+            time_format_count = 4  # h, d, w, y
+            
+            # Determine configuration paths
+            kubeconfig_path = app.config['KUBECONFIG_PATH']
+            config_path = app.config['CONFIG_PATH']
+            
+            return render_template(
+                'rules.html',
+                # Summary statistics
+                rule_count=rule_count,
+                protected_cluster_count=protected_cluster_count,
+                excluded_namespace_count=excluded_namespace_count,
+                time_format_count=time_format_count,
+                # Configuration details
+                protected_cluster_patterns=protected_cluster_patterns,
+                excluded_namespace_patterns=excluded_namespace_patterns,
+                kubeconfig_path=kubeconfig_path,
+                config_path=config_path
+            )
+        except Exception as e:
+            # Render with error state
+            return render_template(
+                'rules.html',
+                rule_count=4,
+                protected_cluster_count=0,
+                excluded_namespace_count=0,
+                time_format_count=4,
+                protected_cluster_patterns=[],
+                excluded_namespace_patterns=[],
+                kubeconfig_path=app.config['KUBECONFIG_PATH'],
+                config_path=app.config['CONFIG_PATH'],
+                error=str(e)
+            )
+    
     @app.route('/api/clusters')
     def api_clusters():
         """API endpoint for cluster data (JSON)."""
