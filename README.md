@@ -1,7 +1,7 @@
 # nkp-cluster-cleaner
 <img src="/docs/webui.png" width="200">
 
-A simple tool to automatically delete Nutanix NKP clusters that do not meet a specific criteria. Useful for cleaning up resources in a lab/demo environment, similar to common "cloud cleaner" tools.
+A simple tool to automatically delete Nutanix NKP clusters that do not meet a specific criteria. Useful for cleaning up resources in a lab/demo environment, similar to common "cloud cleaner" tools. Also available as a [Helm Chart](./charts/nkp-cluster-cleaner/README.md) and [NKP Catalog Application](./docs/nkp.md).
 
 _Disclaimer: This is a personal project and is in no way supported/endorsed by, or otherwise connected to Nutanix_
 
@@ -66,6 +66,8 @@ Options:
   --help             Show this message and exit.
 ```
 
+#### NKP Catalog Application
+See the documentation at [docs/nkp.md](./docs/nkp.md) for details on how to deploy the web interface as a NKP catalog application, running inside the NKP Management Cluster itself.
 
 ### list-clusters
 `list-clusters` - Show a list of clusters that would be deleted. Optional `--namespace` can be passed in to limit the scan to a particular namespace (e.g. a specific Kommander workspace):
