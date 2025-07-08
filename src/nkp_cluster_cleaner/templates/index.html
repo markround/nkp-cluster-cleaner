@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}NKP Cluster Cleaner - Dashboard{% endblock %}
+
+{% block content %}
+    <h2>Welcome!</h2>
+    <div class="status">
+        <strong>✅ Web server is running successfully!</strong>
+    </div>
+    
+    <p>This is the web interface for the NKP Cluster Cleaner tool. You can use this interface to:</p>
+    <ul>
+        <li>View clusters that match deletion criteria</li>
+        <li>See excluded clusters and their reasons</li>
+        <li>Monitor cluster expiration status</li>
+        <li>Review protection rules</li>
+    </ul>
+    
+    <div class="config-info">
+        <h3>Configuration Status:</h3>
+        <p><strong>Kubeconfig:</strong> {{ kubeconfig_status }}</p>
+        <p><strong>Config file:</strong> {{ config_status }}</p>
+    </div>
+    
+    <h3>Quick Actions:</h3>
+    <ul>
+        <li><a href="/clusters">📋 View Cluster Status</a> - See all clusters and their deletion status</li>
+        <li><a href="/health">❤️ Health Check</a> - Verify server and Kubernetes connectivity</li>
+    </ul>
+    
+    <h3>Next Steps:</h3>
+    <p>Future versions will include:</p>
+    <ul>
+        <li>Live cluster listing</li>
+        <li>Interactive deletion controls</li>
+        <li>Real-time status updates</li>
+        <li>Configuration management</li>
+    </ul>
+{% endblock %}
