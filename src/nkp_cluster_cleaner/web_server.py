@@ -87,6 +87,7 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
             return jsonify({
                 'status': 'ok', 
                 'service': 'nkp-cluster-cleaner',
+                'version': __version__,
                 'kubeconfig': app.config['KUBECONFIG_PATH'] or 'default',
                 'config': app.config['CONFIG_PATH'] or 'none',
                 'timestamp': datetime.now().isoformat()
@@ -95,6 +96,7 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
             return jsonify({
                 'status': 'error',
                 'service': 'nkp-cluster-cleaner',
+                'version': __version__,
                 'error': str(e),
                 'timestamp': datetime.now().isoformat()
             }), 500
