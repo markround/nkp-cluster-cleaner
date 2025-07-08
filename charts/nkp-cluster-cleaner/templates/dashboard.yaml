@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nkp-cluster-cleaner-dashboard
+  namespace: kommander
+  labels:
+    kommander.d2iq.io/application: nkp-cluster-cleaner
+data:
+  dashboardLink: "{{ $.Values.ingress.prefix }}"
+  docsLink: "https://github.com/markround/nkp-cluster-cleaner"
+  name: NKP Cluster Cleaner
+  version: 0.3.0

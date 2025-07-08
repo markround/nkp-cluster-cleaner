@@ -1,0 +1,27 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: nkp-cluster-cleaner
+  namespace: kommander
+spec:
+  chart:
+    spec:
+      chart: ./charts/nkp-cluster-cleaner
+      sourceRef:
+        kind: GitRepository
+        name: nkp-cluster-cleaner
+        namespace: kommander
+      version: 0.3.0
+  install:
+    remediation:
+      retries: 30
+  interval: 15s
+  releaseName: nkp-cluster-cleaner
+  targetNamespace: kommander
+  upgrade:
+    remediation:
+      retries: 30
+  valuesFrom:
+    - kind: ConfigMap
+      name: nkp-cluster-cleaner-0.3.0-mdr-defaults
