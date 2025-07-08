@@ -285,9 +285,9 @@
     <div class="refresh-info">
         <h3>🎯 Quick Actions</h3>
         <p>
-            <a href="/clusters">📋 View Clusters</a> |
-            <a href="/">🏠 Back to Dashboard</a> |
-            <a href="/health">❤️ Check Health</a>
+            <a href="{{ url_with_prefix('/clusters') }}">📋 View Clusters</a> |
+            <a href="{{ url_with_prefix('/') }}">🏠 Back to Dashboard</a> |
+            <a href="{{ url_with_prefix('/health') }}">❤️ Check Health</a>
         </p>
     </div>
 {% endblock %}

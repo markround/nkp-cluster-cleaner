@@ -1,0 +1,26 @@
+{{- if eq .Values.ingress.enabled true }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    ingress.kubernetes.io/auth-response-headers: X-Forwarded-User
+    kubernetes.io/ingress.class: {{ $.Values.ingress.class }}
+    traefik.ingress.kubernetes.io/router.tls: "true"
+{{- if eq .Values.ingress.authentication.enabled true }}
+    traefik.ingress.kubernetes.io/router.middlewares: kommander-forwardauth@kubernetescrd
+{{- end }}
+  name: nkp-cluster-cleaner
+  namespace: kommander
+spec:
+  rules:
+  - http:
+      paths:
+      - backend:
+          service:
+            name: nkp-cluster-cleaner
+            port:
+              number: 80
+        path: {{ $.Values.ingress.prefix }}
+        pathType: ImplementationSpecific
+{{- end }}
