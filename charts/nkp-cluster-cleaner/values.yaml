@@ -1,0 +1,14 @@
+deployment:
+  image: ghcr.io/markround/nkp-cluster-cleaner:feature-nkp
+  replicas: 1
+
+ingress:
+  prefix: /mdr/nkp-cluster-cleaner
+
+app:
+  kubeconfigSecretRef: kommander-self-attach-kubeconfig
+  config: |
+    excluded_namespace_patterns:
+    - ^default$
+    protected_cluster_patterns:
+    - .*-prod-.*

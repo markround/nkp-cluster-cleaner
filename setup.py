@@ -8,7 +8,7 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 
 setup(
     name="nkp-cluster-cleaner",
-    version="0.2.0",
+    version="0.3.0",
     author="Mark Dastmalchi-Round",
     author_email="github@markround.com",
     description="A tool to delete CAPI-provided Kubernetes clusters based on label criteria",
