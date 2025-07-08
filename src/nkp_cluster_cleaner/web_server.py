@@ -3,11 +3,37 @@ Web server module for the NKP Cluster Cleaner web UI.
 """
 
 import os
+import re
 from datetime import datetime
 from flask import Flask, render_template, jsonify, request
 from typing import Optional
 from .config import ConfigManager
 from .cluster_manager import ClusterManager
+
+def get_version():
+    """
+    Extract version from setup.py file.
+    Bit of a hack, but saves having to declare it in multiple places!
+    """
+    try:
+        # Get the directory containing this file, then go up to find setup.py
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        setup_py_path = os.path.join(current_dir, '..', '..', 'setup.py')
+        setup_py_path = os.path.abspath(setup_py_path)
+        
+        with open(setup_py_path, 'r') as f:
+            content = f.read()
+            
+        # Look for version="x.x.x" in setup.py
+        version_match = re.search(r'version\s*=\s*["\']([^"\']+)["\']', content)
+        if version_match:
+            return version_match.group(1)
+        else:
+            return "unknown"
+    except Exception:
+        return "unknown"
+
+__version__ = get_version()
 
 
 def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str] = None) -> Flask:
@@ -45,7 +71,8 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
         return render_template(
             'index.html',
             kubeconfig_status=kubeconfig_status,
-            config_status=config_status
+            config_status=config_status,
+            version=__version__
         )
     
     @app.route('/health')
