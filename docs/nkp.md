@@ -3,7 +3,7 @@
 
 The Web UI can be installed as a NKP Catalog Application and makes use of features enabled in the Management Cluster:
 
-- Traefik ingress controller (and optional authentication)
+- Traefik ingress controller (with optional authentication, enabled by default)
 - The default kommander kubeconfig secret for self-attachment. 
 
 ## Installation
@@ -21,7 +21,7 @@ You can then select the application in the Management Cluster Workspace and enab
 
 ## Configuration
 
-Assuming a standard installation of NKP Ultimate, the application will work without any further configuration required. For a full reference of the Helm values, see the included [Chart documentation](/charts/nkp-cluster-cleaner/README.md).
+Assuming a standard installation of NKP Ultimate, the application will work without any further configuration required. For a full reference of the Helm values, see the included [Chart documentation](/charts/nkp-cluster-cleaner/README.md). Note that the defaults will require an admin account to log-in and view the dashboard. More granular RBAC will be added in a future release.
 
 ### Default rules
 
