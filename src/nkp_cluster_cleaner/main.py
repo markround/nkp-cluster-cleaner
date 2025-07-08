@@ -235,7 +235,12 @@ def generate_config(output_file):
     is_flag=True,
     help='Enable debug mode'
 )
-def serve(kubeconfig, config, host, port, debug):
+@click.option(
+    '--prefix',
+    default='',
+    help='URL prefix for all routes (e.g., /foo for /foo/clusters)'
+)
+def serve(kubeconfig, config, host, port, debug, prefix):
     """Start the web server for the cluster cleaner UI."""
     try:
         from .web_server import run_server
@@ -244,7 +249,8 @@ def serve(kubeconfig, config, host, port, debug):
             port=port,
             debug=debug,
             kubeconfig_path=kubeconfig,
-            config_path=config
+            config_path=config,
+            url_prefix=prefix
         )
     except KeyboardInterrupt:
         click.echo(f"\n{Fore.YELLOW}Server stopped by user.{Style.RESET_ALL}")

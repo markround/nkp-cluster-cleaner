@@ -11,10 +11,7 @@ from .config import ConfigManager
 from .cluster_manager import ClusterManager
 
 def get_version():
-    """
-    Extract version from setup.py file.
-    Bit of a hack, but saves having to declare it in multiple places!
-    """
+    """Extract version from setup.py file."""
     try:
         # Get the directory containing this file, then go up to find setup.py
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -36,13 +33,15 @@ def get_version():
 __version__ = get_version()
 
 
-def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str] = None) -> Flask:
+def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str] = None, 
+               url_prefix: Optional[str] = None) -> Flask:
     """
     Create and configure the Flask application.
     
     Args:
         kubeconfig_path: Path to kubeconfig file
         config_path: Path to configuration file
+        url_prefix: URL prefix for all routes (e.g., '/foo')
         
     Returns:
         Flask application instance
@@ -56,12 +55,32 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
     app.config['KUBECONFIG_PATH'] = kubeconfig_path
     app.config['CONFIG_PATH'] = config_path
     
+    # Normalize URL prefix
+    if url_prefix:
+        url_prefix = url_prefix.strip('/')
+        if url_prefix:
+            url_prefix = '/' + url_prefix
+        else:
+            url_prefix = ''
+    else:
+        url_prefix = ''
+    
+    app.config['URL_PREFIX'] = url_prefix
+    
+    # Create a template function for building URLs with prefix
+    @app.template_global()
+    def url_with_prefix(path):
+        """Build URL with prefix."""
+        if not path.startswith('/'):
+            path = '/' + path
+        return url_prefix + path
+    
     def get_cluster_manager():
         """Helper to create cluster manager with current config."""
         config_manager = ConfigManager(app.config['CONFIG_PATH']) if app.config['CONFIG_PATH'] else ConfigManager()
         return ClusterManager(app.config['KUBECONFIG_PATH'], config_manager)
     
-    @app.route('/')
+    @app.route(url_prefix + '/')
     def index():
         """Main page showing cluster information."""
         # Determine configuration status
@@ -75,7 +94,7 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
             version=__version__
         )
     
-    @app.route('/health')
+    @app.route(url_prefix + '/health')
     def health():
         """Health check endpoint."""
         try:
@@ -101,7 +120,7 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
                 'timestamp': datetime.now().isoformat()
             }), 500
     
-    @app.route('/clusters')
+    @app.route(url_prefix + '/clusters')
     def clusters():
         """Display clusters that match deletion criteria."""
         namespace_filter = request.args.get('namespace')
@@ -140,7 +159,7 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
                 error=str(e)
             )
     
-    @app.route('/rules')
+    @app.route(url_prefix + '/rules')
     def rules():
         """Display deletion rules and configuration summary."""
         try:
@@ -191,7 +210,7 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
                 error=str(e)
             )
     
-    @app.route('/api/clusters')
+    @app.route(url_prefix + '/api/clusters')
     def api_clusters():
         """API endpoint for cluster data (JSON)."""
         namespace_filter = request.args.get('namespace')
@@ -237,7 +256,8 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
 
 
 def run_server(host: str = '127.0.0.1', port: int = 8080, debug: bool = False,
-               kubeconfig_path: Optional[str] = None, config_path: Optional[str] = None):
+               kubeconfig_path: Optional[str] = None, config_path: Optional[str] = None,
+               url_prefix: Optional[str] = None):
     """
     Run the Flask development server.
     
@@ -247,17 +267,25 @@ def run_server(host: str = '127.0.0.1', port: int = 8080, debug: bool = False,
         debug: Enable debug mode
         kubeconfig_path: Path to kubeconfig file
         config_path: Path to configuration file
+        url_prefix: URL prefix for all routes
     """
-    app = create_app(kubeconfig_path, config_path)
+    app = create_app(kubeconfig_path, config_path, url_prefix)
+    
+    # Normalize prefix for display
+    display_prefix = url_prefix if url_prefix else ""
+    
     print(f"🚀 Starting NKP Cluster Cleaner web server...")
-    print(f"📡 Server URL: http://{host}:{port}")
+    print(f"📡 Server URL: http://{host}:{port}{display_prefix}")
     print(f"🔧 Debug mode: {'Enabled' if debug else 'Disabled'}")
     print(f"📋 Configuration: kubeconfig={kubeconfig_path or 'default'}, config={config_path or 'none'}")
+    if url_prefix:
+        print(f"🔗 URL prefix: {url_prefix}")
     print(f"🔗 Available endpoints:")
-    print(f"   • http://{host}:{port}/ - Dashboard")
-    print(f"   • http://{host}:{port}/clusters - Cluster listing")
-    print(f"   • http://{host}:{port}/health - Health check")
-    print(f"   • http://{host}:{port}/api/clusters - API endpoint")
+    print(f"   • http://{host}:{port}{display_prefix}/ - Dashboard")
+    print(f"   • http://{host}:{port}{display_prefix}/clusters - Cluster listing")
+    print(f"   • http://{host}:{port}{display_prefix}/rules - Deletion rules")
+    print(f"   • http://{host}:{port}{display_prefix}/health - Health check")
+    print(f"   • http://{host}:{port}{display_prefix}/api/clusters - API endpoint")
     print(f"🛑 Press Ctrl+C to stop the server")
     
     app.run(host=host, port=port, debug=debug)

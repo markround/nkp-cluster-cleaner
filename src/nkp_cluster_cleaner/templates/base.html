@@ -102,10 +102,10 @@
         <h1>🚀 {% block header_title %}NKP Cluster Cleaner{% endblock %}</h1>
         <p>{% block header_subtitle %}Web interface for automated CAPI cluster deletion{% endblock %}</p>
         <div class="nav">
-            <a href="/">🏠 Home</a>
-            <a href="/clusters">📋 Clusters</a>
-            <a href="/rules">📖 Rules</a>
-            <a href="/health">❤️ Health</a>
+            <a href="{{ url_with_prefix('/') }}">🏠 Home</a>
+            <a href="{{ url_with_prefix('/clusters') }}">📋 Clusters</a>
+            <a href="{{ url_with_prefix('/rules') }}">📖 Rules</a>
+            <a href="{{ url_with_prefix('/health') }}">❤️ Health</a>
         </div>
     </div>
     

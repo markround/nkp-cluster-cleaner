@@ -62,6 +62,7 @@ Options:
   --host TEXT        Host to bind to (default: 127.0.0.1)
   --port INTEGER     Port to bind to (default: 8080)
   --debug            Enable debug mode
+  --prefix TEXT      URL prefix for all routes (e.g., /foo for /foo/clusters)
   --help             Show this message and exit.
 ```
 
