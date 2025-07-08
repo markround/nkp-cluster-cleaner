@@ -1,5 +1,5 @@
 # nkp-cluster-cleaner
-<img src="/webui.png" width="200">
+<img src="/docs/webui.png" width="200">
 
 A simple tool to automatically delete Nutanix NKP clusters that do not meet a specific criteria. Useful for cleaning up resources in a lab/demo environment, similar to common "cloud cleaner" tools.
 

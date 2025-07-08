@@ -1,12 +1,24 @@
 deployment:
+  # Container image to use
   image: ghcr.io/markround/nkp-cluster-cleaner:feature-nkp
+  # Number of replicas to deploy
   replicas: 1
 
 ingress:
+  # Enables ingress through the Kommander Traefik deployment
+  enabled: true
+  # URL Prefix for the dashboard
   prefix: /mdr/nkp-cluster-cleaner
+  # Ingress class to use
+  class: kommander-traefik
+  authentication:
+    # If true, access to the dashboard will require logging in with an admin account
+    enabled: true
 
 app:
+  # Secret containing a valid kubeconfig for the management cluster
   kubeconfigSecretRef: kommander-self-attach-kubeconfig
+  # Default set of exclusion rules
   config: |
     excluded_namespace_patterns:
     - ^default$
