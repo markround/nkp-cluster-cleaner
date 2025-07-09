@@ -101,11 +101,12 @@
         margin-top: 5px;
     }
     .summary-box {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
+        background-color: #e3f2fd;
+        color: black;
         padding: 20px;
         border-radius: 10px;
         margin-bottom: 30px;
+        border: 1px solid #bbdefb;
     }
     .summary-stat {
         display: inline-block;
@@ -114,6 +115,7 @@
     .summary-number {
         font-size: 1.8em;
         font-weight: bold;
+        color: #1565c0;
     }
     .summary-label {
         font-size: 0.9em;
@@ -125,7 +127,7 @@
 {% block content %}
     <!-- Configuration Summary -->
     <div class="summary-box">
-        <h2 style="margin-top: 0;">📋 Configuration Summary</h2>
+        <h2 style="margin-top: 0; border-bottom: 2px solid #bbdefb;">📋 Configuration Summary</h2>
         <div class="summary-stat">
             <div class="summary-number">{{ rule_count }}</div>
             <div class="summary-label">Active Rules</div>
