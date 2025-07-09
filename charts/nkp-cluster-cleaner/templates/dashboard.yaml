@@ -3,7 +3,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: nkp-cluster-cleaner-dashboard
+  name: nkp-cluster-cleaner-dashboard-info
   namespace: kommander
   labels:
     kommander.d2iq.io/application: nkp-cluster-cleaner
