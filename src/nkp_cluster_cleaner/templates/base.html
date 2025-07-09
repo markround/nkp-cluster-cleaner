@@ -355,17 +355,32 @@
         document.addEventListener('DOMContentLoaded', function() {
             const currentPath = window.location.pathname;
             const navItems = document.querySelectorAll('.nav-item');
+            let activeItemFound = false;
             
+            // Remove all active classes first
             navItems.forEach(item => {
                 item.classList.remove('active');
+            });
+            
+            // Find exact matches first, then fallback to prefix matches (but skip root path)
+            navItems.forEach(item => {
                 const href = item.getAttribute('href');
-                if (href && (currentPath === href || (href !== '/' && currentPath.startsWith(href)))) {
-                    item.classList.add('active');
+                if (href && !activeItemFound) {
+                    // Exact match
+                    if (currentPath === href) {
+                        item.classList.add('active');
+                        activeItemFound = true;
+                    }
+                    // Prefix match for non-root paths only
+                    else if (href !== '/' && href !== '' && currentPath.startsWith(href + '/')) {
+                        item.classList.add('active');
+                        activeItemFound = true;
+                    }
                 }
             });
             
-            // If no match found, highlight home for root path
-            if (currentPath === '/' || currentPath.endsWith('/')) {
+            // If no match found and we're on root path, highlight home
+            if (!activeItemFound && (currentPath === '/' || currentPath === '')) {
                 document.getElementById('nav-home')?.classList.add('active');
             }
         });
