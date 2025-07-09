@@ -5,113 +5,371 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}NKP Cluster Cleaner{% endblock %}</title>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            border-radius: 10px;
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .content {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        h1 {
+        * {
             margin: 0;
-            font-size: 2.5em;
+            padding: 0;
+            box-sizing: border-box;
         }
-        h2 {
-            color: #333;
-            border-bottom: 2px solid #eee;
-            padding-bottom: 10px;
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+            background-color: #f5f7fa;
+            color: #1a202c;
+            height: 100vh;
+            overflow: hidden;
         }
+        
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        /* Sidebar Styles */
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(180deg, #2d3748 0%, #1a202c 100%);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            position: relative;
+            z-index: 1000;
+        }
+        
+        .sidebar-header {
+            padding: 24px 20px;
+            border-bottom: 1px solid #4a5568;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 18px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+        
+        .logo-icon {
+            font-size: 24px;
+            margin-right: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 8px;
+            border-radius: 8px;
+        }
+        
+        .sidebar-nav {
+            flex: 1;
+            padding: 20px 0;
+        }
+        
+        .nav-section {
+            margin-bottom: 32px;
+        }
+        
+        .nav-section-title {
+            padding: 0 20px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #a0aec0;
+            letter-spacing: 0.5px;
+        }
+        
+        .nav-item {
+            display: block;
+            padding: 12px 20px;
+            color: #e2e8f0;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+            position: relative;
+        }
+        
+        .nav-item:hover {
+            background-color: rgba(255,255,255,0.1);
+            color: #ffffff;
+            border-left-color: #667eea;
+        }
+        
+        .nav-item.active {
+            background-color: rgba(102,126,234,0.2);
+            color: #ffffff;
+            border-left-color: #667eea;
+        }
+        
+        .nav-item-icon {
+            display: inline-block;
+            width: 20px;
+            margin-right: 12px;
+            font-size: 16px;
+        }
+        
+        .sidebar-footer {
+            padding: 20px;
+            border-top: 1px solid #4a5568;
+            font-size: 12px;
+            color: #a0aec0;
+        }
+        
+        /* Main Content Area */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        /* Top Header */
+        .top-header {
+            background: white;
+            padding: 16px 32px;
+            border-bottom: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .page-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1a202c;
+            margin: 0;
+        }
+        
+        .page-subtitle {
+            font-size: 14px;
+            color: #718096;
+            margin-top: 4px;
+        }
+        
+        /* Content Area */
+        .content-area {
+            flex: 1;
+            padding: 24px 32px;
+            overflow-y: auto;
+            background-color: #f5f7fa;
+        }
+        
+        .content-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 24px;
+        }
+        
         .status {
+            background-color: #f0fff2;
             padding: 15px;
-            background-color: #e8f5e8;
-            border-left: 4px solid #4caf50;
-            margin: 20px 0;
-            border-radius: 5px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #159b3f;
+            border-left: 4px solid #159b3f;
         }
+        
         .config-info {
             background-color: #f0f8ff;
             padding: 15px;
-            border-radius: 5px;
-            margin: 20px 0;
-        }
-        .warning {
-            padding: 15px;
-            background-color: #fff3cd;
-            border-left: 4px solid #ffc107;
-            margin: 20px 0;
-            border-radius: 5px;
-        }
-        .error {
-            padding: 15px;
-            background-color: #f8d7da;
-            border-left: 4px solid #dc3545;
-            margin: 20px 0;
-            border-radius: 5px;
-        }
-        .nav {
+            border-radius: 8px;
             margin-bottom: 20px;
+            border: 1px solid #2196f3;
+            border-left: 4px solid #2196f3;
         }
-        .nav a {
+        
+        .warning {
+            padding: 16px;
+            background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
             color: white;
-            text-decoration: none;
-            margin: 0 15px;
-            padding: 8px 16px;
-            border-radius: 5px;
-            background-color: rgba(255,255,255,0.2);
-            transition: background-color 0.3s;
+            border-radius: 8px;
+            margin: 20px 0;
         }
-        .nav a:hover {
-            background-color: rgba(255,255,255,0.3);
+        
+        .error {
+            padding: 16px;
+            background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
+            color: white;
+            border-radius: 8px;
+            margin: 20px 0;
         }
+        
+        h2 {
+            color: #1a202c;
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        h3 {
+            color: #2d3748;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 20px 0 12px 0;
+        }
+        
         table {
             width: 100%;
             border-collapse: collapse;
             margin: 20px 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
+        
         th, td {
-            padding: 12px;
+            padding: 12px 16px;
             text-align: left;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid #e2e8f0;
         }
+        
         th {
-            background-color: #f8f9fa;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
             font-weight: 600;
+            border: none;
         }
+        
         tr:hover {
-            background-color: #f5f5f5;
+            background-color: #f7fafc;
+        }
+        
+        tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102,126,234,0.3);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #718096 0%, #4a5568 100%);
+        }
+
+        /* Lists */
+        ul {
+          padding-inline-start: 20px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 240px;
+            }
+            
+            .content-area {
+                padding: 16px;
+            }
+            
+            .top-header {
+                padding: 12px 16px;
+            }
         }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <div class="header">
-        <h1>🚀 {% block header_title %}NKP Cluster Cleaner{% endblock %}</h1>
-        <p>{% block header_subtitle %}Web interface for automated CAPI cluster deletion{% endblock %}</p>
-        <div class="nav">
-            <a href="{{ url_with_prefix('/') }}">🏠 Home</a>
-            <a href="{{ url_with_prefix('/clusters') }}">📋 Clusters</a>
-            <a href="{{ url_with_prefix('/rules') }}">📖 Rules</a>
-            <a href="{{ url_with_prefix('/health') }}">❤️ Health</a>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-icon">🚀</span>
+                    <div>
+                        <div>NKP Cluster Cleaner</div>
+                        <div style="font-size: 12px; font-weight: 400; opacity: 0.8;">Management Console</div>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Navigation</div>
+                    <a href="{{ url_with_prefix('/') }}" class="nav-item" id="nav-home">
+                        <span class="nav-item-icon">🏠</span>
+                        Dashboard
+                    </a>
+                    <a href="{{ url_with_prefix('/clusters') }}" class="nav-item" id="nav-clusters">
+                        <span class="nav-item-icon">📋</span>
+                        Cluster Status
+                    </a>
+                    <a href="{{ url_with_prefix('/rules') }}" class="nav-item" id="nav-rules">
+                        <span class="nav-item-icon">📖</span>
+                        Deletion Rules
+                    </a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">System</div>
+                    <a href="{{ url_with_prefix('/health') }}" class="nav-item" id="nav-health">
+                        <span class="nav-item-icon">❤️</span>
+                        Health Check
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Other</div>
+                    <a href="https://github.com/markround/nkp-cluster-cleaner" class="nav-item" id="nav-health">
+                        <span class="nav-item-icon">🏠</span>
+                        Project source code
+                    </a>
+                </div>
+
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div>NKP Cluster Cleaner</div>
+                <div>Management Interface</div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="top-header">
+                <h1 class="page-title">{% block header_title %}NKP Cluster Cleaner{% endblock %}</h1>
+                <div class="page-subtitle">{% block header_subtitle %}Web interface for automated CAPI cluster deletion{% endblock %}</div>
+            </div>
+            
+            <div class="content-area">
+                {% block content %}{% endblock %}
+            </div>
         </div>
     </div>
     
-    <div class="content">
-        {% block content %}{% endblock %}
-    </div>
+    <script>
+        // Highlight active nav item based on current path
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentPath = window.location.pathname;
+            const navItems = document.querySelectorAll('.nav-item');
+            
+            navItems.forEach(item => {
+                item.classList.remove('active');
+                const href = item.getAttribute('href');
+                if (href && (currentPath === href || (href !== '/' && currentPath.startsWith(href)))) {
+                    item.classList.add('active');
+                }
+            });
+            
+            // If no match found, highlight home for root path
+            if (currentPath === '/' || currentPath.endsWith('/')) {
+                document.getElementById('nav-home')?.classList.add('active');
+            }
+        });
+    </script>
     
     {% block extra_js %}{% endblock %}
 </body>
