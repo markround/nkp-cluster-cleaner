@@ -9,29 +9,9 @@ from flask import Flask, render_template, jsonify, request
 from typing import Optional
 from .config import ConfigManager
 from .cluster_manager import ClusterManager
+import nkp_cluster_cleaner
 
-def get_version():
-    """Extract version from setup.py file."""
-    try:
-        # Get the directory containing this file, then go up to find setup.py
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        setup_py_path = os.path.join(current_dir, '..', '..', 'setup.py')
-        setup_py_path = os.path.abspath(setup_py_path)
-        
-        with open(setup_py_path, 'r') as f:
-            content = f.read()
-            
-        # Look for version="x.x.x" in setup.py
-        version_match = re.search(r'version\s*=\s*["\']([^"\']+)["\']', content)
-        if version_match:
-            return version_match.group(1)
-        else:
-            return "unknown"
-    except Exception:
-        return "unknown"
-
-__version__ = get_version()
-
+__version__ = nkp_cluster_cleaner.__version__
 
 def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str] = None, 
                url_prefix: Optional[str] = None) -> Flask:
