@@ -123,6 +123,7 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
                 kubeconfig_status=kubeconfig_status,
                 config_status=config_status,
                 namespace_filter=namespace_filter,
+                version=__version__,
                 refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 error=None
             )
@@ -135,6 +136,7 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
                 kubeconfig_status=app.config['KUBECONFIG_PATH'] or "default",
                 config_status=app.config['CONFIG_PATH'] or "none",
                 namespace_filter=namespace_filter,
+                version=__version__,
                 refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 error=str(e)
             )
@@ -173,6 +175,7 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
                 protected_cluster_patterns=protected_cluster_patterns,
                 excluded_namespace_patterns=excluded_namespace_patterns,
                 kubeconfig_path=kubeconfig_path,
+                version=__version__,
                 config_path=config_path
             )
         except Exception as e:
@@ -187,6 +190,7 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
                 excluded_namespace_patterns=[],
                 kubeconfig_path=app.config['KUBECONFIG_PATH'],
                 config_path=app.config['CONFIG_PATH'],
+                version=__version__,
                 error=str(e)
             )
     

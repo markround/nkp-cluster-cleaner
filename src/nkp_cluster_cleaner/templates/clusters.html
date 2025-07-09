@@ -20,13 +20,13 @@
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
     .cluster-table th {
-        background: linear-gradient( #667eea 0%, #899bed 100%);
+        background: linear-gradient( #1a202c 0%, #2d3748 100%);
         color: white;
         padding: 15px 12px;
         text-align: left;
         font-weight: 600;
-        border-right: 1px solid #667eea;
-        border-bottom: 1px solid #667eea;
+        border-right: 1px solid #414753;
+        border-bottom: 1px solid #2d3748;
     }
     .cluster-table td {
         padding: 12px;
@@ -70,6 +70,7 @@
         padding: 15px;
         border-radius: 8px;
         margin-bottom: 20px;
+        border: 1px solid #2196f3;
         border-left: 4px solid #2196f3;
     }
     .loading {
@@ -79,6 +80,7 @@
     }
     .error-state {
         background-color: #ffebee;
+        border: 1px solid #f44336;
         border-left: 4px solid #f44336;
         padding: 20px;
         border-radius: 8px;
@@ -179,16 +181,6 @@
                     <p>No clusters were excluded from deletion.</p>
                 </div>
             {% endif %}
-        </div>
-
-        <!-- Quick Actions -->
-        <div class="refresh-info">
-            <h3>🎯 Quick Actions</h3>
-            <p>
-                <a href="{{ url_with_prefix('/clusters') }}">🔄 Refresh Data</a> |
-                <a href="{{ url_with_prefix('/') }}">🏠 Back to Dashboard</a> |
-                <a href="{{ url_with_prefix('/health') }}">❤️ Check Health</a>
-            </p>
         </div>
     {% endif %}
 {% endblock %}
