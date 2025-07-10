@@ -298,7 +298,7 @@ class CronJobManager:
     
     def get_all_scheduled_tasks_summary(self, namespace: str = "kommander") -> Dict:
         """
-        Get a comprehensive summary of all scheduled tasks.
+        Get a summary of all scheduled tasks for the header in the UI.
         
         Args:
             namespace: Namespace to search
