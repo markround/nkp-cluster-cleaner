@@ -1,0 +1,117 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+      - '[0-9]+.[0-9]+.[0-9]+'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from tag
+        id: extract_version
+        run: |
+          # Remove 'v' prefix if present
+          VERSION=${GITHUB_REF#refs/tags/}
+          VERSION=${VERSION#v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Get Python package version
+        id: get_package_version
+        run: |
+          PACKAGE_VERSION=$(grep "__version__" src/nkp_cluster_cleaner/__init__.py | cut -d'"' -f2)
+          echo "package_version=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Verify version consistency
+        run: |
+          if [ "${{ steps.extract_version.outputs.version }}" != "${{ steps.get_package_version.outputs.package_version }}" ]; then
+            echo "Error: Tag version (${{ steps.extract_version.outputs.version }}) does not match package version (${{ steps.get_package_version.outputs.package_version }})"
+            exit 1
+          fi
+          echo "✅ Version consistency verified: ${{ steps.extract_version.outputs.version }}"
+
+      - name: Generate release body
+        id: release_body
+        run: |
+          # Create release body with installation instructions
+          echo "## Installation" > release_body.md
+          echo "" >> release_body.md
+          echo "### Docker Image" >> release_body.md
+          echo '```bash' >> release_body.md
+          echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.extract_version.outputs.version }}" >> release_body.md
+          echo '```' >> release_body.md
+          echo "" >> release_body.md
+          echo "### Helm Chart" >> release_body.md
+          echo '```bash' >> release_body.md
+          echo "helm install nkp-cluster-cleaner ./charts/nkp-cluster-cleaner --version ${{ steps.extract_version.outputs.version }}" >> release_body.md
+          echo '```' >> release_body.md
+
+      - name: Wait for Docker build to complete
+        run: |
+          echo "Waiting for Docker image to be built and pushed..."
+          
+          # Wait up to 10 minutes for the Docker workflow to complete
+          for i in {1..60}; do
+            # Check if the image exists in the registry
+            if docker manifest inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.extract_version.outputs.version }} >/dev/null 2>&1; then
+              echo "✅ Docker image found in registry"
+              break
+            fi
+            
+            echo "⏳ Waiting for Docker image... (attempt $i/60)"
+            sleep 10
+            
+            if [ $i -eq 60 ]; then
+              echo "⚠️ Docker image not found after 10 minutes, proceeding with release anyway"
+            fi
+          done
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.extract_version.outputs.tag_name }}
+          release_name: "Release ${{ steps.extract_version.outputs.tag_name }}"
+          body_path: release_body.md
+          draft: false
+          prerelease: ${{ contains(steps.extract_version.outputs.version, '-') || contains(steps.extract_version.outputs.version, 'alpha') || contains(steps.extract_version.outputs.version, 'beta') || contains(steps.extract_version.outputs.version, 'rc') }}
+
+      - name: Upload Helm Chart as Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: charts/nkp-cluster-cleaner
+          asset_name: nkp-cluster-cleaner-chart-${{ steps.extract_version.outputs.version }}.tar.gz
+          asset_content_type: application/gzip
+        continue-on-error: true
+
+      - name: Output release information
+        run: |
+          echo "## 🎉 Release Created Successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.extract_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag:** ${{ steps.extract_version.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Release URL:** ${{ steps.create_release.outputs.html_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Available Artifacts:" >> $GITHUB_STEP_SUMMARY
+          echo "- 🐳 Docker Image: \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.extract_version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- ⚓ Helm Chart: \`./charts/nkp-cluster-cleaner\`" >> $GITHUB_STEP_SUMMARY
