@@ -6,6 +6,8 @@ A simple CLI tool (with optional web interface) to automatically delete Nutanix 
 ![Platform](https://img.shields.io/badge/platform-Nutanix_NKP-blue)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/markround/nkp-cluster-cleaner/docker.yml)
 ![GitHub branch check runs](https://img.shields.io/github/check-runs/markround/nkp-cluster-cleaner/main)
+![GitHub Release](https://img.shields.io/github/v/release/markround/nkp-cluster-cleaner)
+
 
 _Disclaimer: This is a personal project and is in no way supported/endorsed by, or otherwise connected to Nutanix_
 
