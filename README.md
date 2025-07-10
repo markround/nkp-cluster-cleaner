@@ -6,7 +6,6 @@ A simple tool to automatically delete Nutanix NKP clusters that do not meet a sp
 ![Platform](https://img.shields.io/badge/platform-Nutanix_NKP-blue)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/markround/nkp-cluster-cleaner/docker.yml)
 ![GitHub branch check runs](https://img.shields.io/github/check-runs/markround/nkp-cluster-cleaner/main)
-![NKP Catalog Application](https://img.shields.io/badge/helm_version-0.4.1-blue)
 
 _Disclaimer: This is a personal project and is in no way supported/endorsed by, or otherwise connected to Nutanix_
 
