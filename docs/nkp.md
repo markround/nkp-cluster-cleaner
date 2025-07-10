@@ -43,10 +43,12 @@ app:
 
 ## Upgrading
 
+TODO
+
 ```bash
 kubectl patch \
   --type merge \
   -n kommander \
   AppDeployment nkp-cluster-cleaner \
-  -p '{"spec":{"appRef":{"name":"nkp-cluster-cleaner-0.4.1"}}}'
+  -p '{"spec":{"appRef":{"name":"nkp-cluster-cleaner-0.4.2"}}}'
 ```
