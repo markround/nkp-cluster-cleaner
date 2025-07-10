@@ -15,7 +15,7 @@ To install the custom catalog, run the following command:
 ```bash
 nkp create catalog nkp-cluster-cleaner \
     -w kommander-workspace \
-    --branch main \
+    --tag 0.4.2 \
     --url https://github.com/markround/nkp-cluster-cleaner
 ```
 
@@ -43,12 +43,22 @@ app:
 
 ## Upgrading
 
-TODO
+If you have an old version of the application installed, you can upgrade to the current version by first updating the catalog repository to point to the latest release:
+
+```bash
+kubectl patch \
+  --type merge \
+  -n kommander \
+  gitrepository nkp-cluster-cleaner \
+  --patch '{"spec": {"ref":{"tag":"0.4.2"}}}'
+```
+
+And then updating your AppDeployment to the latest release:
 
 ```bash
 kubectl patch \
   --type merge \
   -n kommander \
   AppDeployment nkp-cluster-cleaner \
-  -p '{"spec":{"appRef":{"name":"nkp-cluster-cleaner-0.4.2"}}}'
+  --patch '{"spec":{"appRef":{"name":"nkp-cluster-cleaner-0.4.2"}}}'
 ```
