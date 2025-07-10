@@ -9,6 +9,7 @@ from flask import Flask, render_template, jsonify, request
 from typing import Optional
 from .config import ConfigManager
 from .cluster_manager import ClusterManager
+from .cronjob_manager import CronJobManager
 import nkp_cluster_cleaner
 
 __version__ = nkp_cluster_cleaner.__version__
@@ -60,6 +61,10 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
         config_manager = ConfigManager(app.config['CONFIG_PATH']) if app.config['CONFIG_PATH'] else ConfigManager()
         return ClusterManager(app.config['KUBECONFIG_PATH'], config_manager)
     
+    def get_cronjob_manager():
+        """Helper to create cronjob manager with current config."""
+        return CronJobManager(app.config['KUBECONFIG_PATH'])
+
     @app.route(url_prefix + '/')
     def index():
         """Main page showing cluster information."""
@@ -229,6 +234,165 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
                 },
                 'timestamp': datetime.now().isoformat()
             })
+        except Exception as e:
+            return jsonify({
+                'status': 'error',
+                'error': str(e),
+                'timestamp': datetime.now().isoformat()
+            }), 500
+        
+    @app.route(url_prefix + '/scheduled-tasks')
+    def scheduled_tasks():
+      """Display scheduled tasks (CronJobs) and recent executions."""
+      try:
+          # Get cronjob manager
+          cronjob_manager = get_cronjob_manager()
+          
+          # Get comprehensive summary
+          namespace = "kommander"  # Default namespace for NKP cronjobs
+          summary = cronjob_manager.get_all_scheduled_tasks_summary(namespace)
+          
+          return render_template(
+              'scheduled_tasks.html',
+              summary=summary,
+              namespace=namespace,
+              refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+              version=__version__,
+              error=None
+          )
+      except Exception as e:
+          # Render error state
+          return render_template(
+              'scheduled_tasks.html',
+              summary={
+                  'total_cronjobs': 0,
+                  'active_cronjobs': 0,
+                  'suspended_cronjobs': 0,
+                  'total_recent_jobs': 0,
+                  'successful_jobs': 0,
+                  'failed_jobs': 0,
+                  'running_jobs': 0,
+                  'cronjobs': [],
+                  'recent_jobs': []
+              },
+              namespace="kommander",
+              refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+              version=__version__,
+              error=str(e)
+          )
+
+    @app.route(url_prefix + '/api/job-logs')
+    def api_job_logs():
+        """API endpoint to get logs for a specific job."""
+        job_name = request.args.get('job_name')
+        namespace = request.args.get('namespace', 'kommander')
+        
+        if not job_name:
+            return jsonify({
+                'status': 'error',
+                'error': 'job_name parameter is required'
+            }), 400
+        
+        try:
+            cronjob_manager = get_cronjob_manager()
+            
+            # Get pods for the job
+            pods = cronjob_manager.get_job_pods(job_name, namespace)
+            
+            logs_data = []
+            for pod in pods:
+                # Get logs for each container in each pod
+                if pod['container_statuses']:
+                    for container in pod['container_statuses']:
+                        logs = cronjob_manager.get_pod_logs(
+                            pod['name'], 
+                            container['name'], 
+                            namespace,
+                            tail_lines=200
+                        )
+                        logs_data.append({
+                            'pod_name': pod['name'],
+                            'container_name': container['name'],
+                            'logs': logs
+                        })
+                else:
+                    # Single container pod
+                    logs = cronjob_manager.get_pod_logs(
+                        pod['name'], 
+                        None, 
+                        namespace,
+                        tail_lines=200
+                    )
+                    logs_data.append({
+                        'pod_name': pod['name'],
+                        'container_name': 'default',
+                        'logs': logs
+                    })
+            
+            return jsonify({
+                'status': 'success',
+                'job_name': job_name,
+                'namespace': namespace,
+                'logs': logs_data,
+                'timestamp': datetime.now().isoformat()
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'status': 'error',
+                'error': str(e),
+                'timestamp': datetime.now().isoformat()
+            }), 500
+
+    @app.route(url_prefix + '/api/scheduled-tasks')
+    def api_scheduled_tasks():
+        """API endpoint for scheduled tasks data (JSON)."""
+        try:
+            cronjob_manager = get_cronjob_manager()
+            namespace = "kommander"
+            summary = cronjob_manager.get_all_scheduled_tasks_summary(namespace)
+            
+            # Convert datetime objects to ISO format for JSON serialization
+            def serialize_datetime(obj):
+                if hasattr(obj, 'isoformat'):
+                    return obj.isoformat()
+                return obj
+            
+            # Serialize cronjobs
+            serialized_cronjobs = []
+            for cj in summary['cronjobs']:
+                serialized_cj = {}
+                for key, value in cj.items():
+                    serialized_cj[key] = serialize_datetime(value)
+                serialized_cronjobs.append(serialized_cj)
+            
+            # Serialize recent jobs
+            serialized_jobs = []
+            for job in summary['recent_jobs']:
+                serialized_job = {}
+                for key, value in job.items():
+                    serialized_job[key] = serialize_datetime(value)
+                serialized_jobs.append(serialized_job)
+            
+            return jsonify({
+                'status': 'success',
+                'data': {
+                    'summary': {
+                        'total_cronjobs': summary['total_cronjobs'],
+                        'active_cronjobs': summary['active_cronjobs'],
+                        'suspended_cronjobs': summary['suspended_cronjobs'],
+                        'total_recent_jobs': summary['total_recent_jobs'],
+                        'successful_jobs': summary['successful_jobs'],
+                        'failed_jobs': summary['failed_jobs'],
+                        'running_jobs': summary['running_jobs']
+                    },
+                    'cronjobs': serialized_cronjobs,
+                    'recent_jobs': serialized_jobs,
+                    'namespace': namespace
+                },
+                'timestamp': datetime.now().isoformat()
+            })
+            
         except Exception as e:
             return jsonify({
                 'status': 'error',
