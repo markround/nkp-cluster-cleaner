@@ -243,43 +243,43 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
         
     @app.route(url_prefix + '/scheduled-tasks')
     def scheduled_tasks():
-      """Display scheduled tasks (CronJobs) and recent executions."""
-      try:
-          # Get cronjob manager
-          cronjob_manager = get_cronjob_manager()
-          
-          # Get comprehensive summary
-          namespace = "kommander"  # Default namespace for NKP cronjobs
-          summary = cronjob_manager.get_all_scheduled_tasks_summary(namespace)
-          
-          return render_template(
-              'scheduled_tasks.html',
-              summary=summary,
-              namespace=namespace,
-              refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-              version=__version__,
-              error=None
-          )
-      except Exception as e:
-          # Render error state
-          return render_template(
-              'scheduled_tasks.html',
-              summary={
-                  'total_cronjobs': 0,
-                  'active_cronjobs': 0,
-                  'suspended_cronjobs': 0,
-                  'total_recent_jobs': 0,
-                  'successful_jobs': 0,
-                  'failed_jobs': 0,
-                  'running_jobs': 0,
-                  'cronjobs': [],
-                  'recent_jobs': []
-              },
-              namespace="kommander",
-              refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-              version=__version__,
-              error=str(e)
-          )
+        """Display scheduled tasks (CronJobs) and recent executions."""
+        try:
+            # Get cronjob manager
+            cronjob_manager = get_cronjob_manager()
+            
+            # Get  summary
+            namespace = "kommander"  # Default namespace for NKP cronjobs
+            summary = cronjob_manager.get_all_scheduled_tasks_summary(namespace)
+            
+            return render_template(
+                'scheduled_tasks.html',
+                summary=summary,
+                namespace=namespace,
+                refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                version=__version__,
+                error=None
+            )
+        except Exception as e:
+            # Render error state
+            return render_template(
+                'scheduled_tasks.html',
+                summary={
+                    'total_cronjobs': 0,
+                    'active_cronjobs': 0,
+                    'suspended_cronjobs': 0,
+                    'total_recent_jobs': 0,
+                    'successful_jobs': 0,
+                    'failed_jobs': 0,
+                    'running_jobs': 0,
+                    'cronjobs': [],
+                    'recent_jobs': []
+                },
+                namespace="kommander",
+                refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                version=__version__,
+                error=str(e)
+            )
 
     @app.route(url_prefix + '/api/job-logs')
     def api_job_logs():
@@ -296,6 +296,39 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
         try:
             cronjob_manager = get_cronjob_manager()
             
+            # First validate that this job was created by one of our CronJobs
+            try:
+                job = cronjob_manager.batch_v1.read_namespaced_job(name=job_name, namespace=namespace)
+                
+                # Check if job was created by our CronJobs
+                is_our_job = False
+                if job.metadata.owner_references:
+                    for owner in job.metadata.owner_references:
+                        if owner.kind == "CronJob":
+                            try:
+                                cronjob = cronjob_manager.batch_v1.read_namespaced_cron_job(
+                                    name=owner.name, 
+                                    namespace=namespace
+                                )
+                                labels = cronjob.metadata.labels or {}
+                                if labels.get("app") == "nkp-cluster-cleaner":
+                                    is_our_job = True
+                                    break
+                            except:
+                                continue
+                
+                if not is_our_job:
+                    return jsonify({
+                        'status': 'error',
+                        'error': 'Access denied: Job was not created by nkp-cluster-cleaner'
+                    }), 403
+                    
+            except Exception as e:
+                return jsonify({
+                    'status': 'error',
+                    'error': f'Job not found or access denied: {e}'
+                }), 404
+            
             # Get pods for the job
             pods = cronjob_manager.get_job_pods(job_name, namespace)
             
@@ -308,7 +341,8 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
                             pod['name'], 
                             container['name'], 
                             namespace,
-                            tail_lines=200
+                            tail_lines=200,
+                            job_name=job_name
                         )
                         logs_data.append({
                             'pod_name': pod['name'],
@@ -321,7 +355,8 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
                         pod['name'], 
                         None, 
                         namespace,
-                        tail_lines=200
+                        tail_lines=200,
+                        job_name=job_name
                     )
                     logs_data.append({
                         'pod_name': pod['name'],
@@ -401,7 +436,6 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
             }), 500
     
     return app
-
 
 def run_server(host: str = '127.0.0.1', port: int = 8080, debug: bool = False,
                kubeconfig_path: Optional[str] = None, config_path: Optional[str] = None,

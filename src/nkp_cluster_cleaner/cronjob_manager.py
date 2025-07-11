@@ -181,20 +181,25 @@ class CronJobManager:
             return []
     
     def get_pod_logs(self, pod_name: str, container_name: str = None, namespace: str = "kommander", 
-                     tail_lines: int = 100) -> str:
+                     tail_lines: int = 100, job_name: str = None) -> str:
         """
-        Get logs from a specific pod/container.
+        Get logs from a specific pod/container, but only if it was created by our CronJobs.
         
         Args:
             pod_name: Name of the pod
             container_name: Name of the container (optional for single-container pods)
             namespace: Namespace of the pod
             tail_lines: Number of recent log lines to retrieve
+            job_name: Name of the job that should own this pod (for validation)
             
         Returns:
             Log content as string
         """
         try:
+            # First, validate that this pod was created by one of our jobs
+            if not self._validate_pod_ownership(pod_name, namespace, job_name):
+                return "Access denied: Pod was not created by an nkp-cluster-cleaner job"
+            
             logs = self.core_v1.read_namespaced_pod_log(
                 name=pod_name,
                 namespace=namespace,
@@ -205,6 +210,77 @@ class CronJobManager:
             return logs
         except ApiException as e:
             return f"Failed to retrieve logs: {e}"
+    
+    def _validate_pod_ownership(self, pod_name: str, namespace: str, expected_job_name: str = None) -> bool:
+        """
+        Validate that a pod was created by one of our CronJobs.
+        
+        Args:
+            pod_name: Name of the pod
+            namespace: Namespace of the pod
+            expected_job_name: Optional job name to validate against
+            
+        Returns:
+            True if pod is owned by our CronJobs, False otherwise
+        """
+        try:
+            # Get the pod
+            pod = self.core_v1.read_namespaced_pod(name=pod_name, namespace=namespace)
+            
+            # Check if pod has owner references
+            if not pod.metadata.owner_references:
+                return False
+            
+            # Find the job that owns this pod
+            job_owner = None
+            for owner in pod.metadata.owner_references:
+                if owner.kind == "Job":
+                    job_owner = owner.name
+                    break
+            
+            if not job_owner:
+                return False
+            
+            # If we have an expected job name, validate it matches
+            if expected_job_name and job_owner != expected_job_name:
+                return False
+            
+            # Now check if this job was created by one of our CronJobs
+            try:
+                job = self.batch_v1.read_namespaced_job(name=job_owner, namespace=namespace)
+                
+                # Check if job has owner references to CronJobs
+                if not job.metadata.owner_references:
+                    return False
+                
+                # Find the CronJob that owns this job
+                for owner in job.metadata.owner_references:
+                    if owner.kind == "CronJob":
+                        cronjob_name = owner.name
+                        
+                        # Check if this CronJob has our label
+                        try:
+                            cronjob = self.batch_v1.read_namespaced_cron_job(
+                                name=cronjob_name, 
+                                namespace=namespace
+                            )
+                            
+                            # Validate the CronJob has our label
+                            labels = cronjob.metadata.labels or {}
+                            if labels.get("app") == "nkp-cluster-cleaner":
+                                return True
+                                
+                        except ApiException:
+                            continue
+                
+                return False
+                
+            except ApiException:
+                return False
+                
+        except ApiException as e:
+            print(f"Failed to validate pod ownership for {pod_name}: {e}")
+            return False
     
     def _get_job_status(self, job) -> str:
         """
@@ -298,7 +374,7 @@ class CronJobManager:
     
     def get_all_scheduled_tasks_summary(self, namespace: str = "kommander") -> Dict:
         """
-        Get a summary of all scheduled tasks for the header in the UI.
+        Get a  summary of all scheduled tasks.
         
         Args:
             namespace: Namespace to search
