@@ -52,6 +52,11 @@ cronjob:
   schedule: "@hourly"
 ```
 
+You can view the status and logs of the enabled CronJobs in the Web UI:
+
+<img src="/docs/cron.png" width="400">
+
+
 ## Upgrading
 
 If you have an old version of the application installed, you can upgrade to the current version by first updating the catalog repository to point to the latest release:
