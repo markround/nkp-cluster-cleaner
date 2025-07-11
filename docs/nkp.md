@@ -6,7 +6,7 @@ The Web UI can be installed as a NKP Catalog Application and makes use of featur
 - Traefik ingress controller (with optional authentication, enabled by default)
 - The default kommander kubeconfig secret for self-attachment. 
 
-Note that this currently does **not** enable the deletion logic, it is purely a read-only view of the deletion rules and cluster states. See https://github.com/markround/nkp-cluster-cleaner/issues/6.
+The Helm Chart used by the application will also install a CronJob to handle the automated deletion of clusters (set to dry-run by default!).
 
 ## Installation
 
@@ -39,6 +39,17 @@ app:
     - .*-prod-.*
     - .*-production-.*
     - ^critical-.*
+```
+
+### Cron Job
+The Helm chart will create a daily CronJob to handle the deletion of clusters. By default, this is set to run in "dry-run" mode, so will not actually delete anything without explicit configuration. See the [Chart documentation](/charts/nkp-cluster-cleaner/README.md) for values that can be set. For example, to enable the deletion and run every hour you would set the following overrides:
+
+```yaml
+cronjob:
+  # Actually delete clusters!
+  delete: true
+  # Run every hour. See https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#schedule-syntax
+  schedule: "@hourly"
 ```
 
 ## Upgrading
