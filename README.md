@@ -1,8 +1,8 @@
 # nkp-cluster-cleaner
 
 <p float="left">
-  <img src="/docs/clusters.png" width="200">
-  <img src="/docs/rules.png" width="200">
+  <img src="/docs/clusters.png" width="200">&nbsp; &nbsp; 
+  <img src="/docs/rules.png" width="200">&nbsp; &nbsp; 
   <img src="/docs/cron.png" width="200">
 </p>
    
