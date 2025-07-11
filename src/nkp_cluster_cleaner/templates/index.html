@@ -9,6 +9,11 @@
             <strong>✅ Web server is running successfully!</strong>
             <br>
             <strong>Version:</strong> {{ version }}
+            {% if nkp_version %}
+            <p><strong>NKP Version:</strong> {{ nkp_version }}</p>
+            {% else %}
+            <p><strong>NKP Version:</strong> Version not detected</p>
+            {% endif %}
         </div>
         
         <p>This is the web interface for the NKP Cluster Cleaner tool. You can use this interface to:</p>
@@ -17,6 +22,7 @@
             <li>See excluded clusters and their reasons</li>
             <li>Monitor cluster expiration status</li>
             <li>Review protection rules</li>
+            <li>View scheduled jobs and logs</li>
         </ul>
     </div>
     

@@ -1,6 +1,11 @@
 # nkp-cluster-cleaner
-<img src="/docs/webui.png" width="200">
 
+<p float="left">
+  <img src="/docs/clusters.png" width="200">&nbsp; &nbsp; 
+  <img src="/docs/rules.png" width="200">&nbsp; &nbsp; 
+  <img src="/docs/cron.png" width="200">
+</p>
+   
 A simple CLI tool (with optional web interface) to automatically delete Nutanix NKP clusters that do not meet a specific criteria. Useful for cleaning up resources in a lab/demo environment, similar to common "cloud cleaner" tools. Also available as a [Helm Chart](./charts/nkp-cluster-cleaner/README.md) and [NKP Catalog Application](./docs/nkp.md).
 
 ![Platform](https://img.shields.io/badge/platform-Nutanix_NKP-blue)
@@ -173,7 +178,7 @@ Deletion completed. 1 clusters deleted successfully.
 `ghcr.io/markround/nkp-cluster-cleaner:<TAG>`
 
 - Branch (e.g. `main`, `dev`, etc.)
-- Release tag (e.g. `0.5.0`) 
+- Release tag (e.g. `0.6.0`) 
 - Latest released version (e.g. `latest`)
 - Full list on the [packages page](https://github.com/markround/nkp-cluster-cleaner/pkgs/container/nkp-cluster-cleaner)
 
