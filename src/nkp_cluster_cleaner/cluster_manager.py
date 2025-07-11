@@ -40,7 +40,42 @@ class ClusterManager:
         # Initialize API clients
         self.core_v1 = client.CoreV1Api()
         self.custom_api = client.CustomObjectsApi()
+
+    def get_nkp_version(self) -> Optional[str]:
+        """
+        Get the NKP version from KommanderCore CRD.
         
+        Returns:
+            NKP version string or None if not found
+        """
+        try:
+            # Get KommanderCore resources
+            kommander_cores = self.custom_api.list_cluster_custom_object(
+                group="dkp.d2iq.io",
+                version="v1alpha1",
+                plural="kommandercores"
+            )
+            
+            # Look for a KommanderCore with version in status
+            for core in kommander_cores.get("items", []):
+                status = core.get("status", {})
+                version = status.get("version")
+                if version:
+                    return version
+            
+            return None
+        
+        except ApiException as e:
+            if e.status == 404:
+                print(f"{Fore.YELLOW}Warning: KommanderCore CRDs not found.{Style.RESET_ALL}")
+                return None
+            else:
+                print(f"{Fore.YELLOW}Warning: Could not retrieve NKP version: {e}{Style.RESET_ALL}")
+                return None
+        except Exception as e:
+            print(f"{Fore.YELLOW}Warning: Could not retrieve NKP version: {e}{Style.RESET_ALL}")
+            return None
+
     def list_all_kommander_clusters(self, namespace: Optional[str] = None) -> List[Dict]:
         """
         List all KommanderCluster objects across all namespaces or in a specific namespace.

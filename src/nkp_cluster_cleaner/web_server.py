@@ -71,12 +71,15 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
         # Determine configuration status
         kubeconfig_status = app.config['KUBECONFIG_PATH'] or "Using default (~/.kube/config)"
         config_status = app.config['CONFIG_PATH'] or "Using default (no protection rules)"
-        
+        cluster_manager = get_cluster_manager()
+        nkp_version = cluster_manager.get_nkp_version()
+
         return render_template(
             'index.html',
             kubeconfig_status=kubeconfig_status,
             config_status=config_status,
-            version=__version__
+            version=__version__,
+            nkp_version=nkp_version
         )
     
     @app.route(url_prefix + '/health')
