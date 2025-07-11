@@ -1,6 +1,6 @@
 deployment:
   # -- Container image to use
-  image: ghcr.io/markround/nkp-cluster-cleaner:0.4.2
+  image: ghcr.io/markround/nkp-cluster-cleaner:0.5.0
   # -- Number of replicas to deploy
   replicas: 1
 
@@ -14,6 +14,18 @@ ingress:
   authentication:
     # -- If true, access to the dashboard will require logging in with an admin account. Setting to false will enable anonymous access.
     enabled: true
+
+cronjob:
+  # -- Enable scheduled deletion CronJobs
+  enabled: true
+  # -- Set to true to actually delete clusters, default is to operate in "dry-run" mode
+  delete: false
+  # -- Schedule to run the job. Uses standard Kubernetes CronJob syntax.
+  schedule: "@daily"
+  # -- How many failed jobs to keep
+  failedJobsHistoryLimit: 1
+  # -- How many successful jobs to keep
+  successfulJobsHistoryLimit: 3
 
 app:
   # -- Secret containing a valid kubeconfig for the management cluster

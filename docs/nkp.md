@@ -6,7 +6,7 @@ The Web UI can be installed as a NKP Catalog Application and makes use of featur
 - Traefik ingress controller (with optional authentication, enabled by default)
 - The default kommander kubeconfig secret for self-attachment. 
 
-Note that this currently does **not** enable the deletion logic, it is purely a read-only view of the deletion rules and cluster states. See https://github.com/markround/nkp-cluster-cleaner/issues/6.
+The Helm Chart used by the application will also install a CronJob to handle the automated deletion of clusters (set to dry-run by default!).
 
 ## Installation
 
@@ -15,7 +15,7 @@ To install the custom catalog, run the following command:
 ```bash
 nkp create catalog nkp-cluster-cleaner \
     -w kommander-workspace \
-    --tag 0.4.2 \
+    --tag 0.5.0 \
     --url https://github.com/markround/nkp-cluster-cleaner
 ```
 
@@ -41,6 +41,17 @@ app:
     - ^critical-.*
 ```
 
+### Cron Job
+The Helm chart will create a daily CronJob to handle the deletion of clusters. By default, this is set to run in "dry-run" mode, so will not actually delete anything without explicit configuration. See the [Chart documentation](/charts/nkp-cluster-cleaner/README.md) for values that can be set. For example, to enable the deletion and run every hour you would set the following overrides:
+
+```yaml
+cronjob:
+  # Actually delete clusters!
+  delete: true
+  # Run every hour. See https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#schedule-syntax
+  schedule: "@hourly"
+```
+
 ## Upgrading
 
 If you have an old version of the application installed, you can upgrade to the current version by first updating the catalog repository to point to the latest release:
@@ -50,7 +61,7 @@ kubectl patch \
   --type merge \
   -n kommander \
   gitrepository nkp-cluster-cleaner \
-  --patch '{"spec": {"ref":{"tag":"0.4.2"}}}'
+  --patch '{"spec": {"ref":{"tag":"0.5.0"}}}'
 ```
 
 And then updating your AppDeployment to the latest release:
@@ -60,5 +71,5 @@ kubectl patch \
   --type merge \
   -n kommander \
   AppDeployment nkp-cluster-cleaner \
-  --patch '{"spec":{"appRef":{"name":"nkp-cluster-cleaner-0.4.2"}}}'
+  --patch '{"spec":{"appRef":{"name":"nkp-cluster-cleaner-0.5.0"}}}'
 ```
