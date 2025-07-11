@@ -1,0 +1,50 @@
+{{- if eq .Values.cronjob.enabled true }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  labels:
+    app: nkp-cluster-cleaner
+  name: nkp-cluster-cleaner-delete
+  namespace: kommander
+spec:
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: {{ $.Values.cronjob.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+          - name: nkp-cluster-cleaner
+            image: {{ $.Values.deployment.image }}
+            command:
+            - nkp-cluster-cleaner
+            args:
+            - delete-clusters 
+{{- if eq .Values.cronjob.delete true }}
+            - --delete
+{{- end }}
+            - --kubeconfig 
+            - /config/kube/kubeconfig
+            - --config 
+            - /config/app/config.yaml
+            volumeMounts:
+            - name: kubeconfig
+              mountPath: /config/kube
+              readOnly: true
+            - name: config
+              mountPath: /config/app
+              readOnly: true
+          volumes:
+          - name: kubeconfig
+            secret:
+              secretName: {{ $.Values.app.kubeconfigSecretRef }}
+              defaultMode: 0444
+          - name: config
+            configMap:
+              name: nkp-cluster-cleaner-config 
+              defaultMode: 0444
+  schedule: "{{ $.Values.cronjob.schedule }}"
+  successfulJobsHistoryLimit: {{ $.Values.cronjob.successfulJobsHistoryLimit }}
+{{- end }}

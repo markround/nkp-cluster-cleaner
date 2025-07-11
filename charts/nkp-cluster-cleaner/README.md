@@ -10,6 +10,11 @@ A simple tool to automatically delete Nutanix NKP clusters that do not meet a sp
 |-----|------|---------|-------------|
 | app.config | string | `"excluded_namespace_patterns:\n- ^default$\nprotected_cluster_patterns:\n- .*-prod-.*"` | Default set of exclusion rules |
 | app.kubeconfigSecretRef | string | `"kommander-self-attach-kubeconfig"` | Secret containing a valid kubeconfig for the management cluster |
+| cronjob.delete | bool | `false` | Set to true to actually delete clusters, default is to operate in "dry-run" mode |
+| cronjob.enabled | bool | `true` | Enable scheduled deletion CronJobs |
+| cronjob.failedJobsHistoryLimit | int | `1` | How many failed jobs to keep |
+| cronjob.schedule | string | `"@daily"` | Schedule to run the job. Uses standard Kubernetes CronJob syntax. |
+| cronjob.successfulJobsHistoryLimit | int | `3` | How many successful jobs to keep |
 | deployment.image | string | `"ghcr.io/markround/nkp-cluster-cleaner:0.4.2"` | Container image to use |
 | deployment.replicas | int | `1` | Number of replicas to deploy |
 | ingress.authentication.enabled | bool | `true` | If true, access to the dashboard will require logging in with an admin account. Setting to false will enable anonymous access. |
