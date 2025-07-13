@@ -6,7 +6,7 @@ The Web UI can be installed as a NKP Catalog Application and makes use of featur
 - Traefik ingress controller (with optional authentication, enabled by default)
 - The default kommander kubeconfig secret for self-attachment. 
 
-The Helm Chart used by the application will also install a CronJob to handle the automated deletion of clusters (set to dry-run by default!).
+The Helm Chart used by the application will also install a CronJob to handle the automated deletion of clusters. This is set to dry-run by default, and must be explicitly enabled before any destructive actions will be carried out.
 
 ## Installation
 
