@@ -71,6 +71,34 @@
         font-family: 'Courier New', monospace;
         border-left: 3px solid #28a745;
     }
+    .label-item {
+        background-color: white;
+        padding: 12px 15px;
+        margin: 8px 0;
+        border-radius: 4px;
+        border-left: 3px solid #6f42c1;
+        border: 1px solid #e9ecef;
+    }
+    .label-name {
+        font-family: 'Courier New', monospace;
+        font-weight: bold;
+        color: #6f42c1;
+        font-size: 1em;
+    }
+    .label-description {
+        color: #6c757d;
+        font-size: 0.9em;
+        margin: 4px 0;
+    }
+    .label-regex {
+        background-color: #f8f9fa;
+        padding: 4px 8px;
+        border-radius: 3px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.85em;
+        color: #495057;
+        margin-top: 6px;
+    }
     .no-patterns {
         color: #6c757d;
         font-style: italic;
@@ -130,7 +158,7 @@
         <h2 style="margin-top: 0; border-bottom: 2px solid #bbdefb;">📋 Configuration Summary</h2>
         <div class="summary-stat">
             <div class="summary-number">{{ rule_count }}</div>
-            <div class="summary-label">Active Rules</div>
+            <div class="summary-label">Core Rules</div>
         </div>
         <div class="summary-stat">
             <div class="summary-number">{{ protected_cluster_count }}</div>
@@ -139,6 +167,10 @@
         <div class="summary-stat">
             <div class="summary-number">{{ excluded_namespace_count }}</div>
             <div class="summary-label">Excluded Namespaces</div>
+        </div>
+        <div class="summary-stat">
+            <div class="summary-number">{{ extra_labels_count }}</div>
+            <div class="summary-label">Required Labels</div>
         </div>
         <div class="summary-stat">
             <div class="summary-number">{{ time_format_count }}</div>
@@ -222,17 +254,45 @@
         </div>
 
         <div class="rule-item">
-            <div class="rule-type">3. Expired Clusters</div>
+            <div class="rule-type">3. Missing Required Labels</div>
+            <div class="rule-description">Clusters missing any configured extra labels or with invalid values</div>
+            <div class="rule-example">{% if extra_labels %}Checking: {% for label in extra_labels %}{{ label.name }}{% if not loop.last %}, {% endif %}{% endfor %}{% else %}No extra labels configured{% endif %}</div>
+        </div>
+
+        <div class="rule-item">
+            <div class="rule-type">4. Expired Clusters</div>
             <div class="rule-description">Clusters where current time >= creation time + expires duration</div>
             <div class="rule-example">current_time >= (creation + expires_duration)</div>
         </div>
 
         <div class="rule-item">
-            <div class="rule-type">4. Invalid Expires Format</div>
+            <div class="rule-type">5. Invalid Expires Format</div>
             <div class="rule-description">Clusters with malformed expires labels that cannot be parsed</div>
             <div class="rule-example">Invalid: "1day", "2 weeks", "forever"</div>
         </div>
     </div>
+
+    <!-- Extra Labels Rules -->
+    {% if extra_labels %}
+    <div class="rules-section">
+        <h2>🏷️ Required Label Rules</h2>
+        <p>The following additional labels are required and validated on all clusters:</p>
+        
+        {% for label in extra_labels %}
+        <div class="label-item">
+            <div class="label-name">{{ label.name }}</div>
+            {% if label.description %}
+                <div class="label-description">{{ label.description }}</div>
+            {% endif %}
+            {% if label.regex %}
+                <div class="label-regex">Pattern: {{ label.regex }}</div>
+            {% else %}
+                <div class="label-regex">Any value accepted</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
 
     <!-- Time Format Rules -->
     <div class="rules-section">

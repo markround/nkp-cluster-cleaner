@@ -197,6 +197,12 @@ class ClusterManager:
         if "expires" not in labels:
             return True, f"Missing 'expires' label"
         
+        # Validate extra labels
+        extra_label_errors = self.config_manager.validate_extra_labels(labels)
+        if extra_label_errors:
+            # Return the first error as the reason
+            return True, extra_label_errors[0]
+        
         # Parse and check expires label
         expires_value = labels["expires"]
         try:

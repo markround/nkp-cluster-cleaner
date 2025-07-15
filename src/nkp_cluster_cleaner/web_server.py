@@ -161,11 +161,13 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
             # Count various configuration elements
             protected_cluster_patterns = criteria.protected_cluster_patterns
             excluded_namespace_patterns = criteria.excluded_namespace_patterns
+            extra_labels = criteria.extra_labels
             
             # Calculate summary statistics
-            rule_count = 4  # Core deletion rules (missing owner, missing expires, expired, invalid format)
+            rule_count = 5  # Core deletion rules (missing owner, missing expires, missing extra labels, expired, invalid format)
             protected_cluster_count = len(protected_cluster_patterns)
             excluded_namespace_count = len(excluded_namespace_patterns)
+            extra_labels_count = len(extra_labels)
             time_format_count = 4  # h, d, w, y
             
             # Determine configuration paths
@@ -178,10 +180,12 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
                 rule_count=rule_count,
                 protected_cluster_count=protected_cluster_count,
                 excluded_namespace_count=excluded_namespace_count,
+                extra_labels_count=extra_labels_count,
                 time_format_count=time_format_count,
                 # Configuration details
                 protected_cluster_patterns=protected_cluster_patterns,
                 excluded_namespace_patterns=excluded_namespace_patterns,
+                extra_labels=extra_labels,
                 kubeconfig_path=kubeconfig_path,
                 version=__version__,
                 config_path=config_path
@@ -190,12 +194,14 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
             # Render with error state
             return render_template(
                 'rules.html',
-                rule_count=4,
+                rule_count=5,
                 protected_cluster_count=0,
                 excluded_namespace_count=0,
+                extra_labels_count=0,
                 time_format_count=4,
                 protected_cluster_patterns=[],
                 excluded_namespace_patterns=[],
+                extra_labels=[],
                 kubeconfig_path=app.config['KUBECONFIG_PATH'],
                 config_path=app.config['CONFIG_PATH'],
                 version=__version__,
