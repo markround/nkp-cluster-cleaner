@@ -6,7 +6,8 @@ import yaml
 import re
 from typing import Dict, List, Optional
 from dataclasses import dataclass, field
-
+import ruamel.yaml
+from ruamel.yaml.scalarstring import DoubleQuotedScalarString, SingleQuotedScalarString
 
 @dataclass
 class ExtraLabel:
@@ -147,23 +148,24 @@ class ConfigManager:
                 {
                     "name": "cost_centre",
                     "description": "Numeric cost centre ID",
-                    "regex": "^([0-9]+)$"
+                    "regex": DoubleQuotedScalarString("^([0-9]+)$")
                 },
                 {
                     "name": "project",
                     "description": "Project identifier (alphanumeric with hyphens)",
-                    "regex": "^[a-zA-Z0-9-]+$"
+                    "regex": DoubleQuotedScalarString("^[a-zA-Z0-9-]+$")
                 },
                 {
                     "name": "environment",
                     "description": "Environment type",
-                    "regex": "^(dev|test|staging|prod)$"
+                    "regex": DoubleQuotedScalarString("^(dev|test|staging|prod)$")
                 }
             ]
         }
-        
+        yaml = ruamel.yaml.YAML()
+
         with open(output_file, 'w') as f:
-            yaml.dump(example_config, f, default_flow_style=False, indent=2)
+            yaml.dump(example_config, f)
         
         print(f"Example configuration saved to {output_file}")
     

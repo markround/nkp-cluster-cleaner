@@ -64,17 +64,17 @@ extra_labels:
 # A numeric cost centre ID
 - description: Numeric cost centre ID
   name: cost_centre
-  regex: ^([0-9]+)$
+  regex: "^([0-9]+)$"
 
 # A project ID
 - description: Project identifier (alphanumeric with hyphens)
   name: project
-  regex: ^[a-zA-Z0-9-]+$
+  regex: "^[a-zA-Z0-9-]+$"
 
 # An environment type which must be one of 4 values
 - description: Environment type
   name: environment
-  regex: ^(dev|test|staging|prod)$
+  regex: "^(dev|test|staging|prod)$"
 ```
 
 
@@ -217,7 +217,7 @@ Deletion completed. 1 clusters deleted successfully.
 `ghcr.io/markround/nkp-cluster-cleaner:<TAG>`
 
 - Branch (e.g. `main`, `dev`, etc.)
-- Release tag (e.g. `0.7.0`) 
+- Release tag (e.g. `0.7.1`) 
 - Latest released version (e.g. `latest`)
 - Full list on the [packages page](https://github.com/markround/nkp-cluster-cleaner/pkgs/container/nkp-cluster-cleaner)
 
