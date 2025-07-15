@@ -1,6 +1,6 @@
 deployment:
   # -- Container image to use
-  image: ghcr.io/markround/nkp-cluster-cleaner:0.6.0
+  image: ghcr.io/markround/nkp-cluster-cleaner:0.7.0
   # -- Number of replicas to deploy
   replicas: 1
 
@@ -36,3 +36,6 @@ app:
     - ^default$
     protected_cluster_patterns:
     - .*-prod-.*
+    extra_labels:
+    - name: owner
+      description: Cluster owner identifier
