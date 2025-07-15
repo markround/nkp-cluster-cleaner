@@ -77,6 +77,10 @@ extra_labels:
   regex: "^(dev|test|staging|prod)$"
 ```
 
+These can also be viewed in the Web UI, along with the other matching rules and list of clusters scheduled for deletion:
+
+<img src="/docs/labels.png" width="400">
+
 
 ## General Usage
 ```
