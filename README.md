@@ -217,7 +217,7 @@ Deletion completed. 1 clusters deleted successfully.
 `ghcr.io/markround/nkp-cluster-cleaner:<TAG>`
 
 - Branch (e.g. `main`, `dev`, etc.)
-- Release tag (e.g. `0.6.0`) 
+- Release tag (e.g. `0.7.0`) 
 - Latest released version (e.g. `latest`)
 - Full list on the [packages page](https://github.com/markround/nkp-cluster-cleaner/pkgs/container/nkp-cluster-cleaner)
 
