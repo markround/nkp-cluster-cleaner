@@ -189,10 +189,6 @@ class ClusterManager:
         # Get labels from KommanderCluster
         labels = self.get_cluster_labels(kommander_cluster)
         
-        # Check if owner label exists
-        if "owner" not in labels:
-            return True, f"Missing 'owner' label"
-        
         # Check if expires label exists
         if "expires" not in labels:
             return True, f"Missing 'expires' label"

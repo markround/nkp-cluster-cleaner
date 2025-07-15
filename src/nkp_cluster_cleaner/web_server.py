@@ -164,7 +164,7 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
             extra_labels = criteria.extra_labels
             
             # Calculate summary statistics
-            rule_count = 5  # Core deletion rules (missing owner, missing expires, missing extra labels, expired, invalid format)
+            rule_count = 4  # Core deletion rules (missing expires, missing extra labels, expired, invalid format)
             protected_cluster_count = len(protected_cluster_patterns)
             excluded_namespace_count = len(excluded_namespace_patterns)
             extra_labels_count = len(extra_labels)
@@ -194,7 +194,7 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
             # Render with error state
             return render_template(
                 'rules.html',
-                rule_count=5,
+                rule_count=4,
                 protected_cluster_count=0,
                 excluded_namespace_count=0,
                 extra_labels_count=0,

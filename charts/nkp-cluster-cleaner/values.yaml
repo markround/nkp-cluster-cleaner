@@ -36,3 +36,6 @@ app:
     - ^default$
     protected_cluster_patterns:
     - .*-prod-.*
+    extra_labels:
+    - name: owner
+      description: Cluster owner identifier

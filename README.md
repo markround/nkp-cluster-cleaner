@@ -17,7 +17,7 @@ A simple CLI tool (with optional web interface) to automatically delete Nutanix 
 _Disclaimer: This is a personal project and is in no way supported/endorsed by, or otherwise connected to Nutanix_
 
 ## Strategy
-- Any cluster without an `owner` or `expires` label will be deleted.
+- Any cluster without an `expires` label will be deleted.
 - Any cluster that is older than the value specified in the `expires` label will be deleted. 
   - This label takes values of the format `n<unit>` , where unit is one of:
     - `h` - Hours
@@ -25,8 +25,10 @@ _Disclaimer: This is a personal project and is in no way supported/endorsed by, 
     - `w` - Weeks
     - `y` - Years
   - For example, `12h` , `2d` , `1w`, `1y`
+- A set of additional labels and acceptable regex patterns can be provided. Any cluster without matching labels will be deleted.
+  - For example, the default [Helm Chart](./charts/nkp-cluster-cleaner/README.md) configuration defines a required `owner` label. Any cluster without an `owner` label will be deleted.
 
-## Protected clusters
+### Protected clusters
 By default the management cluster is excluded from deletion, and a configuration file can be provided that accepts a list of regex-based namespaces or cluster names that will be excluded. For example:
 
 ```yaml
@@ -38,6 +40,43 @@ protected_cluster_patterns:
 - .*-prod$
 - critical-.*
 ```
+
+### Extra Labels
+In addition to the core `expires` label, any number of additional required labels can be defined in the configuration file. These are defined as a list with the following keys:
+
+- `name` : Name of the label
+- `description` : Optional description of the label
+- `regex` : Optional regex to validate the label value against. If omitted, any value is accepted.
+
+A cluster will be marked for deletion if:
+
+- Any of these labels is not present,
+- Or is in an incorrect format. 
+
+Some examples provided in the example configuration file:
+
+```yaml
+extra_labels:
+# Cluster owner. Note no regex is provided, so any value is accepted.
+- description: Cluster owner identifier
+  name: owner
+
+# A numeric cost centre ID
+- description: Numeric cost centre ID
+  name: cost_centre
+  regex: ^([0-9]+)$
+
+# A project ID
+- description: Project identifier (alphanumeric with hyphens)
+  name: project
+  regex: ^[a-zA-Z0-9-]+$
+
+# An environment type which must be one of 4 values
+- description: Environment type
+  name: environment
+  regex: ^(dev|test|staging|prod)$
+```
+
 
 ## General Usage
 ```

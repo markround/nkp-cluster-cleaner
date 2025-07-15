@@ -27,7 +27,9 @@ Assuming a standard installation of NKP Ultimate[https://github.com/markround/nk
 
 ### Default rules
 
-The default rules provided exclude the `default` namespace and any cluster with `-prod-` in the name. To change this, set the `app.config` key when deploying the application, e.g.
+The default rules provided exclude the `default` namespace and any cluster with `-prod-` in the name. It will also require an `owner` label to be set on each cluster. 
+
+To change this, set the `app.config` key when deploying the application, e.g.
 
 ```yaml
 app:

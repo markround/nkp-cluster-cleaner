@@ -242,31 +242,25 @@
         <p>Clusters are marked for deletion if they meet <strong>any</strong> of the following criteria:</p>
         
         <div class="rule-item">
-            <div class="rule-type">1. Missing Owner Label</div>
-            <div class="rule-description">Clusters without an "owner" label are considered orphaned</div>
-            <div class="rule-example">Missing: labels.owner</div>
-        </div>
-
-        <div class="rule-item">
-            <div class="rule-type">2. Missing Expires Label</div>
+            <div class="rule-type">1. Missing Expires Label</div>
             <div class="rule-description">Clusters without an "expires" label have no expiration policy</div>
             <div class="rule-example">Missing: labels.expires</div>
         </div>
 
         <div class="rule-item">
-            <div class="rule-type">3. Missing Required Labels</div>
+            <div class="rule-type">2. Missing Required Labels</div>
             <div class="rule-description">Clusters missing any configured extra labels or with invalid values</div>
             <div class="rule-example">{% if extra_labels %}Checking: {% for label in extra_labels %}{{ label.name }}{% if not loop.last %}, {% endif %}{% endfor %}{% else %}No extra labels configured{% endif %}</div>
         </div>
 
         <div class="rule-item">
-            <div class="rule-type">4. Expired Clusters</div>
+            <div class="rule-type">3. Expired Clusters</div>
             <div class="rule-description">Clusters where current time >= creation time + expires duration</div>
             <div class="rule-example">current_time >= (creation + expires_duration)</div>
         </div>
 
         <div class="rule-item">
-            <div class="rule-type">5. Invalid Expires Format</div>
+            <div class="rule-type">4. Invalid Expires Format</div>
             <div class="rule-description">Clusters with malformed expires labels that cannot be parsed</div>
             <div class="rule-example">Invalid: "1day", "2 weeks", "forever"</div>
         </div>

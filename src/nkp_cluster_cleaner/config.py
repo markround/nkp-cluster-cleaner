@@ -141,6 +141,10 @@ class ConfigManager:
             ],
             "extra_labels": [
                 {
+                    "name": "owner",
+                    "description": "Cluster owner identifier"
+                },
+                {
                     "name": "cost_centre",
                     "description": "Numeric cost centre ID",
                     "regex": "^([0-9]+)$"
