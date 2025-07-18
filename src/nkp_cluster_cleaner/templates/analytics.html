@@ -39,13 +39,12 @@
     }
     
     .summary-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
+        background: white;
         padding: 20px;
-        border-radius: 12px;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         text-align: center;
-        position: relative;
-        overflow: hidden;
+        border-left: 4px solid #667eea;
     }
     
     .summary-card::before {
@@ -410,6 +409,11 @@
     Chart.defaults.backgroundColor = 'rgba(102, 126, 234, 0.1)';
 
     {% if cluster_trends_7d and cluster_trends_7d.dates %}
+    // Debug logging
+    console.log('Analytics data loaded:');
+    console.log('Owner distribution:', {{ owner_distribution | tojson }});
+    console.log('Expiration analysis:', {{ expiration_analysis | tojson }});
+    
     // Color scheme
     const colors = {
         primary: '#667eea',
@@ -572,76 +576,100 @@
     // Owner Chart
     const ownerCtx = document.getElementById('ownerChart').getContext('2d');
     const topOwners = {{ owner_distribution.top_owners | tojson }};
-    const ownerNames = Object.keys(topOwners).slice(0, 8);
-    const ownerCounts = ownerNames.map(owner => topOwners[owner].total_clusters);
     
-    new Chart(ownerCtx, {
-        type: 'horizontalBar',
-        data: {
-            labels: ownerNames,
-            datasets: [{
-                label: 'Total Clusters',
-                data: ownerCounts,
-                backgroundColor: colors.secondary,
-                borderColor: colors.secondary,
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                }
+    if (topOwners && Object.keys(topOwners).length > 0) {
+        const ownerNames = Object.keys(topOwners).slice(0, 8);
+        const ownerCounts = ownerNames.map(owner => topOwners[owner].total_clusters);
+        
+        new Chart(ownerCtx, {
+            type: 'bar',
+            data: {
+                labels: ownerNames,
+                datasets: [{
+                    label: 'Total Clusters',
+                    data: ownerCounts,
+                    backgroundColor: colors.secondary,
+                    borderColor: colors.secondary,
+                    borderWidth: 1
+                }]
             },
-            scales: {
-                x: {
-                    beginAtZero: true,
-                    ticks: {
-                        stepSize: 1
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',  // This makes it horizontal
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
                     }
                 }
             }
-        }
-    });
+        });
+    } else {
+        // Show no data message
+        ownerCtx.canvas.style.display = 'none';
+        ownerCtx.canvas.parentElement.innerHTML = '<div style="text-align: center; color: #666; padding: 40px;">No ownership data available</div>';
+    }
 
     // Expiration Chart
     const expirationCtx = document.getElementById('expirationChart').getContext('2d');
     const expirationDistribution = {{ expiration_analysis.current_distribution | tojson }};
-    new Chart(expirationCtx, {
-        type: 'pie',
-        data: {
-            labels: ['Expired', 'Expires Soon', 'This Week', 'This Month', 'Later', 'No Expiration'],
-            datasets: [{
-                data: [
-                    expirationDistribution.expired || 0,
-                    expirationDistribution.expires_soon || 0,
-                    expirationDistribution.expires_this_week || 0,
-                    expirationDistribution.expires_this_month || 0,
-                    expirationDistribution.expires_later || 0,
-                    expirationDistribution.no_expiration || 0
-                ],
-                backgroundColor: [
-                    colors.danger,
-                    '#ff6b6b',
-                    colors.warning,
-                    '#feca57',
-                    colors.success,
-                    '#a4b0be'
-                ]
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom'
+    
+    if (expirationDistribution && Object.keys(expirationDistribution).length > 0) {
+        const expirationData = [
+            expirationDistribution.expired || 0,
+            expirationDistribution.expires_soon || 0,
+            expirationDistribution.expires_this_week || 0,
+            expirationDistribution.expires_this_month || 0,
+            expirationDistribution.expires_later || 0,
+            expirationDistribution.no_expiration || 0
+        ];
+        
+        // Only show chart if there's actual data
+        const hasData = expirationData.some(value => value > 0);
+        
+        if (hasData) {
+            new Chart(expirationCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['Expired', 'Expires Soon', 'This Week', 'This Month', 'Later', 'No Expiration'],
+                    datasets: [{
+                        data: expirationData,
+                        backgroundColor: [
+                            colors.danger,
+                            '#ff6b6b',
+                            colors.warning,
+                            '#feca57',
+                            colors.success,
+                            '#a4b0be'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
                 }
-            }
+            });
+        } else {
+            expirationCtx.canvas.style.display = 'none';
+            expirationCtx.canvas.parentElement.innerHTML = '<div style="text-align: center; color: #666; padding: 40px;">No expiration data available</div>';
         }
-    });
+    } else {
+        expirationCtx.canvas.style.display = 'none';
+        expirationCtx.canvas.parentElement.innerHTML = '<div style="text-align: center; color: #666; padding: 40px;">No expiration data available</div>';
+    }
 
     {% endif %}
 
