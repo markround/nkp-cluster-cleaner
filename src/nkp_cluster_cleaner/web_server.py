@@ -10,6 +10,7 @@ from typing import Optional
 from .config import ConfigManager
 from .cluster_manager import ClusterManager
 from .cronjob_manager import CronJobManager
+from .analytics_service import AnalyticsService
 import nkp_cluster_cleaner
 
 __version__ = nkp_cluster_cleaner.__version__
@@ -64,6 +65,10 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
     def get_cronjob_manager():
         """Helper to create cronjob manager with current config."""
         return CronJobManager(app.config['KUBECONFIG_PATH'])
+
+    def get_analytics_service():
+        """Helper to create analytics service with current config."""
+        return AnalyticsService(app.config['KUBECONFIG_PATH'], app.config.get('DATA_DIR', '/app/data'))
 
     @app.route(url_prefix + '/')
     def index():
@@ -443,7 +448,164 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
                 'error': str(e),
                 'timestamp': datetime.now().isoformat()
             }), 500
-    
+    #
+    # Analytics endpoints
+    #     
+    @app.route(url_prefix + '/analytics')
+    def analytics():
+        """Analytics dashboard page."""
+        try:
+            analytics_service = get_analytics_service()
+            
+            # Get analytics data for different time periods
+            cluster_trends_7d = analytics_service.get_cluster_trends(7)
+            cluster_trends_30d = analytics_service.get_cluster_trends(30)
+            deletion_activity = analytics_service.get_deletion_activity(14)
+            compliance_stats = analytics_service.get_compliance_stats(30)
+            namespace_activity = analytics_service.get_namespace_activity(30)
+            owner_distribution = analytics_service.get_owner_distribution(30)
+            expiration_analysis = analytics_service.get_expiration_analysis(30)
+            dashboard_summary = analytics_service.get_dashboard_summary()
+            
+            return render_template(
+                'analytics.html',
+                cluster_trends_7d=cluster_trends_7d,
+                cluster_trends_30d=cluster_trends_30d,
+                deletion_activity=deletion_activity,
+                compliance_stats=compliance_stats,
+                namespace_activity=namespace_activity,
+                owner_distribution=owner_distribution,
+                expiration_analysis=expiration_analysis,
+                dashboard_summary=dashboard_summary,
+                version=__version__,
+                refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                error=None
+            )
+        except Exception as e:
+            return render_template(
+                'analytics.html',
+                error=str(e),
+                version=__version__,
+                refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            )
+
+    @app.route(url_prefix + '/api/analytics/trends')
+    def api_analytics_trends():
+        """API endpoint for cluster trends data."""
+        days = request.args.get('days', 30, type=int)
+        
+        try:
+            analytics_service = get_analytics_service()
+            trends = analytics_service.get_cluster_trends(days)
+            
+            return jsonify({
+                'status': 'success',
+                'data': trends,
+                'timestamp': datetime.now().isoformat()
+            })
+        except Exception as e:
+            return jsonify({'status': 'error', 'error': str(e)}), 500
+
+    @app.route(url_prefix + '/api/analytics/compliance')
+    def api_analytics_compliance():
+        """API endpoint for compliance statistics."""
+        days = request.args.get('days', 30, type=int)
+        
+        try:
+            analytics_service = get_analytics_service()
+            compliance = analytics_service.get_compliance_stats(days)
+            
+            return jsonify({
+                'status': 'success',
+                'data': compliance,
+                'timestamp': datetime.now().isoformat()
+            })
+        except Exception as e:
+            return jsonify({'status': 'error', 'error': str(e)}), 500
+
+    @app.route(url_prefix + '/api/analytics/deletion-activity')
+    def api_analytics_deletion_activity():
+        """API endpoint for deletion activity data."""
+        days = request.args.get('days', 14, type=int)
+        
+        try:
+            analytics_service = get_analytics_service()
+            activity = analytics_service.get_deletion_activity(days)
+            
+            return jsonify({
+                'status': 'success',
+                'data': activity,
+                'timestamp': datetime.now().isoformat()
+            })
+        except Exception as e:
+            return jsonify({'status': 'error', 'error': str(e)}), 500
+
+    @app.route(url_prefix + '/api/analytics/namespaces')
+    def api_analytics_namespaces():
+        """API endpoint for namespace activity data."""
+        days = request.args.get('days', 30, type=int)
+        
+        try:
+            analytics_service = get_analytics_service()
+            namespaces = analytics_service.get_namespace_activity(days)
+            
+            return jsonify({
+                'status': 'success',
+                'data': namespaces,
+                'timestamp': datetime.now().isoformat()
+            })
+        except Exception as e:
+            return jsonify({'status': 'error', 'error': str(e)}), 500
+
+    @app.route(url_prefix + '/api/analytics/owners')
+    def api_analytics_owners():
+        """API endpoint for owner distribution data."""
+        days = request.args.get('days', 30, type=int)
+        
+        try:
+            analytics_service = get_analytics_service()
+            owners = analytics_service.get_owner_distribution(days)
+            
+            return jsonify({
+                'status': 'success',
+                'data': owners,
+                'timestamp': datetime.now().isoformat()
+            })
+        except Exception as e:
+            return jsonify({'status': 'error', 'error': str(e)}), 500
+
+    @app.route(url_prefix + '/api/analytics/expiration')
+    def api_analytics_expiration():
+        """API endpoint for expiration analysis data."""
+        days = request.args.get('days', 30, type=int)
+        
+        try:
+            analytics_service = get_analytics_service()
+            expiration = analytics_service.get_expiration_analysis(days)
+            
+            return jsonify({
+                'status': 'success',
+                'data': expiration,
+                'timestamp': datetime.now().isoformat()
+            })
+        except Exception as e:
+            return jsonify({'status': 'error', 'error': str(e)}), 500
+
+    @app.route(url_prefix + '/api/analytics/summary')
+    def api_analytics_summary():
+        """API endpoint for dashboard summary data."""
+        try:
+            analytics_service = get_analytics_service()
+            summary = analytics_service.get_dashboard_summary()
+            
+            return jsonify({
+                'status': 'success',
+                'data': summary,
+                'timestamp': datetime.now().isoformat()
+            })
+        except Exception as e:
+            return jsonify({'status': 'error', 'error': str(e)}), 500    
+
     return app
 
 def run_server(host: str = '127.0.0.1', port: int = 8080, debug: bool = False,
