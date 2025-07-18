@@ -1,31 +1,88 @@
 """
-Analytics service for retrieving and processing historical cluster data.
+Redis-based analytics service for retrieving and processing historical cluster data.
 
-This module provides methods to query historical analytics data for use
-in web dashboards and reporting.
+This module provides methods to query historical analytics data stored in Redis
+for use in web dashboards and reporting.
 """
 
+import redis
 import json
-from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from collections import defaultdict, Counter
-from .data_collector import DataCollector
+from .redis_data_collector import RedisDataCollector
 
 
-class AnalyticsService:
-    """Service for retrieving and processing analytics data."""
+class RedisAnalyticsService:
+    """Service for retrieving and processing analytics data from Redis."""
     
-    def __init__(self, kubeconfig_path: Optional[str] = None, data_dir: str = '/app/data'):
+    def __init__(self, kubeconfig_path: Optional[str] = None, redis_host: str = 'redis', 
+                 redis_port: int = 6379, redis_db: int = 0):
         """
         Initialize the analytics service.
         
         Args:
             kubeconfig_path: Path to kubeconfig file
-            data_dir: Directory where analytics data is stored
+            redis_host: Redis host
+            redis_port: Redis port
+            redis_db: Redis database number
         """
-        self.data_dir = Path(data_dir)
-        self.data_collector = DataCollector(kubeconfig_path, data_dir=data_dir)
+        # Redis connection (reuse RedisDataCollector connection settings)
+        self.redis_client = redis.Redis(
+            host=redis_host,
+            port=redis_port,
+            db=redis_db,
+            decode_responses=True,
+            socket_connect_timeout=5,
+            socket_timeout=5,
+            retry_on_timeout=True,
+            health_check_interval=30
+        )
+        
+        # Test connection
+        try:
+            self.redis_client.ping()
+        except redis.ConnectionError as e:
+            raise Exception(f"Failed to connect to Redis at {redis_host}:{redis_port}: {e}")
+    
+    def _get_historical_data(self, days: int = 30) -> List[Dict[str, Any]]:
+        """
+        Retrieve historical analytics data from Redis.
+        
+        Args:
+            days: Number of days of historical data to retrieve
+            
+        Returns:
+            List of snapshots from the specified time period
+        """
+        cutoff_timestamp = (datetime.now() - timedelta(days=days)).timestamp()
+        current_timestamp = datetime.now().timestamp()
+        
+        # Get snapshot keys in time range
+        snapshot_keys = self.redis_client.zrangebyscore(
+            "analytics:snapshots:index", 
+            cutoff_timestamp, 
+            current_timestamp
+        )
+        
+        historical_data = []
+        
+        # Batch get all snapshots
+        if snapshot_keys:
+            snapshots = self.redis_client.mget(snapshot_keys)
+            
+            for snapshot_json in snapshots:
+                if snapshot_json:
+                    try:
+                        snapshot = json.loads(snapshot_json)
+                        historical_data.append(snapshot)
+                    except json.JSONDecodeError:
+                        continue
+        
+        # Sort by timestamp
+        historical_data.sort(key=lambda x: x.get('timestamp', ''))
+        
+        return historical_data
     
     def get_cluster_trends(self, days: int = 30) -> Dict[str, Any]:
         """
@@ -37,7 +94,7 @@ class AnalyticsService:
         Returns:
             Dictionary with trend data suitable for charting
         """
-        historical_data = self.data_collector.get_historical_data(days)
+        historical_data = self._get_historical_data(days)
         
         if not historical_data:
             return {
@@ -124,7 +181,7 @@ class AnalyticsService:
         Returns:
             Dictionary with deletion activity data
         """
-        historical_data = self.data_collector.get_historical_data(days)
+        historical_data = self._get_historical_data(days)
         
         deletion_reasons = Counter()
         hourly_activity = defaultdict(int)
@@ -172,10 +229,11 @@ class AnalyticsService:
         Returns:
             Dictionary with compliance statistics
         """
-        historical_data = self.data_collector.get_historical_data(days)
+        historical_data = self._get_historical_data(days)
         
         if not historical_data:
             return {
+                'dates': [],
                 'compliance_trend': [],
                 'label_trends': {},
                 'current_compliance': 0,
@@ -273,7 +331,7 @@ class AnalyticsService:
         Returns:
             Dictionary with namespace activity data
         """
-        historical_data = self.data_collector.get_historical_data(days)
+        historical_data = self._get_historical_data(days)
         
         namespace_stats = defaultdict(lambda: {
             'total_clusters': 0,
@@ -329,7 +387,7 @@ class AnalyticsService:
         Returns:
             Dictionary with ownership data
         """
-        historical_data = self.data_collector.get_historical_data(days)
+        historical_data = self._get_historical_data(days)
         
         owner_stats = defaultdict(lambda: {
             'total_clusters': 0,
@@ -372,7 +430,7 @@ class AnalyticsService:
         Returns:
             Dictionary with expiration analysis
         """
-        historical_data = self.data_collector.get_historical_data(days)
+        historical_data = self._get_historical_data(days)
         
         expiration_patterns = Counter()
         expiration_trends = defaultdict(lambda: defaultdict(int))
@@ -451,3 +509,36 @@ class AnalyticsService:
                     'trend_direction': 'unknown'
                 }
             }
+    
+    def get_database_stats(self) -> Dict[str, Any]:
+        """Get Redis statistics and health information."""
+        try:
+            info = self.redis_client.info()
+            
+            # Count snapshots
+            total_snapshots = self.redis_client.zcard("analytics:snapshots:index")
+            
+            # Get date range
+            oldest_score = self.redis_client.zrange("analytics:snapshots:index", 0, 0, withscores=True)
+            newest_score = self.redis_client.zrange("analytics:snapshots:index", -1, -1, withscores=True)
+            
+            earliest = None
+            latest = None
+            
+            if oldest_score:
+                earliest = datetime.fromtimestamp(oldest_score[0][1]).isoformat()
+            if newest_score:
+                latest = datetime.fromtimestamp(newest_score[0][1]).isoformat()
+            
+            return {
+                'total_snapshots': total_snapshots,
+                'earliest_snapshot': earliest,
+                'latest_snapshot': latest,
+                'redis_version': info.get('redis_version'),
+                'redis_memory_used': info.get('used_memory_human'),
+                'redis_memory_peak': info.get('used_memory_peak_human'),
+                'redis_connected_clients': info.get('connected_clients'),
+                'redis_uptime_days': info.get('uptime_in_days')
+            }
+        except Exception as e:
+            return {'error': str(e)}

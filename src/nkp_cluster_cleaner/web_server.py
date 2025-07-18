@@ -10,13 +10,14 @@ from typing import Optional
 from .config import ConfigManager
 from .cluster_manager import ClusterManager
 from .cronjob_manager import CronJobManager
-from .analytics_service import AnalyticsService
+from .redis_analytics_service import RedisAnalyticsService
 import nkp_cluster_cleaner
 
 __version__ = nkp_cluster_cleaner.__version__
 
 def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str] = None, 
-               url_prefix: Optional[str] = None, data_dir: Optional[str] = None) -> Flask:
+               url_prefix: Optional[str] = None, redis_host: str = 'redis', 
+               redis_port: int = 6379, redis_db: int = 0) -> Flask:
     """
     Create and configure the Flask application.
     
@@ -24,7 +25,9 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
         kubeconfig_path: Path to kubeconfig file
         config_path: Path to configuration file
         url_prefix: URL prefix for all routes (e.g., '/foo')
-        data_dir: Directory where analytics data is stored
+        redis_host: Redis host for analytics data
+        redis_port: Redis port
+        redis_db: Redis database number
         
     Returns:
         Flask application instance
@@ -37,7 +40,9 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
     # Store configuration in app context
     app.config['KUBECONFIG_PATH'] = kubeconfig_path
     app.config['CONFIG_PATH'] = config_path
-    app.config['DATA_DIR'] = data_dir or '/app/data'
+    app.config['REDIS_HOST'] = redis_host
+    app.config['REDIS_PORT'] = redis_port
+    app.config['REDIS_DB'] = redis_db
     
     # Normalize URL prefix
     if url_prefix:
@@ -67,10 +72,15 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
     def get_cronjob_manager():
         """Helper to create cronjob manager with current config."""
         return CronJobManager(app.config['KUBECONFIG_PATH'])
-
+    
     def get_analytics_service():
         """Helper to create analytics service with current config."""
-        return AnalyticsService(app.config['KUBECONFIG_PATH'], app.config.get('DATA_DIR', '/app/data'))
+        return RedisAnalyticsService(
+            kubeconfig_path=app.config['KUBECONFIG_PATH'],
+            redis_host=app.config['REDIS_HOST'],
+            redis_port=app.config['REDIS_PORT'],
+            redis_db=app.config['REDIS_DB']
+        )
 
     @app.route(url_prefix + '/')
     def index():
@@ -98,14 +108,28 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
             # Simple connectivity test
             cluster_manager.check_kommander_crds()
             
-            return jsonify({
+            # Test Redis connection
+            analytics_service = get_analytics_service()
+            redis_stats = analytics_service.get_database_stats()
+            
+            health_data = {
                 'status': 'ok', 
                 'service': 'nkp-cluster-cleaner',
                 'version': __version__,
                 'kubeconfig': app.config['KUBECONFIG_PATH'] or 'default',
                 'config': app.config['CONFIG_PATH'] or 'none',
+                'redis': f"{app.config['REDIS_HOST']}:{app.config['REDIS_PORT']}",
                 'timestamp': datetime.now().isoformat()
-            })
+            }
+            
+            if 'error' not in redis_stats:
+                health_data['redis_status'] = 'connected'
+                health_data['redis_snapshots'] = redis_stats.get('total_snapshots', 0)
+            else:
+                health_data['redis_status'] = 'error'
+                health_data['redis_error'] = redis_stats['error']
+            
+            return jsonify(health_data)
         except Exception as e:
             return jsonify({
                 'status': 'error',
@@ -154,6 +178,44 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
                 version=__version__,
                 refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 error=str(e)
+            )
+    
+    @app.route(url_prefix + '/analytics')
+    def analytics():
+        """Analytics dashboard page."""
+        try:
+            analytics_service = get_analytics_service()
+            
+            # Get analytics data for different time periods
+            cluster_trends_7d = analytics_service.get_cluster_trends(7)
+            cluster_trends_30d = analytics_service.get_cluster_trends(30)
+            deletion_activity = analytics_service.get_deletion_activity(14)
+            compliance_stats = analytics_service.get_compliance_stats(30)
+            namespace_activity = analytics_service.get_namespace_activity(30)
+            owner_distribution = analytics_service.get_owner_distribution(30)
+            expiration_analysis = analytics_service.get_expiration_analysis(30)
+            dashboard_summary = analytics_service.get_dashboard_summary()
+            
+            return render_template(
+                'analytics.html',
+                cluster_trends_7d=cluster_trends_7d,
+                cluster_trends_30d=cluster_trends_30d,
+                deletion_activity=deletion_activity,
+                compliance_stats=compliance_stats,
+                namespace_activity=namespace_activity,
+                owner_distribution=owner_distribution,
+                expiration_analysis=expiration_analysis,
+                dashboard_summary=dashboard_summary,
+                version=__version__,
+                refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                error=None
+            )
+        except Exception as e:
+            return render_template(
+                'analytics.html',
+                error=str(e),
+                version=__version__,
+                refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             )
     
     @app.route(url_prefix + '/rules')
@@ -215,6 +277,46 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
                 error=str(e)
             )
     
+    @app.route(url_prefix + '/scheduled-tasks')
+    def scheduled_tasks():
+        """Display scheduled tasks (CronJobs) and recent executions."""
+        try:
+            # Get cronjob manager
+            cronjob_manager = get_cronjob_manager()
+            
+            # Get summary
+            namespace = "kommander"  # Default namespace for NKP cronjobs
+            summary = cronjob_manager.get_all_scheduled_tasks_summary(namespace)
+            
+            return render_template(
+                'scheduled_tasks.html',
+                summary=summary,
+                namespace=namespace,
+                refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                version=__version__,
+                error=None
+            )
+        except Exception as e:
+            # Render error state
+            return render_template(
+                'scheduled_tasks.html',
+                summary={
+                    'total_cronjobs': 0,
+                    'active_cronjobs': 0,
+                    'suspended_cronjobs': 0,
+                    'total_recent_jobs': 0,
+                    'successful_jobs': 0,
+                    'failed_jobs': 0,
+                    'running_jobs': 0,
+                    'cronjobs': [],
+                    'recent_jobs': []
+                },
+                namespace="kommander",
+                refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                version=__version__,
+                error=str(e)
+            )
+    
     @app.route(url_prefix + '/api/clusters')
     def api_clusters():
         """API endpoint for cluster data (JSON)."""
@@ -256,47 +358,124 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
                 'error': str(e),
                 'timestamp': datetime.now().isoformat()
             }), 500
+    
+    @app.route(url_prefix + '/api/analytics/trends')
+    def api_analytics_trends():
+        """API endpoint for cluster trends data."""
+        days = request.args.get('days', 30, type=int)
         
-    @app.route(url_prefix + '/scheduled-tasks')
-    def scheduled_tasks():
-        """Display scheduled tasks (CronJobs) and recent executions."""
         try:
-            # Get cronjob manager
-            cronjob_manager = get_cronjob_manager()
+            analytics_service = get_analytics_service()
+            trends = analytics_service.get_cluster_trends(days)
             
-            # Get  summary
-            namespace = "kommander"  # Default namespace for NKP cronjobs
-            summary = cronjob_manager.get_all_scheduled_tasks_summary(namespace)
-            
-            return render_template(
-                'scheduled_tasks.html',
-                summary=summary,
-                namespace=namespace,
-                refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                version=__version__,
-                error=None
-            )
+            return jsonify({
+                'status': 'success',
+                'data': trends,
+                'timestamp': datetime.now().isoformat()
+            })
         except Exception as e:
-            # Render error state
-            return render_template(
-                'scheduled_tasks.html',
-                summary={
-                    'total_cronjobs': 0,
-                    'active_cronjobs': 0,
-                    'suspended_cronjobs': 0,
-                    'total_recent_jobs': 0,
-                    'successful_jobs': 0,
-                    'failed_jobs': 0,
-                    'running_jobs': 0,
-                    'cronjobs': [],
-                    'recent_jobs': []
-                },
-                namespace="kommander",
-                refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                version=__version__,
-                error=str(e)
-            )
+            return jsonify({'status': 'error', 'error': str(e)}), 500
 
+    @app.route(url_prefix + '/api/analytics/compliance')
+    def api_analytics_compliance():
+        """API endpoint for compliance statistics."""
+        days = request.args.get('days', 30, type=int)
+        
+        try:
+            analytics_service = get_analytics_service()
+            compliance = analytics_service.get_compliance_stats(days)
+            
+            return jsonify({
+                'status': 'success',
+                'data': compliance,
+                'timestamp': datetime.now().isoformat()
+            })
+        except Exception as e:
+            return jsonify({'status': 'error', 'error': str(e)}), 500
+
+    @app.route(url_prefix + '/api/analytics/deletion-activity')
+    def api_analytics_deletion_activity():
+        """API endpoint for deletion activity data."""
+        days = request.args.get('days', 14, type=int)
+        
+        try:
+            analytics_service = get_analytics_service()
+            activity = analytics_service.get_deletion_activity(days)
+            
+            return jsonify({
+                'status': 'success',
+                'data': activity,
+                'timestamp': datetime.now().isoformat()
+            })
+        except Exception as e:
+            return jsonify({'status': 'error', 'error': str(e)}), 500
+
+    @app.route(url_prefix + '/api/analytics/namespaces')
+    def api_analytics_namespaces():
+        """API endpoint for namespace activity data."""
+        days = request.args.get('days', 30, type=int)
+        
+        try:
+            analytics_service = get_analytics_service()
+            namespaces = analytics_service.get_namespace_activity(days)
+            
+            return jsonify({
+                'status': 'success',
+                'data': namespaces,
+                'timestamp': datetime.now().isoformat()
+            })
+        except Exception as e:
+            return jsonify({'status': 'error', 'error': str(e)}), 500
+
+    @app.route(url_prefix + '/api/analytics/owners')
+    def api_analytics_owners():
+        """API endpoint for owner distribution data."""
+        days = request.args.get('days', 30, type=int)
+        
+        try:
+            analytics_service = get_analytics_service()
+            owners = analytics_service.get_owner_distribution(days)
+            
+            return jsonify({
+                'status': 'success',
+                'data': owners,
+                'timestamp': datetime.now().isoformat()
+            })
+        except Exception as e:
+            return jsonify({'status': 'error', 'error': str(e)}), 500
+
+    @app.route(url_prefix + '/api/analytics/expiration')
+    def api_analytics_expiration():
+        """API endpoint for expiration analysis data."""
+        days = request.args.get('days', 30, type=int)
+        
+        try:
+            analytics_service = get_analytics_service()
+            expiration = analytics_service.get_expiration_analysis(days)
+            
+            return jsonify({
+                'status': 'success',
+                'data': expiration,
+                'timestamp': datetime.now().isoformat()
+            })
+        except Exception as e:
+            return jsonify({'status': 'error', 'error': str(e)}), 500
+
+    @app.route(url_prefix + '/api/analytics/summary')
+    def api_analytics_summary():
+        """API endpoint for dashboard summary data."""
+        try:
+            analytics_service = get_analytics_service()
+            summary = analytics_service.get_dashboard_summary()
+            
+            return jsonify({
+                'status': 'success',
+                'data': summary,
+                'timestamp': datetime.now().isoformat()
+            })
+        except Exception as e:
+            return jsonify({'status': 'error', 'error': str(e)}), 500
+    
     @app.route(url_prefix + '/api/job-logs')
     def api_job_logs():
         """API endpoint to get logs for a specific job."""
@@ -450,169 +629,13 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
                 'error': str(e),
                 'timestamp': datetime.now().isoformat()
             }), 500
-    #
-    # Analytics endpoints
-    #     
-    @app.route(url_prefix + '/analytics')
-    def analytics():
-        """Analytics dashboard page."""
-        try:
-            analytics_service = get_analytics_service()
-            
-            # Get analytics data for different time periods
-            cluster_trends_7d = analytics_service.get_cluster_trends(7)
-            cluster_trends_30d = analytics_service.get_cluster_trends(30)
-            deletion_activity = analytics_service.get_deletion_activity(14)
-            compliance_stats = analytics_service.get_compliance_stats(30)
-            namespace_activity = analytics_service.get_namespace_activity(30)
-            owner_distribution = analytics_service.get_owner_distribution(30)
-            expiration_analysis = analytics_service.get_expiration_analysis(30)
-            dashboard_summary = analytics_service.get_dashboard_summary()
-            
-            return render_template(
-                'analytics.html',
-                cluster_trends_7d=cluster_trends_7d,
-                cluster_trends_30d=cluster_trends_30d,
-                deletion_activity=deletion_activity,
-                compliance_stats=compliance_stats,
-                namespace_activity=namespace_activity,
-                owner_distribution=owner_distribution,
-                expiration_analysis=expiration_analysis,
-                dashboard_summary=dashboard_summary,
-                version=__version__,
-                refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                error=None
-            )
-        except Exception as e:
-            return render_template(
-                'analytics.html',
-                error=str(e),
-                version=__version__,
-                refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            )
-
-    @app.route(url_prefix + '/api/analytics/trends')
-    def api_analytics_trends():
-        """API endpoint for cluster trends data."""
-        days = request.args.get('days', 30, type=int)
-        
-        try:
-            analytics_service = get_analytics_service()
-            trends = analytics_service.get_cluster_trends(days)
-            
-            return jsonify({
-                'status': 'success',
-                'data': trends,
-                'timestamp': datetime.now().isoformat()
-            })
-        except Exception as e:
-            return jsonify({'status': 'error', 'error': str(e)}), 500
-
-    @app.route(url_prefix + '/api/analytics/compliance')
-    def api_analytics_compliance():
-        """API endpoint for compliance statistics."""
-        days = request.args.get('days', 30, type=int)
-        
-        try:
-            analytics_service = get_analytics_service()
-            compliance = analytics_service.get_compliance_stats(days)
-            
-            return jsonify({
-                'status': 'success',
-                'data': compliance,
-                'timestamp': datetime.now().isoformat()
-            })
-        except Exception as e:
-            return jsonify({'status': 'error', 'error': str(e)}), 500
-
-    @app.route(url_prefix + '/api/analytics/deletion-activity')
-    def api_analytics_deletion_activity():
-        """API endpoint for deletion activity data."""
-        days = request.args.get('days', 14, type=int)
-        
-        try:
-            analytics_service = get_analytics_service()
-            activity = analytics_service.get_deletion_activity(days)
-            
-            return jsonify({
-                'status': 'success',
-                'data': activity,
-                'timestamp': datetime.now().isoformat()
-            })
-        except Exception as e:
-            return jsonify({'status': 'error', 'error': str(e)}), 500
-
-    @app.route(url_prefix + '/api/analytics/namespaces')
-    def api_analytics_namespaces():
-        """API endpoint for namespace activity data."""
-        days = request.args.get('days', 30, type=int)
-        
-        try:
-            analytics_service = get_analytics_service()
-            namespaces = analytics_service.get_namespace_activity(days)
-            
-            return jsonify({
-                'status': 'success',
-                'data': namespaces,
-                'timestamp': datetime.now().isoformat()
-            })
-        except Exception as e:
-            return jsonify({'status': 'error', 'error': str(e)}), 500
-
-    @app.route(url_prefix + '/api/analytics/owners')
-    def api_analytics_owners():
-        """API endpoint for owner distribution data."""
-        days = request.args.get('days', 30, type=int)
-        
-        try:
-            analytics_service = get_analytics_service()
-            owners = analytics_service.get_owner_distribution(days)
-            
-            return jsonify({
-                'status': 'success',
-                'data': owners,
-                'timestamp': datetime.now().isoformat()
-            })
-        except Exception as e:
-            return jsonify({'status': 'error', 'error': str(e)}), 500
-
-    @app.route(url_prefix + '/api/analytics/expiration')
-    def api_analytics_expiration():
-        """API endpoint for expiration analysis data."""
-        days = request.args.get('days', 30, type=int)
-        
-        try:
-            analytics_service = get_analytics_service()
-            expiration = analytics_service.get_expiration_analysis(days)
-            
-            return jsonify({
-                'status': 'success',
-                'data': expiration,
-                'timestamp': datetime.now().isoformat()
-            })
-        except Exception as e:
-            return jsonify({'status': 'error', 'error': str(e)}), 500
-
-    @app.route(url_prefix + '/api/analytics/summary')
-    def api_analytics_summary():
-        """API endpoint for dashboard summary data."""
-        try:
-            analytics_service = get_analytics_service()
-            summary = analytics_service.get_dashboard_summary()
-            
-            return jsonify({
-                'status': 'success',
-                'data': summary,
-                'timestamp': datetime.now().isoformat()
-            })
-        except Exception as e:
-            return jsonify({'status': 'error', 'error': str(e)}), 500    
-
+    
     return app
 
 def run_server(host: str = '127.0.0.1', port: int = 8080, debug: bool = False,
                kubeconfig_path: Optional[str] = None, config_path: Optional[str] = None,
-               url_prefix: Optional[str] = None, data_dir: Optional[str] = None):
+               url_prefix: Optional[str] = None, redis_host: str = 'redis', 
+               redis_port: int = 6379, redis_db: int = 0):
     """
     Run the Flask development server.
     
@@ -623,9 +646,11 @@ def run_server(host: str = '127.0.0.1', port: int = 8080, debug: bool = False,
         kubeconfig_path: Path to kubeconfig file
         config_path: Path to configuration file
         url_prefix: URL prefix for all routes
-        data_dir: Directory where analytics data is stored
+        redis_host: Redis host for analytics data
+        redis_port: Redis port
+        redis_db: Redis database number
     """
-    app = create_app(kubeconfig_path, config_path, url_prefix, data_dir)
+    app = create_app(kubeconfig_path, config_path, url_prefix, redis_host, redis_port, redis_db)
     
     # Normalize prefix for display
     display_prefix = url_prefix if url_prefix else ""
@@ -634,7 +659,7 @@ def run_server(host: str = '127.0.0.1', port: int = 8080, debug: bool = False,
     print(f"📡 Server URL: http://{host}:{port}{display_prefix}")
     print(f"🔧 Debug mode: {'Enabled' if debug else 'Disabled'}")
     print(f"📋 Configuration: kubeconfig={kubeconfig_path or 'default'}, config={config_path or 'none'}")
-    print(f"📊 Analytics data: {data_dir or '/app/data'}")
+    print(f"📊 Analytics storage: Redis at {redis_host}:{redis_port} (db {redis_db})")
     if url_prefix:
         print(f"🔗 URL prefix: {url_prefix}")
     print(f"🔗 Available endpoints:")
@@ -642,6 +667,7 @@ def run_server(host: str = '127.0.0.1', port: int = 8080, debug: bool = False,
     print(f"   • http://{host}:{port}{display_prefix}/clusters - Cluster listing")
     print(f"   • http://{host}:{port}{display_prefix}/rules - Deletion rules")
     print(f"   • http://{host}:{port}{display_prefix}/analytics - Analytics dashboard")
+    print(f"   • http://{host}:{port}{display_prefix}/scheduled-tasks - CronJob status")
     print(f"   • http://{host}:{port}{display_prefix}/health - Health check")
     print(f"🛑 Press Ctrl+C to stop the server")
     
