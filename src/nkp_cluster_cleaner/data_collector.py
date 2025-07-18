@@ -116,10 +116,19 @@ class DataCollector:
             
             try:
                 print("Analyzing protection rules...")
-                protection_rule_effectiveness = self._analyze_protection_rules(excluded_clusters)
+                # Convert excluded_clusters to 3-element tuples for consistency
+                excluded_clusters_with_status = [(cluster, reason, 'excluded') for cluster, reason in excluded_clusters]
+                print(f"Converted {len(excluded_clusters_with_status)} excluded clusters, sample: {len(excluded_clusters_with_status[0]) if excluded_clusters_with_status else 0} elements")
+                protection_rule_effectiveness = self._analyze_protection_rules(excluded_clusters_with_status)
                 print(f"Protection rules analysis complete")
             except Exception as e:
                 print(f"Error in _analyze_protection_rules: {e}")
+                # Debug: let's see what we're actually working with
+                print(f"excluded_clusters type: {type(excluded_clusters)}")
+                print(f"excluded_clusters length: {len(excluded_clusters)}")
+                if excluded_clusters:
+                    print(f"Sample excluded_clusters item: {excluded_clusters[0]}")
+                    print(f"Sample excluded_clusters item length: {len(excluded_clusters[0])}")
                 raise
             
             try:
@@ -132,7 +141,9 @@ class DataCollector:
             
             try:
                 print("Analyzing deletion reasons...")
-                deletion_reasons = self._analyze_deletion_reasons(clusters_to_delete)
+                # Convert clusters_to_delete to 3-element tuples for consistency  
+                clusters_to_delete_with_status = [(cluster, reason, 'deletion') for cluster, reason in clusters_to_delete]
+                deletion_reasons = self._analyze_deletion_reasons(clusters_to_delete_with_status)
                 print(f"Deletion reasons analysis complete")
             except Exception as e:
                 print(f"Error in _analyze_deletion_reasons: {e}")
