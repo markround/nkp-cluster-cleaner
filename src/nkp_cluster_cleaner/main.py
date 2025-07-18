@@ -264,6 +264,7 @@ def serve(kubeconfig, config, host, port, debug, prefix, data_dir):
     except Exception as e:
         click.echo(f"{Fore.RED}Error starting server: {e}{Style.RESET_ALL}")
         raise click.Abort()
+
 #
 # Analytics
 #

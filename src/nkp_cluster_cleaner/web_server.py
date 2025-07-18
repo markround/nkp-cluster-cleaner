@@ -612,7 +612,7 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
 
 def run_server(host: str = '127.0.0.1', port: int = 8080, debug: bool = False,
                kubeconfig_path: Optional[str] = None, config_path: Optional[str] = None,
-               url_prefix: Optional[str] = None):
+               url_prefix: Optional[str] = None, data_dir: Optional[str] = None):
     """
     Run the Flask development server.
     
@@ -623,8 +623,9 @@ def run_server(host: str = '127.0.0.1', port: int = 8080, debug: bool = False,
         kubeconfig_path: Path to kubeconfig file
         config_path: Path to configuration file
         url_prefix: URL prefix for all routes
+        data_dir: Directory where analytics data is stored
     """
-    app = create_app(kubeconfig_path, config_path, url_prefix)
+    app = create_app(kubeconfig_path, config_path, url_prefix, data_dir)
     
     # Normalize prefix for display
     display_prefix = url_prefix if url_prefix else ""
@@ -633,14 +634,15 @@ def run_server(host: str = '127.0.0.1', port: int = 8080, debug: bool = False,
     print(f"📡 Server URL: http://{host}:{port}{display_prefix}")
     print(f"🔧 Debug mode: {'Enabled' if debug else 'Disabled'}")
     print(f"📋 Configuration: kubeconfig={kubeconfig_path or 'default'}, config={config_path or 'none'}")
+    print(f"📊 Analytics data: {data_dir or '/app/data'}")
     if url_prefix:
         print(f"🔗 URL prefix: {url_prefix}")
     print(f"🔗 Available endpoints:")
     print(f"   • http://{host}:{port}{display_prefix}/ - Dashboard")
     print(f"   • http://{host}:{port}{display_prefix}/clusters - Cluster listing")
     print(f"   • http://{host}:{port}{display_prefix}/rules - Deletion rules")
+    print(f"   • http://{host}:{port}{display_prefix}/analytics - Analytics dashboard")
     print(f"   • http://{host}:{port}{display_prefix}/health - Health check")
-    print(f"   • http://{host}:{port}{display_prefix}/api/clusters - API endpoint")
     print(f"🛑 Press Ctrl+C to stop the server")
     
     app.run(host=host, port=port, debug=debug)
