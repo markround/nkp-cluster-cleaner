@@ -2,7 +2,7 @@
 Redis-based analytics service for retrieving and processing historical cluster data.
 
 This module provides methods to query historical analytics data stored in Redis
-for use in web dashboards and reporting.
+for use in the web UI.
 """
 
 import redis

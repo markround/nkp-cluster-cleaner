@@ -1,8 +1,5 @@
 """
 Redis-based data collector for NKP Cluster Cleaner analytics.
-
-Uses Redis for zero-config, network-based storage that supports
-multiple readers/writers and horizontal scaling.
 """
 
 import redis
