@@ -8,6 +8,16 @@ A simple tool to automatically delete Nutanix NKP clusters that do not meet a sp
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| analytics.cronjob.enabled | bool | `true` | Enable periodic collection of historical data |
+| analytics.cronjob.failedJobsHistoryLimit | int | `1` | How many failed jobs to keep |
+| analytics.cronjob.schedule | string | `"@daily"` | Schedule to run the job. Uses standard Kubernetes CronJob syntax. |
+| analytics.cronjob.successfulJobsHistoryLimit | int | `3` | How many successful jobs to keep |
+| analytics.redis.db | int | `0` | Redis database number |
+| analytics.redis.hostname | string | `"valkey"` | Hostname of the Redis/Valkey instance |
+| analytics.redis.port | int | `6379` | Port of the Redis/Valkey instance |
+| analytics.valkey.enabled | bool | `true` | Deploy a Valkey service for storing historical data |
+| analytics.valkey.image | string | `"ghcr.io/valkey-io/valkey:8-alpine"` | Valkey container image to use |
+| analytics.valkey.saveEnv | string | `"900 1"` | Valkey SAVE_ENV value to specify how often to ensure data is flushed to disk |
 | app.config | string | `"excluded_namespace_patterns:\n- ^default$\nprotected_cluster_patterns:\n- .*-prod-.*\nextra_labels:\n- name: owner\n  description: Cluster owner identifier"` | Default set of exclusion rules |
 | app.kubeconfigSecretRef | string | `"kommander-self-attach-kubeconfig"` | Secret containing a valid kubeconfig for the management cluster |
 | cronjob.delete | bool | `false` | Set to true to actually delete clusters, default is to operate in "dry-run" mode |

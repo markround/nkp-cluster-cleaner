@@ -1,0 +1,74 @@
+{{- if eq .Values.analytics.valkey.enabled true }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: valkey
+  labels:
+    app: valkey
+spec:
+  serviceName: valkey
+  replicas: 1
+  selector:
+    matchLabels:
+      app: valkey
+  template:
+    metadata:
+      labels:
+        app: valkey
+    spec:
+      containers:
+      - name: valkey
+        image: ghcr.io/valkey-io/valkey:8-alpine
+        ports:
+        - containerPort: 6379
+          name: valkey
+        volumeMounts:
+        - name: valkey-data
+          mountPath: /data
+        env:
+        - name: VALKEY_SAVE
+          value: "{{ $.Values.analytics.valkey.saveEnv }}"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          tcpSocket:
+            port: 6379
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - valkey-cli
+            - ping
+          initialDelaySeconds: 5
+          periodSeconds: 5
+  volumeClaimTemplates:
+  - metadata:
+      name: valkey-data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: valkey
+  labels:
+    app: valkey
+spec:
+  ports:
+  - port: 6379
+    targetPort: 6379
+    name: valkey
+  clusterIP: None
+  selector:
+    app: valkey
+{{- end }}

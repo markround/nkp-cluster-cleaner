@@ -15,6 +15,34 @@ ingress:
     # -- If true, access to the dashboard will require logging in with an admin account. Setting to false will enable anonymous access.
     enabled: true
 
+analytics:
+  redis:
+    # -- Hostname of the Redis/Valkey instance
+    hostname: valkey
+    # -- Port of the Redis/Valkey instance
+    port: 6379
+    # -- Redis database number
+    db: 0
+
+  cronjob:
+    # -- Enable periodic collection of historical data
+    enabled: true
+    # -- Schedule to run the job. Uses standard Kubernetes CronJob syntax.
+    schedule: "@daily"
+    # -- How many failed jobs to keep
+    failedJobsHistoryLimit: 1
+    # -- How many successful jobs to keep
+    successfulJobsHistoryLimit: 3
+
+  valkey:
+    # -- Deploy a Valkey service for storing historical data
+    enabled: true
+    # -- Valkey container image to use
+    image: ghcr.io/valkey-io/valkey:8-alpine
+    # -- Valkey SAVE_ENV value to specify how often to ensure data is flushed to disk
+    saveEnv: "900 1"
+
+
 cronjob:
   # -- Enable scheduled deletion CronJobs
   enabled: true
