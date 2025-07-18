@@ -46,9 +46,97 @@ class DataCollector:
         
         try:
             # Get current cluster state
+            print("Getting cluster data...")
             clusters_to_delete, excluded_clusters = self.cluster_manager.get_clusters_with_exclusions()
-            all_clusters = [(cluster, reason, 'deletion') for cluster, reason in clusters_to_delete] + \
-                          [(cluster, reason, 'excluded') for cluster, reason in excluded_clusters]
+            print(f"Found {len(clusters_to_delete)} clusters for deletion, {len(excluded_clusters)} excluded")
+            
+            # Convert to consistent format with status indicator
+            print("Converting to consistent format...")
+            all_clusters = []
+            for cluster, reason in clusters_to_delete:
+                all_clusters.append((cluster, reason, 'deletion'))
+            for cluster, reason in excluded_clusters:
+                all_clusters.append((cluster, reason, 'excluded'))
+            
+            print(f"Total clusters processed: {len(all_clusters)}")
+            
+            # Test that our tuples are correctly formatted
+            if all_clusters:
+                print(f"Sample tuple structure: {len(all_clusters[0])} elements")
+            
+            print("Building snapshot data...")
+            
+            try:
+                print("Getting unique namespaces...")
+                unique_namespaces = self._get_unique_namespaces(all_clusters)
+                print(f"Found {len(unique_namespaces)} namespaces")
+            except Exception as e:
+                print(f"Error in _get_unique_namespaces: {e}")
+                raise
+            
+            try:
+                print("Grouping by namespace...")
+                clusters_by_namespace = self._group_by_namespace(all_clusters)
+                print(f"Namespace grouping complete")
+            except Exception as e:
+                print(f"Error in _group_by_namespace: {e}")
+                raise
+            
+            try:
+                print("Grouping by owner...")
+                clusters_by_owner = self._group_by_owner(all_clusters)
+                print(f"Owner grouping complete")
+            except Exception as e:
+                print(f"Error in _group_by_owner: {e}")
+                raise
+            
+            try:
+                print("Grouping by status...")
+                clusters_by_status = self._group_by_status(all_clusters)
+                print(f"Status grouping complete")
+            except Exception as e:
+                print(f"Error in _group_by_status: {e}")
+                raise
+            
+            try:
+                print("Analyzing expiration patterns...")
+                expiration_analysis = self._analyze_expiration_patterns(all_clusters)
+                print(f"Expiration analysis complete")
+            except Exception as e:
+                print(f"Error in _analyze_expiration_patterns: {e}")
+                raise
+            
+            try:
+                print("Calculating label compliance...")
+                label_compliance = self._calculate_label_compliance(all_clusters)
+                print(f"Label compliance complete")
+            except Exception as e:
+                print(f"Error in _calculate_label_compliance: {e}")
+                raise
+            
+            try:
+                print("Analyzing protection rules...")
+                protection_rule_effectiveness = self._analyze_protection_rules(excluded_clusters)
+                print(f"Protection rules analysis complete")
+            except Exception as e:
+                print(f"Error in _analyze_protection_rules: {e}")
+                raise
+            
+            try:
+                print("Calculating age distribution...")
+                cluster_age_distribution = self._calculate_age_distribution(all_clusters)
+                print(f"Age distribution complete")
+            except Exception as e:
+                print(f"Error in _calculate_age_distribution: {e}")
+                raise
+            
+            try:
+                print("Analyzing deletion reasons...")
+                deletion_reasons = self._analyze_deletion_reasons(clusters_to_delete)
+                print(f"Deletion reasons analysis complete")
+            except Exception as e:
+                print(f"Error in _analyze_deletion_reasons: {e}")
+                raise
             
             # Build comprehensive snapshot
             snapshot = {
@@ -56,7 +144,7 @@ class DataCollector:
                 'collection_metadata': {
                     'tool_version': self._get_tool_version(),
                     'total_clusters_found': len(all_clusters),
-                    'namespaces_scanned': len(self._get_unique_namespaces(all_clusters)),
+                    'namespaces_scanned': len(unique_namespaces),
                     'nkp_version': self.cluster_manager.get_nkp_version()
                 },
                 'cluster_counts': {
@@ -64,24 +152,25 @@ class DataCollector:
                     'protected': len(excluded_clusters),
                     'total': len(all_clusters)
                 },
-                'clusters_by_namespace': self._group_by_namespace(all_clusters),
-                'clusters_by_owner': self._group_by_owner(all_clusters),
-                'clusters_by_status': self._group_by_status(all_clusters),
-                'expiration_analysis': self._analyze_expiration_patterns(all_clusters),
-                'label_compliance': self._calculate_label_compliance(all_clusters),
-                'protection_rule_effectiveness': self._analyze_protection_rules(excluded_clusters),
-                'cluster_age_distribution': self._calculate_age_distribution(all_clusters),
-                'deletion_reasons': self._analyze_deletion_reasons(clusters_to_delete)
+                'clusters_by_namespace': clusters_by_namespace,
+                'clusters_by_owner': clusters_by_owner,
+                'clusters_by_status': clusters_by_status,
+                'expiration_analysis': expiration_analysis,
+                'label_compliance': label_compliance,
+                'protection_rule_effectiveness': protection_rule_effectiveness,
+                'cluster_age_distribution': cluster_age_distribution,
+                'deletion_reasons': deletion_reasons
             }
             
             # Store the snapshot
+            print("Storing snapshot...")
             self._store_snapshot(snapshot)
             
             print(f"Analytics snapshot collected successfully:")
             print(f"  - Total clusters: {len(all_clusters)}")
             print(f"  - For deletion: {len(clusters_to_delete)}")
             print(f"  - Protected: {len(excluded_clusters)}")
-            print(f"  - Namespaces: {len(self._get_unique_namespaces(all_clusters))}")
+            print(f"  - Namespaces: {len(unique_namespaces)}")
             
             return snapshot
             
@@ -152,7 +241,7 @@ class DataCollector:
     def _get_unique_namespaces(self, all_clusters: List[Tuple]) -> set:
         """Get set of unique namespaces from cluster data."""
         namespaces = set()
-        for cluster_info, _, _ in all_clusters:
+        for cluster_info, reason, status in all_clusters:
             namespace = cluster_info.get('capi_cluster_namespace')
             if namespace:
                 namespaces.add(namespace)
@@ -170,7 +259,7 @@ class DataCollector:
         """
         namespace_data = defaultdict(lambda: {'deletion': 0, 'excluded': 0, 'total': 0})
         
-        for cluster_info, _, status in all_clusters:
+        for cluster_info, reason, status in all_clusters:
             namespace = cluster_info.get('capi_cluster_namespace', 'unknown')
             namespace_data[namespace][status] += 1
             namespace_data[namespace]['total'] += 1
@@ -189,7 +278,7 @@ class DataCollector:
         """
         owner_data = defaultdict(lambda: {'deletion': 0, 'excluded': 0, 'total': 0})
         
-        for cluster_info, _, status in all_clusters:
+        for cluster_info, reason, status in all_clusters:
             labels = cluster_info.get('labels', {})
             owner = labels.get('owner', 'no-owner')
             owner_data[owner][status] += 1
@@ -209,7 +298,7 @@ class DataCollector:
         """
         status_counts = Counter()
         
-        for _, _, status in all_clusters:
+        for cluster_info, reason, status in all_clusters:
             status_counts[status] += 1
         
         return dict(status_counts)
@@ -291,7 +380,7 @@ class DataCollector:
         label_stats = {}
         for label_name in required_labels:
             present_count = 0
-            for cluster_info, _, _ in all_clusters:
+            for cluster_info, reason, status in all_clusters:
                 labels = cluster_info.get('labels', {})
                 if label_name in labels and labels[label_name]:
                     present_count += 1
@@ -304,7 +393,7 @@ class DataCollector:
         
         # Overall compliance (all required labels present)
         fully_compliant = 0
-        for cluster_info, _, _ in all_clusters:
+        for cluster_info, reason, status in all_clusters:
             labels = cluster_info.get('labels', {})
             if all(label_name in labels and labels[label_name] for label_name in required_labels):
                 fully_compliant += 1
@@ -331,7 +420,7 @@ class DataCollector:
         """
         protection_reasons = Counter()
         
-        for _, reason, _ in excluded_clusters:
+        for cluster_info, reason, status in excluded_clusters:
             # Categorize protection reasons
             reason_lower = reason.lower()
             if 'management cluster' in reason_lower:
@@ -370,7 +459,7 @@ class DataCollector:
         
         now = datetime.now()
         
-        for cluster_info, _, _ in all_clusters:
+        for cluster_info, reason, status in all_clusters:
             kommander_cluster = cluster_info.get('kommander_cluster', {})
             metadata = kommander_cluster.get('metadata', {})
             creation_timestamp = metadata.get('creationTimestamp')
@@ -410,14 +499,14 @@ class DataCollector:
         Analyze the reasons why clusters are marked for deletion.
         
         Args:
-            clusters_to_delete: List of (cluster_info, reason) tuples
+            clusters_to_delete: List of (cluster_info, reason, status) tuples
             
         Returns:
             Dictionary with deletion reason counts
         """
         deletion_reasons = Counter()
         
-        for _, reason in clusters_to_delete:
+        for cluster_info, reason, status in clusters_to_delete:
             reason_lower = reason.lower()
             if 'missing' in reason_lower and 'expires' in reason_lower:
                 deletion_reasons['Missing Expires Label'] += 1
