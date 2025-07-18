@@ -16,7 +16,7 @@ import nkp_cluster_cleaner
 __version__ = nkp_cluster_cleaner.__version__
 
 def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str] = None, 
-               url_prefix: Optional[str] = None) -> Flask:
+               url_prefix: Optional[str] = None, data_dir: Optional[str] = None) -> Flask:
     """
     Create and configure the Flask application.
     
@@ -24,6 +24,7 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
         kubeconfig_path: Path to kubeconfig file
         config_path: Path to configuration file
         url_prefix: URL prefix for all routes (e.g., '/foo')
+        data_dir: Directory where analytics data is stored
         
     Returns:
         Flask application instance
@@ -36,6 +37,7 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
     # Store configuration in app context
     app.config['KUBECONFIG_PATH'] = kubeconfig_path
     app.config['CONFIG_PATH'] = config_path
+    app.config['DATA_DIR'] = data_dir or '/app/data'
     
     # Normalize URL prefix
     if url_prefix:

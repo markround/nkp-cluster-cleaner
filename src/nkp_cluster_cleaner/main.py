@@ -241,7 +241,12 @@ def generate_config(output_file):
     default='',
     help='URL prefix for all routes (e.g., /foo for /foo/clusters)'
 )
-def serve(kubeconfig, config, host, port, debug, prefix):
+@click.option(
+    '--data-dir',
+    default='/app/data',
+    help='Directory where analytics data is stored (default: /app/data)'
+)
+def serve(kubeconfig, config, host, port, debug, prefix, data_dir):
     """Start the web server for the cluster cleaner UI."""
     try:
         from .web_server import run_server
@@ -251,7 +256,8 @@ def serve(kubeconfig, config, host, port, debug, prefix):
             debug=debug,
             kubeconfig_path=kubeconfig,
             config_path=config,
-            url_prefix=prefix
+            url_prefix=prefix,
+            data_dir=data_dir
         )
     except KeyboardInterrupt:
         click.echo(f"\n{Fore.YELLOW}Server stopped by user.{Style.RESET_ALL}")
