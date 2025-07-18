@@ -8,6 +8,7 @@ from colorama import init, Fore, Style
 from tabulate import tabulate
 from .cluster_manager import ClusterManager
 from .config import ConfigManager
+from .data_collector import DataCollector
 
 # Initialize colorama for cross-platform colored output
 init()
@@ -258,5 +259,53 @@ def serve(kubeconfig, config, host, port, debug, prefix):
         click.echo(f"{Fore.RED}Error starting server: {e}{Style.RESET_ALL}")
         raise click.Abort()
 
+@cli.command()
+@common_options
+@click.option(
+    '--data-dir',
+    default='/app/data',
+    help='Directory to store analytics data (default: /app/data)'
+)
+@click.option(
+    '--cleanup',
+    is_flag=True,
+    help='Clean up old analytics files (older than 90 days)'
+)
+def collect_analytics(kubeconfig, config, data_dir, cleanup):
+    """Collect analytics snapshot for historical tracking and reporting."""
+    try:
+        # Initialize configuration and data collector
+        config_manager = ConfigManager(config) if config else ConfigManager()
+        data_collector = DataCollector(kubeconfig, config_manager, data_dir)
+        
+        if cleanup:
+            click.echo(f"{Fore.YELLOW}Cleaning up old analytics files...{Style.RESET_ALL}")
+            data_collector._cleanup_old_files(days_to_keep=90)
+            click.echo(f"{Fore.GREEN}Cleanup completed.{Style.RESET_ALL}")
+            return
+        
+        # Collect snapshot
+        click.echo(f"{Fore.BLUE}Collecting analytics snapshot...{Style.RESET_ALL}")
+        snapshot = data_collector.collect_snapshot()
+        
+        # Display summary
+        click.echo(f"{Fore.GREEN}Analytics snapshot collected successfully!{Style.RESET_ALL}")
+        click.echo(f"{Fore.CYAN}Summary:{Style.RESET_ALL}")
+        click.echo(f"  • Total clusters found: {snapshot['collection_metadata']['total_clusters_found']}")
+        click.echo(f"  • Clusters for deletion: {snapshot['cluster_counts']['for_deletion']}")
+        click.echo(f"  • Protected clusters: {snapshot['cluster_counts']['protected']}")
+        click.echo(f"  • Namespaces scanned: {snapshot['collection_metadata']['namespaces_scanned']}")
+        click.echo(f"  • Data stored in: {data_dir}")
+        
+        # Show compliance summary if configured
+        if snapshot['label_compliance']['required_labels']:
+            compliance_rate = snapshot['label_compliance']['overall_compliance_rate']
+            click.echo(f"  • Label compliance: {compliance_rate:.1f}%")
+        
+    except Exception as e:
+        click.echo(f"{Fore.RED}Error collecting analytics: {e}{Style.RESET_ALL}")
+        raise click.Abort()
+
 if __name__ == '__main__':
     cli()
+
