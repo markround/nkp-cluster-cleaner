@@ -258,7 +258,9 @@ def serve(kubeconfig, config, host, port, debug, prefix):
     except Exception as e:
         click.echo(f"{Fore.RED}Error starting server: {e}{Style.RESET_ALL}")
         raise click.Abort()
-
+#
+# Analytics
+#
 @cli.command()
 @common_options
 @click.option(
@@ -271,12 +273,17 @@ def serve(kubeconfig, config, host, port, debug, prefix):
     is_flag=True,
     help='Clean up old analytics files (older than 90 days)'
 )
-def collect_analytics(kubeconfig, config, data_dir, cleanup):
+@click.option(
+    '--debug',
+    is_flag=True,
+    help='Enable debug output during collection'
+)
+def collect_analytics(kubeconfig, config, data_dir, cleanup, debug):
     """Collect analytics snapshot for historical tracking and reporting."""
     try:
         # Initialize configuration and data collector
         config_manager = ConfigManager(config) if config else ConfigManager()
-        data_collector = DataCollector(kubeconfig, config_manager, data_dir)
+        data_collector = DataCollector(kubeconfig, config_manager, data_dir, debug)
         
         if cleanup:
             click.echo(f"{Fore.YELLOW}Cleaning up old analytics files...{Style.RESET_ALL}")
