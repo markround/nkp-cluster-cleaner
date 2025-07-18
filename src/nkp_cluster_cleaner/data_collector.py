@@ -223,14 +223,18 @@ class DataCollector:
         # Clean up old files (keep last 90 days)
         self._cleanup_old_files(days_to_keep=90)
     
-    def _cleanup_old_files(self, days_to_keep: int = 90):
+    def _cleanup_old_files(self, days_to_keep: int = 90) -> int:
         """
         Remove analytics files older than specified days.
         
         Args:
             days_to_keep: Number of days of data to retain
+            
+        Returns:
+            Number of files that were cleaned up
         """
         cutoff_date = datetime.now() - timedelta(days=days_to_keep)
+        cleaned_count = 0
         
         for file_path in self.data_dir.glob("analytics_*.json"):
             try:
@@ -240,10 +244,13 @@ class DataCollector:
                 
                 if file_date < cutoff_date:
                     file_path.unlink()
-                    print(f"Removed old analytics file: {file_path}")
+                    self._debug_print(f"Removed old analytics file: {file_path}")
+                    cleaned_count += 1
                     
             except (ValueError, OSError) as e:
                 print(f"Warning: Could not process file {file_path}: {e}")
+        
+        return cleaned_count
     
     def _debug_print(self, message: str):
         """Print debug message if debug mode is enabled."""
