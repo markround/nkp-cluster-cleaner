@@ -1,10 +1,10 @@
 # nkp-cluster-cleaner
 
 <p float="left">
-  <img src="/docs/clusters.png" width="200">&nbsp; &nbsp; 
-  <img src="/docs/rules.png" width="200">&nbsp; &nbsp; 
-  <img src="/docs/cron.png" width="200">&nbsp; &nbsp; 
-  <img src="/docs/analytics.png" width="200">
+  <img src="/docs/clusters.png" width="180">&nbsp; &nbsp; 
+  <img src="/docs/rules.png" width="180">&nbsp; &nbsp; 
+  <img src="/docs/cron.png" width="180">&nbsp; &nbsp; 
+  <img src="/docs/analytics.png" width="180">
 </p>
    
 A simple CLI tool (with optional web interface) to automatically delete Nutanix NKP clusters that do not meet a specific criteria. Useful for cleaning up resources in a lab/demo environment, similar to common "cloud cleaner" tools. Also available as a [Helm Chart](./charts/nkp-cluster-cleaner/README.md) and [NKP Catalog Application](./docs/nkp.md).
