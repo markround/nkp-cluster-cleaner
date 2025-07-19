@@ -17,7 +17,7 @@ A simple CLI tool (with optional web interface) to automatically delete Nutanix 
 _Disclaimer: This is a personal project and is in no way supported/endorsed by, or otherwise connected to Nutanix_
 
 ## NKP Catalog Application
-See the documentation at [docs/nkp.md](./docs/nkp.md) for details on how to deploy the application as a NKP catalog application, running inside the NKP Management Cluster itself. This is the recommended way to run the application as it includes the scheduled tasks and web interface with no further configuration needed. 
+See the documentation at [docs/nkp.md](./docs/nkp.md) for details on how to deploy the application as a NKP catalog application, running inside the NKP Management Cluster itself. This is the recommended way to run the application as it includes the scheduled tasks, web interface and analytics with no further configuration needed. 
 
 ## Strategy
 - Any cluster without an `expires` label will be deleted.
@@ -137,17 +137,60 @@ Note that the default for both the CLI tool and the NKP Application is to run in
 To actually delete the clusters you must pass in the `--delete` flag, or explicitly enable the Helm value in the NKP application.
 
 ### Analytics
-TODO
+The NKP Cluster Cleaner includes an analytics dashboard that provides historical tracking, trends analysis, and reporting capabilities. It uses a Redis-based data collector that creates periodic snapshots of cluster state. 
 
+Data is collected by running `nkp-cluster-cleaner collect-analytics`. If you deploy the NKP application into your cluster, it will automatically configure a CronJob to collect data each day for you, along with a dedicated Valkey server. 
+
+Historical data is stored with a configurable retention period. The default is to store data for 90 days, but you can change this by passing the `--keep-days` argument to the `collect-analytics` command. 
+
+If you want to make use of the analytics service, you must provide connection details to a Redis/Valkey server when running the `serve` or `collect-analytics` commands. They both accept the following arguments:
+
+| Argument | Type | Description |
+|----------|------|-------------|
+|`--redis-host` | TEXT     | Redis host (default: redis) |
+|`--redis-port` | INTEGER  | Redis port (default: 6379)  |
+|`--redis-db`   | INTEGER  | Redis database number (default: 0) |
+
+If a server is not available then you will simply see a connection error in the "Analytics" page of the Web UI, it will not affect the core operation of the application.
+
+#### Reports
+The analytics dashboard (/analytics) provides the following visualizations and reports:
+
+- Summary Cards
+  - Clusters for Deletion: Current count with trend indicator (increasing/decreasing/stable)
+  - Protected Clusters: Number of clusters currently excluded from deletion
+  - Label Compliance: Overall compliance rate with trending direction
+  - Average Daily Deletions: Rolling 7-day average of deletion activity
+
+- Charts and Reports
+  - Cluster Trends (30 Days)
+  - Label Compliance Trends 
+  - Deletion Activity Analysis
+  - Namespace Activity
+  - Owner Distribution
+  - Expiration Analysis
 
 ## Docker Usage
 ### Tags
-`ghcr.io/markround/nkp-cluster-cleaner:<TAG>`
-
-- Branch (e.g. `main`, `dev`, etc.)
-- Release tag (e.g. `0.7.1`) 
-- Latest released version (e.g. `latest`)
+- The container image can be pulled from GitHub Container Registry: `ghcr.io/markround/nkp-cluster-cleaner:<TAG>`
+- Available tags are:
+  - Branch (e.g. `main`, `feature/xxx`, etc.)
+  - Release tag (e.g. `0.7.1`) 
+  - Latest released version (e.g. `latest`)
 - Full list on the [packages page](https://github.com/markround/nkp-cluster-cleaner/pkgs/container/nkp-cluster-cleaner)
+
+### General
+The `ENTRYPOINT` for the container is the application itself, so you only need to pass in the arguments. Any additional configuration files can be provided as volume mounts. For example, to list clusters with a custom configuration file and your default `kubeconfig` you'd run something like:
+
+```bash
+docker run --rm \
+  -v ~/.kube/config:/app/config/kubeconfig:ro \
+  -v ./my-config.yaml:/app/config/config.yaml:ro \
+  ghcr.io/markround/nkp-cluster-cleaner:latest \
+  list-clusters \
+  --kubeconfig /app/config/kubeconfig \
+  --config /app/config/config.yaml
+```
 
 
 ## Installation / Development
