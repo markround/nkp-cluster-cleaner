@@ -33,9 +33,9 @@ spec:
         - --redis-host
         - {{ $.Values.analytics.redis.hostname }}
         - --redis-port
-        - {{ $.Values.analytics.redis.port }}
+        - "{{ $.Values.analytics.redis.port }}"
         - --redis-db
-        - {{ $.Values.analytics.redis.db }}
+        - "{{ $.Values.analytics.redis.db }}"
         ports:
         - containerPort: 8080
         volumeMounts:

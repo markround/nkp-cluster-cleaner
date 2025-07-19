@@ -2,19 +2,19 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: valkey
+  name: nkp-cluster-cleaner-valkey
   labels:
-    app: valkey
+    app: nkp-cluster-cleaner-valkey
 spec:
-  serviceName: valkey
+  serviceName: nkp-cluster-cleaner-valkey
   replicas: 1
   selector:
     matchLabels:
-      app: valkey
+      app: nkp-cluster-cleaner-valkey
   template:
     metadata:
       labels:
-        app: valkey
+        app: nkp-cluster-cleaner-valkey
     spec:
       containers:
       - name: valkey
@@ -23,7 +23,7 @@ spec:
         - containerPort: 6379
           name: valkey
         volumeMounts:
-        - name: valkey-data
+        - name: nkp-cluster-cleaner-valkey-data
           mountPath: /data
         env:
         - name: VALKEY_SAVE
@@ -49,7 +49,7 @@ spec:
           periodSeconds: 5
   volumeClaimTemplates:
   - metadata:
-      name: valkey-data
+      name: nkp-cluster-cleaner-valkey-data
     spec:
       accessModes:
       - ReadWriteOnce
@@ -60,9 +60,9 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: valkey
+  name: nkp-cluster-cleaner-valkey
   labels:
-    app: valkey
+    app: nkp-cluster-cleaner-valkey
 spec:
   ports:
   - port: 6379
@@ -70,5 +70,5 @@ spec:
     name: valkey
   clusterIP: None
   selector:
-    app: valkey
+    app: nkp-cluster-cleaner-valkey
 {{- end }}

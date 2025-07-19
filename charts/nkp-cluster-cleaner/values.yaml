@@ -18,7 +18,7 @@ ingress:
 analytics:
   redis:
     # -- Hostname of the Redis/Valkey instance
-    hostname: valkey
+    hostname: nkp-cluster-cleaner-valkey
     # -- Port of the Redis/Valkey instance
     port: 6379
     # -- Redis database number
