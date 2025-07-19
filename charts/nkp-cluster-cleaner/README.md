@@ -1,6 +1,6 @@
 # nkp-cluster-cleaner
 
-![Version: 0.7.1](https://img.shields.io/badge/Version-0.7.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.7.1](https://img.shields.io/badge/AppVersion-0.7.1-informational?style=flat-square)
+![Version: 0.8.0](https://img.shields.io/badge/Version-0.8.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.8.0](https://img.shields.io/badge/AppVersion-0.8.0-informational?style=flat-square)
 
 A simple tool to automatically delete Nutanix NKP clusters that do not meet a specific criteria
 
@@ -10,7 +10,7 @@ A simple tool to automatically delete Nutanix NKP clusters that do not meet a sp
 |-----|------|---------|-------------|
 | analytics.cronjob.enabled | bool | `true` | Enable periodic collection of historical data |
 | analytics.cronjob.failedJobsHistoryLimit | int | `1` | How many failed jobs to keep |
-| analytics.cronjob.schedule | string | `"@daily"` | Schedule to run the job. Uses standard Kubernetes CronJob syntax. |
+| analytics.cronjob.schedule | string | `"@hourly"` | Schedule to run the job. Uses standard Kubernetes CronJob syntax. |
 | analytics.cronjob.successfulJobsHistoryLimit | int | `3` | How many successful jobs to keep |
 | analytics.redis.db | int | `0` | Redis database number |
 | analytics.redis.hostname | string | `"nkp-cluster-cleaner-valkey"` | Hostname of the Redis/Valkey instance |
@@ -25,7 +25,7 @@ A simple tool to automatically delete Nutanix NKP clusters that do not meet a sp
 | cronjob.failedJobsHistoryLimit | int | `1` | How many failed jobs to keep |
 | cronjob.schedule | string | `"@daily"` | Schedule to run the job. Uses standard Kubernetes CronJob syntax. |
 | cronjob.successfulJobsHistoryLimit | int | `3` | How many successful jobs to keep |
-| deployment.image | string | `"ghcr.io/markround/nkp-cluster-cleaner:0.7.1"` | Container image to use |
+| deployment.image | string | `"ghcr.io/markround/nkp-cluster-cleaner:0.8.0"` | Container image to use |
 | deployment.replicas | int | `1` | Number of replicas to deploy |
 | ingress.authentication.enabled | bool | `true` | If true, access to the dashboard will require logging in with an admin account. Setting to false will enable anonymous access. |
 | ingress.class | string | `"kommander-traefik"` | Ingress class to use |

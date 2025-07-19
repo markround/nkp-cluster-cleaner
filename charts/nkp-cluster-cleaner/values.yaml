@@ -1,6 +1,6 @@
 deployment:
   # -- Container image to use
-  image: ghcr.io/markround/nkp-cluster-cleaner:0.7.1
+  image: ghcr.io/markround/nkp-cluster-cleaner:0.8.0
   # -- Number of replicas to deploy
   replicas: 1
 
@@ -28,7 +28,7 @@ analytics:
     # -- Enable periodic collection of historical data
     enabled: true
     # -- Schedule to run the job. Uses standard Kubernetes CronJob syntax.
-    schedule: "@daily"
+    schedule: "@hourly"
     # -- How many failed jobs to keep
     failedJobsHistoryLimit: 1
     # -- How many successful jobs to keep
