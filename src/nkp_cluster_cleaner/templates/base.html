@@ -20,9 +20,14 @@
         }
         
         .app-container {
-            display: flex;
-            height: 100vh;
-        }
+          display: flex;
+          height: 100vh;
+          /* Increased density view */
+          transform: scale(0.9);
+          transform-origin: top left;
+          width: 111.11%; /* 100% / 0.9 to maintain full width */
+          height: 111.11%; /* 100% / 0.9 to maintain full height */
+        } 
         
         /* Sidebar Styles */
         .sidebar {

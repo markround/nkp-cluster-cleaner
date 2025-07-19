@@ -175,7 +175,7 @@ The analytics dashboard (/analytics) provides the following visualizations and r
 - The container image can be pulled from GitHub Container Registry: `ghcr.io/markround/nkp-cluster-cleaner:<TAG>`
 - Available tags are:
   - Branch (e.g. `main`, `feature/xxx`, etc.)
-  - Release tag (e.g. `0.8.0`) 
+  - Release tag (e.g. `0.8.1`) 
   - Latest released version (e.g. `latest`)
 - Full list on the [packages page](https://github.com/markround/nkp-cluster-cleaner/pkgs/container/nkp-cluster-cleaner)
 
