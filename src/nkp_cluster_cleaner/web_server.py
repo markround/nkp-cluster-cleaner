@@ -64,6 +64,9 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
             path = '/' + path
         return url_prefix + path
     
+    #
+    # Helpers
+    #
     def get_cluster_manager():
         """Helper to create cluster manager with current config."""
         config_manager = ConfigManager(app.config['CONFIG_PATH']) if app.config['CONFIG_PATH'] else ConfigManager()
@@ -82,6 +85,10 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
             redis_db=app.config['REDIS_DB']
         )
 
+
+    #
+    # Routes
+    #
     @app.route(url_prefix + '/')
     def index():
         """Main page showing cluster information."""

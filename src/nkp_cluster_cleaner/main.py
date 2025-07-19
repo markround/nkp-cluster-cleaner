@@ -36,11 +36,15 @@ def namespace_option(f):
     )(f)
 
 @click.group()
+# Built-in function with click!
 @click.version_option()
 def cli():
     """NKP Cluster Cleaner - Delete CAPI clusters based on label criteria."""
     pass
 
+#
+# List
+#
 @cli.command()
 @common_options
 @namespace_option
@@ -117,6 +121,9 @@ def list_clusters(kubeconfig, config, namespace, no_exclusions):
         click.echo(f"{Fore.RED}Error: {e}{Style.RESET_ALL}")
         raise click.Abort()
 
+#
+# Delete
+#
 @cli.command()
 @common_options
 @namespace_option
@@ -211,6 +218,9 @@ def delete_clusters(kubeconfig, config, namespace, delete):
         click.echo(f"{Fore.RED}Error: {e}{Style.RESET_ALL}")
         raise click.Abort()
 
+#
+# Example config
+#
 @cli.command()
 @click.argument('output_file', type=click.Path())
 def generate_config(output_file):
@@ -219,6 +229,9 @@ def generate_config(output_file):
     config_manager.save_example_config(output_file)
     click.echo(f"{Fore.GREEN}Example configuration saved to {output_file}{Style.RESET_ALL}")
 
+#
+# Web server
+#
 @cli.command()
 @common_options
 @click.option(

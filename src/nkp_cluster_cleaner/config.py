@@ -6,8 +6,9 @@ import yaml
 import re
 from typing import Dict, List, Optional
 from dataclasses import dataclass, field
+# Because dumping YAML with reserved characters like [] is difficult otherwise
 import ruamel.yaml
-from ruamel.yaml.scalarstring import DoubleQuotedScalarString, SingleQuotedScalarString
+from ruamel.yaml.scalarstring import DoubleQuotedScalarString
 
 @dataclass
 class ExtraLabel:
@@ -26,6 +27,8 @@ class ExtraLabel:
         Returns:
             True if value matches the pattern (or no pattern specified)
         """
+        # This allows us to not specify a regex and just accept any value. 
+        # Useful as a shortcut for e.g. 'owner' labels etc.
         if not self.regex:
             return True
         
