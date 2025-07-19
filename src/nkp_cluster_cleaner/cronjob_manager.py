@@ -1,5 +1,5 @@
 """
-CronJob Manager module for tracking scheduled cluster cleanup tasks.
+CronJob Manager module for tracking scheduled cluster tasks.
 """
 
 from kubernetes import client

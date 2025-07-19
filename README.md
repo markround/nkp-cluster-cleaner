@@ -16,6 +16,9 @@ A simple CLI tool (with optional web interface) to automatically delete Nutanix 
 
 _Disclaimer: This is a personal project and is in no way supported/endorsed by, or otherwise connected to Nutanix_
 
+## NKP Catalog Application
+See the documentation at [docs/nkp.md](./docs/nkp.md) for details on how to deploy the application as a NKP catalog application, running inside the NKP Management Cluster itself. This is the recommended way to run the application as it includes the scheduled tasks, web interface and analytics with no further configuration needed. 
+
 ## Strategy
 - Any cluster without an `expires` label will be deleted.
 - Any cluster that is older than the value specified in the `expires` label will be deleted. 
@@ -29,7 +32,7 @@ _Disclaimer: This is a personal project and is in no way supported/endorsed by, 
   - For example, the default [Helm Chart](./charts/nkp-cluster-cleaner/README.md) configuration defines a required `owner` label. Any cluster without an `owner` label will be deleted.
 
 ### Protected clusters
-By default the management cluster is excluded from deletion, and a configuration file can be provided that accepts a list of regex-based namespaces or cluster names that will be excluded. For example:
+The management cluster is always excluded from deletion, and a configuration file can be provided that accepts a list of regex-based namespaces or cluster names that will be excluded. For example:
 
 ```yaml
 excluded_namespace_patterns:
@@ -93,16 +96,19 @@ Options:
   --help     Show this message and exit.
 
 Commands:
-  delete-clusters  Delete CAPI clusters that match deletion criteria.
-  generate-config  Generate an example configuration file.
-  list-clusters    List CAPI clusters that match deletion criteria.
-  serve            Start the web server for the cluster cleaner UI.
+  collect-analytics  Collect analytics snapshot for historical tracking...
+  delete-clusters    Delete CAPI clusters that match deletion criteria.
+  generate-config    Generate an example configuration file.
+  list-clusters      List CAPI clusters that match deletion criteria.
+  serve              Start the web server for the cluster cleaner UI.
 ```
 
-You must pass in a valid `kubeconfig` context with admin privileges to the NKP management cluster. This can be done by e.g. setting the `KUBECONFIG` environment variable or using the `--kubeconfig` parameter to commands. 
+- You must pass in a valid `kubeconfig` context with admin privileges to the NKP management cluster. This can be done by e.g. setting the `KUBECONFIG` environment variable or using the `--kubeconfig` parameter to commands. 
+
+- To pass in a custom configuration file, use the `--config /path/to/config.yaml` argument to any command. A sample configuration file can be created with `nkp-cluster-cleaner generate-config /path/to/config.yaml`.
 
 ### Web interface
-There is a simple read-only web interface that displays the cluster deletion status, protection rules and general configuration. Start the built-in Flask-based webserver with the `serve` command that takes the usual arguments to specify port and bind host etc:
+There is a bundled web interface that displays the cluster deletion status, protection rules, analytics and general configuration. Start the built-in Flask-based webserver with the `serve` command that takes the usual arguments to specify port and bind host etc:
 
 ```
 Usage: nkp-cluster-cleaner serve [OPTIONS]
@@ -110,135 +116,72 @@ Usage: nkp-cluster-cleaner serve [OPTIONS]
   Start the web server for the cluster cleaner UI.
 
 Options:
-  --config PATH      Path to configuration file for protection rules
-  --kubeconfig PATH  Path to kubeconfig file (default: ~/.kube/config or
-                     $KUBECONFIG)
-  --host TEXT        Host to bind to (default: 127.0.0.1)
-  --port INTEGER     Port to bind to (default: 8080)
-  --debug            Enable debug mode
-  --prefix TEXT      URL prefix for all routes (e.g., /foo for /foo/clusters)
-  --help             Show this message and exit.
+  --config PATH         Path to configuration file for protection rules
+  --kubeconfig PATH     Path to kubeconfig file (default: ~/.kube/config or
+                        $KUBECONFIG)
+  --host TEXT           Host to bind to (default: 127.0.0.1)
+  --port INTEGER        Port to bind to (default: 8080)
+  --debug               Enable debug mode
+  --prefix TEXT         URL prefix for all routes (e.g., /foo for
+                        /foo/clusters)
+  --redis-host TEXT     Redis host for analytics data (default: redis)
+  --redis-port INTEGER  Redis port (default: 6379)
+  --redis-db INTEGER    Redis database number (default: 0)
+  --help                Show this message and exit.
 ```
 
-#### NKP Catalog Application
-See the documentation at [docs/nkp.md](./docs/nkp.md) for details on how to deploy the web interface as a NKP catalog application, running inside the NKP Management Cluster itself.
 
-### list-clusters
-`list-clusters` - Show a list of clusters that would be deleted. Optional `--namespace` can be passed in to limit the scan to a particular namespace (e.g. a specific Kommander workspace):
+### Deletion Of Clusters
+Note that the default for both the CLI tool and the NKP Application is to run in "dry-run" mode, and will just show what _would_ be deleted.
 
-```
-$ nkp-cluster-cleaner list-clusters
-Listing CAPI clusters for deletion across all namespaces...
+To actually delete the clusters you must pass in the `--delete` flag to the `delete-clusters` command, or explicitly enable the Helm value in the NKP application.
 
-Found 2 clusters for deletion:
-+----------------+--------------------------+---------+-----------+-----------------------+
-| Cluster Name   | Namespace                | Owner   | Expires   | Reason                |
-+================+==========================+=========+===========+=======================+
-| ahv-nkp-01     | hybrid-cloud-dh5nj-lvdq7 | N/A     | N/A       | Missing 'owner' label |
-+----------------+--------------------------+---------+-----------+-----------------------+
-| ndk-local      | ndk-test-8jq94-wg7st     | N/A     | N/A       | Missing 'owner' label |
-+----------------+--------------------------+---------+-----------+-----------------------+
+### Analytics
+The NKP Cluster Cleaner includes an analytics dashboard that provides historical tracking, trends analysis, and reporting capabilities. It uses a Redis-based data collector that creates periodic snapshots of cluster state. 
 
-Found 3 clusters excluded from deletion:
-+----------------+-----------------------+---------+-----------+-------------------------------------------------------------+
-| Cluster Name   | Namespace             | Owner   | Expires   | Exclusion Reason                                            |
-+================+=======================+=========+===========+=============================================================+
-| emea-prod-01   | emea-prod-w5pb8-fn9dg | eric    | 1y        | KommanderCluster emea-prod-01 is protected by configuration |
-+----------------+-----------------------+---------+-----------+-------------------------------------------------------------+
-| mdr-test       | emea-prod-w5pb8-fn9dg | mdr     | 1d        | Cluster has not expired yet (expires in ~23h)               |
-+----------------+-----------------------+---------+-----------+-------------------------------------------------------------+
-| nkp            | default               | N/A     | N/A       | Cluster is a management cluster                             |
-+----------------+-----------------------+---------+-----------+-------------------------------------------------------------+
+Data is collected by running `nkp-cluster-cleaner collect-analytics`. If you deploy the [NKP application](/docs/nkp.md) into your cluster, it will automatically configure a CronJob to collect data each day for you, along with a dedicated [Valkey](https://valkey.io/) server. 
 
+Historical data is stored with a configurable retention period. The default is to store data for 90 days, but you can change this by passing the `--keep-days` argument to the `collect-analytics` command. 
 
-$ nkp-cluster-cleaner list-clusters --namespace emea-prod-w5pb8-fn9dg
-Listing CAPI clusters for deletion in namespace 'emea-prod-w5pb8-fn9dg'...
+If you want to make use of the analytics service, you must provide connection details to a Redis/Valkey server when running the `serve` or `collect-analytics` commands. They both accept the following arguments:
 
-No clusters found matching deletion criteria.
+| Argument | Type | Description |
+|----------|------|-------------|
+|`--redis-host` | TEXT     | Redis host (default: redis) |
+|`--redis-port` | INTEGER  | Redis port (default: 6379)  |
+|`--redis-db`   | INTEGER  | Redis database number (default: 0) |
 
-Found 2 clusters excluded from deletion:
-+----------------+-----------------------+---------+-----------+-------------------------------------------------------------+
-| Cluster Name   | Namespace             | Owner   | Expires   | Exclusion Reason                                            |
-+================+=======================+=========+===========+=============================================================+
-| emea-prod-01   | emea-prod-w5pb8-fn9dg | eric    | 1y        | KommanderCluster emea-prod-01 is protected by configuration |
-+----------------+-----------------------+---------+-----------+-------------------------------------------------------------+
-| mdr-test       | emea-prod-w5pb8-fn9dg | mdr     | 1d        | Cluster has not expired yet (expires in ~23h)               |
-+----------------+-----------------------+---------+-----------+-------------------------------------------------------------+
-```
+If a server is not available then you will simply see a connection error in the "Analytics" page of the Web UI, it will not affect the core operation of the application.
 
-For any clusters that have an `expires` label, it will display how long until they are considered for deletion:
+#### Reports
+The analytics dashboard (/analytics) provides the following visualizations and reports:
 
-```
-+----------------+-----------------------------+---------+-----------+----------------------------------------------+
-| workload-1     | kommander-default-workspace | mdr     | 12d       | Cluster has not expired yet (expires in ~1d) |
-+----------------+-----------------------------+---------+-----------+----------------------------------------------+
-```
+- Summary Cards
+  - Clusters for Deletion: Current count with trend indicator (increasing/decreasing/stable)
+  - Protected Clusters: Number of clusters currently excluded from deletion
+  - Label Compliance: Overall compliance rate with trending direction
+  - Average Daily Deletions: Rolling 7-day average of deletion activity
 
-And if they have expired will show the creation date along with the expiry policy:
-
-```
-+----------------+-----------------------------+---------+-----------+--------------------------------------------------------------+
-| Cluster Name   | Namespace                   | Owner   | Expires   | Reason                                                       |
-+================+=============================+=========+===========+==============================================================+
-| workload-1     | kommander-default-workspace | mdr     | 9d        | Cluster has expired (created: 2025-06-23, expires after: 9d) |
-+----------------+-----------------------------+---------+-----------+--------------------------------------------------------------+
-```
-
-### delete-clusters
-Default is to just show what would be deleted:
-```
-$ nkp-cluster-cleaner delete-clusters --namespace emea-prod-w5pb8-fn9dg
-[DRY RUN MODE] Simulating cluster deletion in namespace 'emea-prod-w5pb8-fn9dg'...
-Note: Running in dry-run mode. Use --delete to actually delete clusters.
-
-Found 1 clusters that would be deleted:
-+----------------+-----------------------+---------+-----------+-------------------------+
-| Cluster Name   | Namespace             | Owner   | Expires   | Reason                  |
-+================+=======================+=========+===========+=========================+
-| mdr-test       | emea-prod-w5pb8-fn9dg | mdr     | N/A       | Missing 'expires' label |
-+----------------+-----------------------+---------+-----------+-------------------------+
-[DRY RUN] Would delete: mdr-test in emea-prod-w5pb8-fn9dg (Missing 'expires' label)
-```
-
-To actually delete the clusters you must pass in the `--delete` flag:
-
-```
-$ nkp-cluster-cleaner delete-clusters --namespace emea-prod-w5pb8-fn9dg --delete
-Found 1 clusters for deletion:
-+----------------+-----------------------+---------+-----------+-------------------------+
-| Cluster Name   | Namespace             | Owner   | Expires   | Reason                  |
-+================+=======================+=========+===========+=========================+
-| mdr-test       | emea-prod-w5pb8-fn9dg | mdr     | N/A       | Missing 'expires' label |
-+----------------+-----------------------+---------+-----------+-------------------------+
-Successfully deleted cluster: mdr-test in namespace emea-prod-w5pb8-fn9dg
-
-Deletion completed. 1 clusters deleted successfully.
-```
-
+- Charts and Reports
+  - Cluster Trends (30 Days)
+  - Label Compliance Trends 
+  - Deletion Activity Analysis
+  - Namespace Activity
+  - Owner Distribution
+  - Expiration Analysis
 
 ## Docker Usage
 ### Tags
-`ghcr.io/markround/nkp-cluster-cleaner:<TAG>`
-
-- Branch (e.g. `main`, `dev`, etc.)
-- Release tag (e.g. `0.7.1`) 
-- Latest released version (e.g. `latest`)
+- The container image can be pulled from GitHub Container Registry: `ghcr.io/markround/nkp-cluster-cleaner:<TAG>`
+- Available tags are:
+  - Branch (e.g. `main`, `feature/xxx`, etc.)
+  - Release tag (e.g. `0.8.0`) 
+  - Latest released version (e.g. `latest`)
 - Full list on the [packages page](https://github.com/markround/nkp-cluster-cleaner/pkgs/container/nkp-cluster-cleaner)
 
-### Show help
-```bash
-docker run --rm ghcr.io/markround/nkp-cluster-cleaner:latest
-```
+### General
+The `ENTRYPOINT` for the container is the application itself, so you only need to pass in the arguments. Any additional configuration files can be provided as volume mounts. For example, to list clusters with a custom configuration file and your default `kubeconfig` you'd run something like:
 
-### List clusters (requires kubeconfig volume mount)
-```bash
-docker run --rm \
-  -v ~/.kube/config:/app/config/kubeconfig:ro \
-  ghcr.io/markround/nkp-cluster-cleaner:latest \
-  list-clusters --kubeconfig /app/config/kubeconfig
-```
-
-### With custom config file
 ```bash
 docker run --rm \
   -v ~/.kube/config:/app/config/kubeconfig:ro \
@@ -249,42 +192,6 @@ docker run --rm \
   --config /app/config/config.yaml
 ```
 
-### Delete clusters (dry-run by default)
-```bash
-docker run --rm \
-  -v ~/.kube/config:/app/config/kubeconfig:ro \
-  ghcr.io/markround/nkp-cluster-cleaner:latest \
-  delete-clusters --kubeconfig /app/config/kubeconfig
-```
-
-### Actually delete clusters
-```bash
-docker run --rm \
-  -v ~/.kube/config:/app/config/kubeconfig:ro \
-  ghcr.io/markround/nkp-cluster-cleaner:latest \
-  delete-clusters --kubeconfig /app/config/kubeconfig --delete
-```
-
-### Generate example config file
-```bash
-docker run --rm \
-  -v $(pwd):/app/output \
-  ghcr.io/markround/nkp-cluster-cleaner:latest \
-  generate-config /app/output/my-config.yaml
-```
-
-### Start webserver
-```bash
-docker run --rm \
-  -v ~/.kube/config:/app/config/kubeconfig:ro \
-  -v ./my-config.yaml:/app/config/config.yaml:ro \
-  -p 8080:8080 \
-  ghcr.io/markround/nkp-cluster-cleaner:latest \
-  serve \
-  --kubeconfig /app/config/kubeconfig \
-  --config /app/config/config.yaml \
-  --host 0.0.0.0
-```
 
 ## Installation / Development
 

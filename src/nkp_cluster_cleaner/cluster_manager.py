@@ -178,7 +178,10 @@ class ClusterManager:
         kc_name = kommander_cluster.get("metadata", {}).get("name", "unknown")
         kc_namespace = kommander_cluster.get("_namespace", "unknown")
         
-        # Special case: management cluster (host-cluster) should always be excluded
+        # Special case: management cluster (host-cluster) should always be excluded!
+        # If the name ever changes, this will be a problem but a recent Slack conversation indicated
+        # that although the display name may change, the object name should stay consistent in future
+        # releases
         if kc_name == "host-cluster":
             return False, f"Cluster is a management cluster"
         

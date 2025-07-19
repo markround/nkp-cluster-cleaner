@@ -8,6 +8,7 @@ from colorama import init, Fore, Style
 from tabulate import tabulate
 from .cluster_manager import ClusterManager
 from .config import ConfigManager
+from .redis_data_collector import RedisDataCollector
 
 # Initialize colorama for cross-platform colored output
 init()
@@ -35,11 +36,15 @@ def namespace_option(f):
     )(f)
 
 @click.group()
+# Built-in function with click!
 @click.version_option()
 def cli():
     """NKP Cluster Cleaner - Delete CAPI clusters based on label criteria."""
     pass
 
+#
+# List
+#
 @cli.command()
 @common_options
 @namespace_option
@@ -116,6 +121,9 @@ def list_clusters(kubeconfig, config, namespace, no_exclusions):
         click.echo(f"{Fore.RED}Error: {e}{Style.RESET_ALL}")
         raise click.Abort()
 
+#
+# Delete
+#
 @cli.command()
 @common_options
 @namespace_option
@@ -210,6 +218,9 @@ def delete_clusters(kubeconfig, config, namespace, delete):
         click.echo(f"{Fore.RED}Error: {e}{Style.RESET_ALL}")
         raise click.Abort()
 
+#
+# Example config
+#
 @cli.command()
 @click.argument('output_file', type=click.Path())
 def generate_config(output_file):
@@ -218,6 +229,9 @@ def generate_config(output_file):
     config_manager.save_example_config(output_file)
     click.echo(f"{Fore.GREEN}Example configuration saved to {output_file}{Style.RESET_ALL}")
 
+#
+# Web server
+#
 @cli.command()
 @common_options
 @click.option(
@@ -240,7 +254,24 @@ def generate_config(output_file):
     default='',
     help='URL prefix for all routes (e.g., /foo for /foo/clusters)'
 )
-def serve(kubeconfig, config, host, port, debug, prefix):
+@click.option(
+    '--redis-host',
+    default='redis',
+    help='Redis host for analytics data (default: redis)'
+)
+@click.option(
+    '--redis-port',
+    default=6379,
+    type=int,
+    help='Redis port (default: 6379)'
+)
+@click.option(
+    '--redis-db',
+    default=0,
+    type=int,
+    help='Redis database number (default: 0)'
+)
+def serve(kubeconfig, config, host, port, debug, prefix, redis_host, redis_port, redis_db):
     """Start the web server for the cluster cleaner UI."""
     try:
         from .web_server import run_server
@@ -250,13 +281,95 @@ def serve(kubeconfig, config, host, port, debug, prefix):
             debug=debug,
             kubeconfig_path=kubeconfig,
             config_path=config,
-            url_prefix=prefix
+            url_prefix=prefix,
+            redis_host=redis_host,
+            redis_port=redis_port,
+            redis_db=redis_db
         )
     except KeyboardInterrupt:
         click.echo(f"\n{Fore.YELLOW}Server stopped by user.{Style.RESET_ALL}")
     except Exception as e:
         click.echo(f"{Fore.RED}Error starting server: {e}{Style.RESET_ALL}")
         raise click.Abort()
+#
+# Analytics
+#
+@cli.command()
+@common_options
+@click.option(
+    '--keep-days',
+    default=90,
+    type=int,
+    help='Number of days of analytics data to retain (default: 90)'
+)
+@click.option(
+    '--debug',
+    is_flag=True,
+    help='Enable debug output during collection'
+)
+@click.option(
+    '--redis-host',
+    default='redis',
+    help='Redis host (default: redis)'
+)
+@click.option(
+    '--redis-port',
+    default=6379,
+    type=int,
+    help='Redis port (default: 6379)'
+)
+@click.option(
+    '--redis-db',
+    default=0,
+    type=int,
+    help='Redis database number (default: 0)'
+)
+def collect_analytics(kubeconfig, config, keep_days, debug, redis_host, redis_port, redis_db):
+    """Collect analytics snapshot for historical tracking and reporting."""
+    try:
+        # Initialize configuration and data collector
+        config_manager = ConfigManager(config) if config else ConfigManager()
+        data_collector = RedisDataCollector(
+            kubeconfig_path=kubeconfig,
+            config_manager=config_manager,
+            redis_host=redis_host,
+            redis_port=redis_port,
+            redis_db=redis_db,
+            debug=debug
+        )
+        
+        # Collect snapshot
+        click.echo(f"{Fore.BLUE}Collecting analytics snapshot...{Style.RESET_ALL}")
+        snapshot = data_collector.collect_snapshot(retention_days=keep_days)
+        
+        # Get database stats
+        db_stats = data_collector.get_database_stats()
+        
+        # Display summary
+        click.echo(f"{Fore.GREEN}Analytics snapshot collected successfully!{Style.RESET_ALL}")
+        click.echo(f"{Fore.CYAN}Summary:{Style.RESET_ALL}")
+        click.echo(f"  • Total clusters found: {snapshot['collection_metadata']['total_clusters_found']}")
+        click.echo(f"  • Clusters for deletion: {snapshot['cluster_counts']['for_deletion']}")
+        click.echo(f"  • Protected clusters: {snapshot['cluster_counts']['protected']}")
+        click.echo(f"  • Namespaces scanned: {snapshot['collection_metadata']['namespaces_scanned']}")
+        click.echo(f"  • Retention period: {keep_days} days")
+        click.echo(f"  • Redis: {redis_host}:{redis_port} (db {redis_db})")
+        
+        if 'error' not in db_stats:
+            click.echo(f"  • Total snapshots in Redis: {db_stats['total_snapshots']}")
+            if db_stats.get('redis_memory_used'):
+                click.echo(f"  • Redis memory usage: {db_stats['redis_memory_used']}")
+        
+        # Show compliance summary if configured
+        if snapshot['label_compliance']['required_labels']:
+            compliance_rate = snapshot['label_compliance']['overall_compliance_rate']
+            click.echo(f"  • Label compliance: {compliance_rate:.1f}%")
+        
+    except Exception as e:
+        click.echo(f"{Fore.RED}Error collecting analytics: {e}{Style.RESET_ALL}")
+        raise click.Abort()
+
 
 if __name__ == '__main__':
     cli()
+

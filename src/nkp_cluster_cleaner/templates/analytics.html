@@ -1,0 +1,683 @@
+{% extends "base.html" %}
+
+{% block title %}NKP Cluster Cleaner - Analytics{% endblock %}
+
+{% block header_title %}Analytics Dashboard{% endblock %}
+{% block header_subtitle %}Historical cluster data and trends{% endblock %}
+
+{% block extra_css %}
+<style>
+    .analytics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .analytics-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        position: relative;
+    }
+    
+    .analytics-card h3 {
+        margin: 0 0 15px 0;
+        color: #1a202c;
+        font-size: 18px;
+        font-weight: 600;
+        border-bottom: 2px solid #e2e8f0;
+        padding-bottom: 8px;
+    }
+    
+    .summary-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .summary-card {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        text-align: center;
+        border-left: 4px solid #667eea;
+    }
+    
+    .summary-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+        pointer-events: none;
+    }
+    
+    .summary-number {
+        font-size: 2.5em;
+        font-weight: bold;
+        margin-bottom: 5px;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .summary-label {
+        font-size: 0.9em;
+        opacity: 0.9;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .summary-trend {
+        font-size: 0.8em;
+        margin-top: 5px;
+        opacity: 0.8;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .chart-container {
+        height: 300px;
+        margin: 15px 0;
+        position: relative;
+    }
+    
+    .chart-container canvas {
+        max-height: 100%;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 15px;
+        margin: 15px 0;
+    }
+    
+    .stat-item {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
+    }
+    
+    .stat-label {
+        font-size: 0.9em;
+        color: #6c757d;
+        margin-bottom: 5px;
+    }
+    
+    .stat-value {
+        font-size: 1.3em;
+        font-weight: 600;
+        color: #1a202c;
+    }
+    
+    .refresh-info {
+        background-color: #f0f8ff;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        border: 1px solid #2196f3;
+        border-left: 4px solid #2196f3;
+    }
+    
+    .error-state {
+        background-color: #ffebee;
+        border: 1px solid #f44336;
+        border-left: 4px solid #f44336;
+        padding: 20px;
+        border-radius: 8px;
+        margin: 20px 0;
+        text-align: center;
+    }
+    
+    .no-data-state {
+        background-color: #fff3e0;
+        border: 1px solid #ff9800;
+        border-left: 4px solid #ff9800;
+        padding: 20px;
+        border-radius: 8px;
+        margin: 20px 0;
+        text-align: center;
+    }
+    
+    .trend-up {
+        color: #e53e3e;
+    }
+    
+    .trend-down {
+        color: #38a169;
+    }
+    
+    .trend-stable {
+        color: #718096;
+    }
+    
+    .compliance-bar {
+        background: #e2e8f0;
+        height: 8px;
+        border-radius: 4px;
+        overflow: hidden;
+        margin: 5px 0;
+    }
+    
+    .compliance-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #e53e3e 0%, #ed8936 50%, #38a169 100%);
+        transition: width 0.3s ease;
+    }
+    
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+    }
+    
+    .loading::after {
+        content: '';
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 2px solid #ccc;
+        border-top: 2px solid #667eea;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-left: 10px;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .period-selector {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+        justify-content: center;
+    }
+    
+    .period-btn {
+        padding: 8px 16px;
+        border: 1px solid #e2e8f0;
+        background: white;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.9em;
+    }
+    
+    .period-btn:hover {
+        background: #f7fafc;
+        border-color: #667eea;
+    }
+    
+    .period-btn.active {
+        background: #667eea;
+        color: white;
+        border-color: #667eea;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    {% if error %}
+        <div class="error-state">
+            <h3>❌ Error Loading Analytics</h3>
+            <p><strong>Error:</strong> {{ error }}</p>
+            <p>This could be because:</p>
+            <ul style="text-align: left; display: inline-block;">
+                <li>No analytics data has been collected yet</li>
+                <li>The data directory is not accessible</li>
+                <li>There's an issue with the cluster connection</li>
+            </ul>
+            <p>Try running <code>nkp-cluster-cleaner collect-analytics</code> first to generate data.</p>
+            <a href="/analytics" onclick="location.reload()">🔄 Try Again</a>
+        </div>
+    {% elif not cluster_trends_7d or not cluster_trends_7d.dates %}
+        <div class="no-data-state">
+            <h3>📊 No Analytics Data Available</h3>
+            <p>It looks like no analytics data has been collected yet.</p>
+            <p>Run the following command to start collecting data:</p>
+            <div style="background: #f5f5f5; padding: 10px; border-radius: 4px; margin: 10px 0; font-family: monospace;">
+                nkp-cluster-cleaner collect-analytics
+            </div>
+            <p>Once you've collected some data, refresh this page to see your analytics dashboard.</p>
+        </div>
+    {% else %}
+        <div class="refresh-info">
+            <strong>📊 Analytics Dashboard</strong>
+            <p>Data refreshed at: <strong>{{ refresh_time }}</strong></p>
+            <p>Showing trends and statistics based on collected cluster data</p>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="summary-cards">
+            <div class="summary-card">
+                <div class="summary-number">{{ dashboard_summary.current_status.clusters_for_deletion }}</div>
+                <div class="summary-label">Clusters for Deletion</div>
+                <div class="summary-trend">
+                    <span class="trend-{{ dashboard_summary.current_status.trend_direction }}">
+                        {% if dashboard_summary.current_status.trend_direction == 'increasing' %}📈 Increasing
+                        {% elif dashboard_summary.current_status.trend_direction == 'decreasing' %}📉 Decreasing
+                        {% else %}📊 Stable{% endif %}
+                    </span>
+                </div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-number">{{ dashboard_summary.current_status.clusters_protected }}</div>
+                <div class="summary-label">Protected Clusters</div>
+                <div class="summary-trend">Currently excluded from deletion</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-number">{{ "%.1f"|format(dashboard_summary.current_status.compliance_rate) }}%</div>
+                <div class="summary-label">Label Compliance</div>
+                <div class="summary-trend">
+                    <span class="trend-{{ compliance_stats.summary.compliance_direction }}">
+                        {% if compliance_stats.summary.compliance_direction == 'improving' %}📈 Improving
+                        {% elif compliance_stats.summary.compliance_direction == 'declining' %}📉 Declining
+                        {% else %}📊 Stable{% endif %}
+                    </span>
+                </div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-number">{{ "%.1f"|format(dashboard_summary.week_summary.average_deletions) }}</div>
+                <div class="summary-label">Avg Daily Deletions</div>
+                <div class="summary-trend">Last 7 days</div>
+            </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="analytics-grid">
+            <!-- Cluster Trends Chart -->
+            <div class="analytics-card">
+                <h3>📈 Cluster Trends (30 Days)</h3>
+                <div class="chart-container">
+                    <canvas id="clusterTrendsChart"></canvas>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-label">Current for Deletion</div>
+                        <div class="stat-value">{{ cluster_trends_30d.summary.current_for_deletion }}</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Daily Average</div>
+                        <div class="stat-value">{{ "%.1f"|format(cluster_trends_30d.summary.average_daily_deletions) }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Compliance Trends Chart -->
+            <div class="analytics-card">
+                <h3>✅ Label Compliance Trends</h3>
+                <div class="chart-container">
+                    <canvas id="complianceChart"></canvas>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-label">Current Rate</div>
+                        <div class="stat-value">{{ "%.1f"|format(compliance_stats.current_compliance) }}%</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Worst Label</div>
+                        <div class="stat-value">{{ compliance_stats.summary.worst_performing_label }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Deletion Reasons -->
+            <div class="analytics-card">
+                <h3>🗑️ Deletion Reasons</h3>
+                <div class="chart-container">
+                    <canvas id="deletionReasonsChart"></canvas>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Most Common</div>
+                    <div class="stat-value">{{ deletion_activity.summary.most_common_reason[0] }}</div>
+                </div>
+            </div>
+
+            <!-- Namespace Activity -->
+            <div class="analytics-card">
+                <h3>🏢 Top Namespaces</h3>
+                <div class="chart-container">
+                    <canvas id="namespaceChart"></canvas>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-label">Total Namespaces</div>
+                        <div class="stat-value">{{ namespace_activity.summary.total_namespaces }}</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Most Active</div>
+                        <div class="stat-value">{{ namespace_activity.summary.most_active_namespace }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Owner Distribution -->
+            <div class="analytics-card">
+                <h3>👥 Cluster Ownership</h3>
+                <div class="chart-container">
+                    <canvas id="ownerChart"></canvas>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-label">Total Owners</div>
+                        <div class="stat-value">{{ owner_distribution.summary.total_owners }}</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">No Owner</div>
+                        <div class="stat-value">{{ owner_distribution.summary.no_owner_clusters }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Expiration Patterns -->
+            <div class="analytics-card">
+                <h3>⏰ Expiration Patterns</h3>
+                <div class="chart-container">
+                    <canvas id="expirationChart"></canvas>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-label">Most Common</div>
+                        <div class="stat-value">{{ expiration_analysis.summary.most_common_duration[0] }}</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">No Expiration</div>
+                        <div class="stat-value">{{ expiration_analysis.summary.clusters_without_expiration }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script>
+    // Chart.js default configuration
+    Chart.defaults.font.family = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    Chart.defaults.color = '#1a202c';
+    Chart.defaults.borderColor = '#e2e8f0';
+    Chart.defaults.backgroundColor = 'rgba(102, 126, 234, 0.1)';
+
+    {% if cluster_trends_7d and cluster_trends_7d.dates %}
+    // Debug logging
+    console.log('Analytics data loaded:');
+    console.log('Owner distribution:', {{ owner_distribution | tojson }});
+    console.log('Expiration analysis:', {{ expiration_analysis | tojson }});
+    
+    // Color scheme
+    const colors = {
+        primary: '#667eea',
+        secondary: '#764ba2',
+        danger: '#e53e3e',
+        warning: '#ed8936',
+        success: '#38a169',
+        info: '#3182ce'
+    };
+
+    // Cluster Trends Chart
+    const clusterTrendsCtx = document.getElementById('clusterTrendsChart').getContext('2d');
+    new Chart(clusterTrendsCtx, {
+        type: 'line',
+        data: {
+            labels: {{ cluster_trends_30d.dates | tojson }},
+            datasets: [{
+                label: 'For Deletion',
+                data: {{ cluster_trends_30d.deletion_counts | tojson }},
+                borderColor: colors.danger,
+                backgroundColor: colors.danger + '20',
+                tension: 0.4,
+                fill: true
+            }, {
+                label: 'Protected',
+                data: {{ cluster_trends_30d.protected_counts | tojson }},
+                borderColor: colors.success,
+                backgroundColor: colors.success + '20',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+
+    // Compliance Chart
+    const complianceCtx = document.getElementById('complianceChart').getContext('2d');
+    new Chart(complianceCtx, {
+        type: 'line',
+        data: {
+            labels: {{ compliance_stats.dates | tojson }},
+            datasets: [{
+                label: 'Overall Compliance',
+                data: {{ compliance_stats.compliance_trend | tojson }},
+                borderColor: colors.primary,
+                backgroundColor: colors.primary + '20',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Deletion Reasons Chart
+    const deletionReasonsCtx = document.getElementById('deletionReasonsChart').getContext('2d');
+    const deletionReasons = {{ deletion_activity.deletion_reasons | tojson }};
+    new Chart(deletionReasonsCtx, {
+        type: 'doughnut',
+        data: {
+            labels: Object.keys(deletionReasons),
+            datasets: [{
+                data: Object.values(deletionReasons),
+                backgroundColor: [
+                    colors.danger,
+                    colors.warning,
+                    colors.info,
+                    colors.secondary,
+                    colors.success
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+
+    // Namespace Chart
+    const namespaceCtx = document.getElementById('namespaceChart').getContext('2d');
+    const topNamespaces = {{ namespace_activity.top_namespaces | tojson }};
+    const namespaceNames = Object.keys(topNamespaces).slice(0, 8);
+    const namespaceCounts = namespaceNames.map(ns => topNamespaces[ns].total_clusters);
+    
+    new Chart(namespaceCtx, {
+        type: 'bar',
+        data: {
+            labels: namespaceNames,
+            datasets: [{
+                label: 'Total Clusters',
+                data: namespaceCounts,
+                backgroundColor: colors.primary,
+                borderColor: colors.primary,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                },
+                x: {
+                    ticks: {
+                        maxRotation: 45
+                    }
+                }
+            }
+        }
+    });
+
+    // Owner Chart
+    const ownerCtx = document.getElementById('ownerChart').getContext('2d');
+    const topOwners = {{ owner_distribution.top_owners | tojson }};
+    
+    if (topOwners && Object.keys(topOwners).length > 0) {
+        const ownerNames = Object.keys(topOwners).slice(0, 8);
+        const ownerCounts = ownerNames.map(owner => topOwners[owner].total_clusters);
+        
+        new Chart(ownerCtx, {
+            type: 'bar',
+            data: {
+                labels: ownerNames,
+                datasets: [{
+                    label: 'Total Clusters',
+                    data: ownerCounts,
+                    backgroundColor: colors.secondary,
+                    borderColor: colors.secondary,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',  // This makes it horizontal
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    } else {
+        // Show no data message
+        ownerCtx.canvas.style.display = 'none';
+        ownerCtx.canvas.parentElement.innerHTML = '<div style="text-align: center; color: #666; padding: 40px;">No ownership data available</div>';
+    }
+
+    // Expiration Chart
+    const expirationCtx = document.getElementById('expirationChart').getContext('2d');
+    const expirationDistribution = {{ expiration_analysis.current_distribution | tojson }};
+    
+    if (expirationDistribution && Object.keys(expirationDistribution).length > 0) {
+        const expirationData = [
+            expirationDistribution.expired || 0,
+            expirationDistribution.expires_soon || 0,
+            expirationDistribution.expires_this_week || 0,
+            expirationDistribution.expires_this_month || 0,
+            expirationDistribution.expires_later || 0,
+            expirationDistribution.no_expiration || 0
+        ];
+        
+        // Only show chart if there's actual data
+        const hasData = expirationData.some(value => value > 0);
+        
+        if (hasData) {
+            new Chart(expirationCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['Expired', 'Expires Soon', 'This Week', 'This Month', 'Later', 'No Expiration'],
+                    datasets: [{
+                        data: expirationData,
+                        backgroundColor: [
+                            colors.danger,
+                            '#ff6b6b',
+                            colors.warning,
+                            '#feca57',
+                            colors.success,
+                            '#a4b0be'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        } else {
+            expirationCtx.canvas.style.display = 'none';
+            expirationCtx.canvas.parentElement.innerHTML = '<div style="text-align: center; color: #666; padding: 40px;">No expiration data available</div>';
+        }
+    } else {
+        expirationCtx.canvas.style.display = 'none';
+        expirationCtx.canvas.parentElement.innerHTML = '<div style="text-align: center; color: #666; padding: 40px;">No expiration data available</div>';
+    }
+
+    {% endif %}
+
+    // Auto-refresh data every 5 minutes
+    setInterval(() => {
+        location.reload();
+    }, 5 * 60 * 1000);
+
+    console.log("Analytics dashboard loaded at: {{ refresh_time }}");
+</script>
+{% endblock %}
