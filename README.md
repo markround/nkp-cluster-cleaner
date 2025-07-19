@@ -132,14 +132,14 @@ Options:
 
 
 ### Deletion Of Clusters
-Note that the default for both the CLI tool and the NKP Application is to run in "dry-run" mode, and to just show what _would_ be deleted.
+Note that the default for both the CLI tool and the NKP Application is to run in "dry-run" mode, and will just show what _would_ be deleted.
 
-To actually delete the clusters you must pass in the `--delete` flag, or explicitly enable the Helm value in the NKP application.
+To actually delete the clusters you must pass in the `--delete` flag to the `delete-clusters` command, or explicitly enable the Helm value in the NKP application.
 
 ### Analytics
 The NKP Cluster Cleaner includes an analytics dashboard that provides historical tracking, trends analysis, and reporting capabilities. It uses a Redis-based data collector that creates periodic snapshots of cluster state. 
 
-Data is collected by running `nkp-cluster-cleaner collect-analytics`. If you deploy the NKP application into your cluster, it will automatically configure a CronJob to collect data each day for you, along with a dedicated Valkey server. 
+Data is collected by running `nkp-cluster-cleaner collect-analytics`. If you deploy the [NKP application](/docs/nkp.md) into your cluster, it will automatically configure a CronJob to collect data each day for you, along with a dedicated [Valkey](https://valkey.io/) server. 
 
 Historical data is stored with a configurable retention period. The default is to store data for 90 days, but you can change this by passing the `--keep-days` argument to the `collect-analytics` command. 
 
