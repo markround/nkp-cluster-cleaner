@@ -472,7 +472,7 @@ class RedisAnalyticsService:
     
     def get_dashboard_summary(self) -> Dict[str, Any]:
         """
-        Get a comprehensive summary for the dashboard.
+        Get a summary for the dashboard.
         
         Returns:
             Dictionary with dashboard summary data

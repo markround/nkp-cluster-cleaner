@@ -90,7 +90,7 @@ class RedisDataCollector:
             
             self._debug_print(f"Total clusters processed: {len(all_clusters)}")
             
-            # Build comprehensive snapshot
+            # Build a snapshot
             snapshot_data = self._build_snapshot_data(all_clusters, clusters_to_delete, excluded_clusters, timestamp)
             
             # Store in Redis with automatic expiration
