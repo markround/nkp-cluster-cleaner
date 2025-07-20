@@ -14,11 +14,22 @@ A simple CLI tool (with optional web interface) to automatically delete Nutanix 
 ![GitHub branch check runs](https://img.shields.io/github/check-runs/markround/nkp-cluster-cleaner/main)
 ![GitHub Release](https://img.shields.io/github/v/release/markround/nkp-cluster-cleaner)
 
+## Features
 
-_Disclaimer: This is a personal project and is in no way supported/endorsed by, or otherwise connected to Nutanix_
+- 🚀 Simple "one-click" catalog installation and tight integration with NKP features
+- 📋 Flexible rulesets and custom criteria
+- 📈 Trend analysis, compliance monitoring and historical data tracking
+- 📊 Built-in web dashboard and administration console
+- 🔥 Prometheus metrics, NKP monitoring integration and Grafana dashboard 
+- 🖥️ Also runs as a standalone console application
 
-## NKP Catalog Application
+> [!NOTE] 
+> This is a personal project and is in no way supported/endorsed by, or otherwise connected to Nutanix_
+
+## Installation
 See the documentation at [docs/nkp.md](./docs/nkp.md) for details on how to deploy the application as a NKP catalog application, running inside the NKP Management Cluster itself. This is the recommended way to run the application as it includes the scheduled tasks, web interface and analytics with no further configuration needed. 
+
+You can however run the application from a Docker container or direct from the CLI. These options are discussed below.
 
 ## Strategy
 - Any cluster without an `expires` label will be deleted.
