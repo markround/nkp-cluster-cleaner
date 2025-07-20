@@ -81,10 +81,7 @@ extra_labels:
   regex: "^(dev|test|staging|prod)$"
 ```
 
-These can also be viewed in the Web UI, along with the other matching rules and list of clusters scheduled for deletion:
-
-<img src="/docs/labels.png" width="500">
-
+These can also be viewed in the Web UI, along with the other matching rules and list of clusters scheduled for deletion.
 
 ## General Usage
 ```
@@ -128,6 +125,7 @@ Options:
   --redis-host TEXT     Redis host for analytics data (default: redis)
   --redis-port INTEGER  Redis port (default: 6379)
   --redis-db INTEGER    Redis database number (default: 0)
+  --no-analytics        Disable analytics and do not connect to Redis
   --help                Show this message and exit.
 ```
 
@@ -152,7 +150,9 @@ If you want to make use of the analytics service, you must provide connection de
 |`--redis-port` | INTEGER  | Redis port (default: 6379)  |
 |`--redis-db`   | INTEGER  | Redis database number (default: 0) |
 
-If a server is not available then you will simply see a connection error in the "Analytics" page of the Web UI, it will not affect the core operation of the application.
+#### Disabling Analytics
+
+You can pass the argument `--no-analytics` to the `serve` command, and it will disable the analytics components (including links in the Web UI) and will not attempt to connect to any Redis/Valkey instance.
 
 #### Reports
 The analytics dashboard (/analytics) provides the following visualizations and reports:
@@ -170,6 +170,9 @@ The analytics dashboard (/analytics) provides the following visualizations and r
   - Namespace Activity
   - Owner Distribution
   - Expiration Analysis
+
+#### Prometheus Metrics
+Prometheus metrics for all collected analytics data is exposed under the `/metrics` endpoint. A ServiceMonitor can be created using the Helm chart for automatic discovery and incorporation of data into the Prometheus stack used by NKP. For more information, see the [Helm Chart](./charts/nkp-cluster-cleaner/README.md) and [NKP Application](./docs/nkp.md) documentation.
 
 ## Docker Usage
 ### Tags
