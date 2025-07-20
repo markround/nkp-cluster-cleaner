@@ -230,14 +230,16 @@
         <div class="error-state">
             <h3>❌ Error Loading Analytics</h3>
             <p><strong>Error:</strong> {{ error }}</p>
-            <p>This could be because:</p>
-            <ul style="text-align: left; display: inline-block;">
-                <li>No analytics data has been collected yet</li>
-                <li>The data directory is not accessible</li>
-                <li>There's an issue with the cluster connection</li>
-            </ul>
-            <p>Try running <code>nkp-cluster-cleaner collect-analytics</code> first to generate data.</p>
-            <a href="/analytics" onclick="location.reload()">🔄 Try Again</a>
+            {% if not no_analytics %}
+              <p>This could be because:</p>
+              <ul style="text-align: left; display: inline-block;">
+                  <li>No analytics data has been collected yet</li>
+                  <li>The data directory is not accessible</li>
+                  <li>There's an issue with the cluster connection</li>
+              </ul>
+              <p>Try running <code>nkp-cluster-cleaner collect-analytics</code> first to generate data.</p>
+              <a href="/analytics" onclick="location.reload()">🔄 Try Again</a>
+            {% endif %}
         </div>
     {% elif not cluster_trends_7d or not cluster_trends_7d.dates %}
         <div class="no-data-state">

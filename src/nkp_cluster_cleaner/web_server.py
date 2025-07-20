@@ -17,7 +17,8 @@ __version__ = nkp_cluster_cleaner.__version__
 
 def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str] = None, 
                url_prefix: Optional[str] = None, redis_host: str = 'redis', 
-               redis_port: int = 6379, redis_db: int = 0) -> Flask:
+               redis_port: int = 6379, redis_db: int = 0, 
+               no_analytics: bool = False) -> Flask:
     """
     Create and configure the Flask application.
     
@@ -28,6 +29,7 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
         redis_host: Redis host for analytics data
         redis_port: Redis port
         redis_db: Redis database number
+        no_analytics: Disable analytics and Redis connections
         
     Returns:
         Flask application instance
@@ -43,6 +45,7 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
     app.config['REDIS_HOST'] = redis_host
     app.config['REDIS_PORT'] = redis_port
     app.config['REDIS_DB'] = redis_db
+    app.config['NO_ANALYTICS'] = no_analytics
     
     # Normalize URL prefix
     if url_prefix:
@@ -99,11 +102,12 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
         nkp_version = cluster_manager.get_nkp_version()
 
         return render_template(
-            'index.html',
+            'index.html',        
+            no_analytics=app.config['NO_ANALYTICS'],
             kubeconfig_status=kubeconfig_status,
             config_status=config_status,
             version=__version__,
-            nkp_version=nkp_version
+            nkp_version=nkp_version,
         )
     
     @app.route(url_prefix + '/health')
@@ -114,29 +118,31 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
             cluster_manager = get_cluster_manager()
             # Simple connectivity test
             cluster_manager.check_kommander_crds()
-            
-            # Test Redis connection
-            analytics_service = get_analytics_service()
-            redis_stats = analytics_service.get_database_stats()
-            
+              
             health_data = {
                 'status': 'ok', 
                 'service': 'nkp-cluster-cleaner',
                 'version': __version__,
                 'kubeconfig': app.config['KUBECONFIG_PATH'] or 'default',
                 'config': app.config['CONFIG_PATH'] or 'none',
-                'redis': f"{app.config['REDIS_HOST']}:{app.config['REDIS_PORT']}",
                 'timestamp': datetime.now().isoformat()
             }
             
-            if 'error' not in redis_stats:
-                health_data['redis_status'] = 'connected'
-                health_data['redis_snapshots'] = redis_stats.get('total_snapshots', 0)
-            else:
-                health_data['redis_status'] = 'error'
-                health_data['redis_error'] = redis_stats['error']
+            if not app.config['NO_ANALYTICS']:
+                health_data['redis'] = f"{app.config['REDIS_HOST']}:{app.config['REDIS_PORT']}"
+                # Test Redis connection
+                analytics_service = get_analytics_service()
+                redis_stats = analytics_service.get_database_stats()
+
+                if 'error' not in redis_stats:
+                    health_data['redis_status'] = 'connected'
+                    health_data['redis_snapshots'] = redis_stats.get('total_snapshots', 0)
+                else:
+                    health_data['redis_status'] = 'error'
+                    health_data['redis_error'] = redis_stats['error']
             
             return jsonify(health_data)
+        
         except Exception as e:
             return jsonify({
                 'status': 'error',
@@ -150,7 +156,7 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
     def clusters():
         """Display clusters that match deletion criteria."""
         namespace_filter = request.args.get('namespace')
-        
+
         try:
             # Get cluster manager
             cluster_manager = get_cluster_manager()
@@ -164,6 +170,7 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
             
             return render_template(
                 'clusters.html',
+                no_analytics=app.config['NO_ANALYTICS'],
                 clusters_to_delete=clusters_to_delete,
                 excluded_clusters=excluded_clusters,
                 kubeconfig_status=kubeconfig_status,
@@ -177,6 +184,7 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
             # Render error state
             return render_template(
                 'clusters.html',
+                no_analytics=app.config['NO_ANALYTICS'],
                 clusters_to_delete=[],
                 excluded_clusters=[],
                 kubeconfig_status=app.config['KUBECONFIG_PATH'] or "default",
@@ -190,6 +198,16 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
     @app.route(url_prefix + '/analytics')
     def analytics():
         """Analytics dashboard page."""
+
+        if app.config['NO_ANALYTICS']:
+            return render_template(
+                'analytics.html',
+                no_analytics=app.config['NO_ANALYTICS'],
+                error="Analytics features have been disabled.",
+                version=__version__,
+                refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            )
+
         try:
             analytics_service = get_analytics_service()
             
@@ -205,6 +223,7 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
             
             return render_template(
                 'analytics.html',
+                no_analytics=app.config['NO_ANALYTICS'],
                 cluster_trends_7d=cluster_trends_7d,
                 cluster_trends_30d=cluster_trends_30d,
                 deletion_activity=deletion_activity,
@@ -220,6 +239,7 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
         except Exception as e:
             return render_template(
                 'analytics.html',
+                no_analytics=app.config['NO_ANALYTICS'],
                 error=str(e),
                 version=__version__,
                 refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -228,6 +248,7 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
     @app.route(url_prefix + '/rules')
     def rules():
         """Display deletion rules and configuration summary."""
+
         try:
             # Get cluster manager to access configuration
             cluster_manager = get_cluster_manager()
@@ -252,6 +273,7 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
             
             return render_template(
                 'rules.html',
+                no_analytics=app.config['NO_ANALYTICS'],
                 # Summary statistics
                 rule_count=rule_count,
                 protected_cluster_count=protected_cluster_count,
@@ -270,6 +292,7 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
             # Render with error state
             return render_template(
                 'rules.html',
+                no_analytics=app.config['NO_ANALYTICS'],
                 rule_count=4,
                 protected_cluster_count=0,
                 excluded_namespace_count=0,
@@ -287,6 +310,7 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
     @app.route(url_prefix + '/scheduled-tasks')
     def scheduled_tasks():
         """Display scheduled tasks (CronJobs) and recent executions."""
+
         try:
             # Get cronjob manager
             cronjob_manager = get_cronjob_manager()
@@ -297,6 +321,7 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
             
             return render_template(
                 'scheduled_tasks.html',
+                no_analytics=app.config['NO_ANALYTICS'],
                 summary=summary,
                 namespace=namespace,
                 refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -307,6 +332,7 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
             # Render error state
             return render_template(
                 'scheduled_tasks.html',
+                no_analytics=app.config['NO_ANALYTICS'],
                 summary={
                     'total_cronjobs': 0,
                     'active_cronjobs': 0,
@@ -429,7 +455,7 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
 def run_server(host: str = '127.0.0.1', port: int = 8080, debug: bool = False,
                kubeconfig_path: Optional[str] = None, config_path: Optional[str] = None,
                url_prefix: Optional[str] = None, redis_host: str = 'redis', 
-               redis_port: int = 6379, redis_db: int = 0):
+               redis_port: int = 6379, redis_db: int = 0, no_analytics: bool = False):
     """
     Run the Flask development server.
     
@@ -443,8 +469,9 @@ def run_server(host: str = '127.0.0.1', port: int = 8080, debug: bool = False,
         redis_host: Redis host for analytics data
         redis_port: Redis port
         redis_db: Redis database number
+        no_analytics: Disable analytics and Redis connections
     """
-    app = create_app(kubeconfig_path, config_path, url_prefix, redis_host, redis_port, redis_db)
+    app = create_app(kubeconfig_path, config_path, url_prefix, redis_host, redis_port, redis_db, no_analytics)
     
     # Normalize prefix for display
     display_prefix = url_prefix if url_prefix else ""
@@ -453,7 +480,8 @@ def run_server(host: str = '127.0.0.1', port: int = 8080, debug: bool = False,
     print(f"📡 Server URL: http://{host}:{port}{display_prefix}")
     print(f"🔧 Debug mode: {'Enabled' if debug else 'Disabled'}")
     print(f"📋 Configuration: kubeconfig={kubeconfig_path or 'default'}, config={config_path or 'none'}")
-    print(f"📊 Analytics storage: Redis at {redis_host}:{redis_port} (db {redis_db})")
+    if not no_analytics:
+        print(f"📊 Analytics storage: Redis at {redis_host}:{redis_port} (db {redis_db})")
     if url_prefix:
         print(f"🔗 URL prefix: {url_prefix}")
     print(f"🔗 Available endpoints:")
