@@ -105,6 +105,11 @@ Commands:
 
 - To pass in a custom configuration file, use the `--config /path/to/config.yaml` argument to any command. A sample configuration file can be created with `nkp-cluster-cleaner generate-config /path/to/config.yaml`.
 
+### Deletion Of Clusters
+Note that the default for both the CLI tool and the NKP Application is to run in "dry-run" mode, and will just show what _would_ be deleted.
+
+To actually delete the clusters you must pass in the `--delete` flag to the `delete-clusters` command, or explicitly enable the Helm value in the NKP application.
+
 ### Web interface
 There is a bundled web interface that displays the cluster deletion status, protection rules, analytics and general configuration. Start the built-in Flask-based webserver with the `serve` command that takes the usual arguments to specify port and bind host etc:
 
@@ -128,12 +133,6 @@ Options:
   --no-analytics        Disable analytics and do not connect to Redis
   --help                Show this message and exit.
 ```
-
-
-### Deletion Of Clusters
-Note that the default for both the CLI tool and the NKP Application is to run in "dry-run" mode, and will just show what _would_ be deleted.
-
-To actually delete the clusters you must pass in the `--delete` flag to the `delete-clusters` command, or explicitly enable the Helm value in the NKP application.
 
 ### Analytics
 The NKP Cluster Cleaner includes an analytics dashboard that provides historical tracking, trends analysis, and reporting capabilities. It uses a Redis-based data collector that creates periodic snapshots of cluster state. 
