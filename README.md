@@ -7,7 +7,7 @@
   <img src="/docs/analytics.png" width="180">
 </p>
    
-A simple CLI tool (with optional web interface) to automatically delete Nutanix NKP clusters that do not meet a specific criteria. Useful for cleaning up resources in a lab/demo environment, similar to common "cloud cleaner" tools. Also available as a [Helm Chart](./charts/nkp-cluster-cleaner/README.md) and [NKP Catalog Application](./docs/nkp.md).
+A simple yet comprehensive tool to automatically delete and report on Nutanix Kubernetes Platform (NKP) clusters that do not meet a specific criteria. Useful for cleaning up resources and managing costs in a lab/demo environment, similar to common "cloud cleaner" tools. Available as an [NKP Catalog Application](./docs/nkp.md) and [Helm Chart](./charts/nkp-cluster-cleaner/README.md).
 
 ![Platform](https://img.shields.io/badge/platform-Nutanix_NKP-blue)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/markround/nkp-cluster-cleaner/docker.yml)
@@ -24,7 +24,7 @@ A simple CLI tool (with optional web interface) to automatically delete Nutanix 
 - 🖥️ Also runs as a standalone console application
 
 > [!NOTE] 
-> This is a personal project and is in no way supported/endorsed by, or otherwise connected to Nutanix_
+> This is a personal project and is in no way supported/endorsed by, or otherwise connected to Nutanix
 
 ## Installation
 See the documentation at [docs/nkp.md](./docs/nkp.md) for details on how to deploy the application as a NKP catalog application, running inside the NKP Management Cluster itself. This is the recommended way to run the application as it includes the scheduled tasks, web interface and analytics with no further configuration needed. 
@@ -163,23 +163,6 @@ If you want to make use of an alternative Redis/Valkey service, you must provide
 #### Disabling Analytics
 
 You can pass the argument `--no-analytics` to the `serve` command, and it will disable the analytics components (including links in the Web UI) and will not attempt to connect to any Redis/Valkey instance.
-
-#### Reports
-The analytics dashboard (/analytics) provides the following visualizations and reports:
-
-- Summary Cards
-  - Clusters for Deletion: Current count with trend indicator (increasing/decreasing/stable)
-  - Protected Clusters: Number of clusters currently excluded from deletion
-  - Label Compliance: Overall compliance rate with trending direction
-  - Average Daily Deletions: Rolling 7-day average of deletion activity
-
-- Charts and Reports
-  - Cluster Trends (30 Days)
-  - Label Compliance Trends 
-  - Deletion Activity Analysis
-  - Namespace Activity
-  - Owner Distribution
-  - Expiration Analysis
 
 #### Prometheus Metrics
 Prometheus metrics for all collected analytics data is exposed under the `/metrics` endpoint. A ServiceMonitor can be created using the Helm chart for automatic discovery and incorporation of data into the Prometheus stack used by NKP. For more information, see the [Helm Chart](./charts/nkp-cluster-cleaner/README.md) and [NKP Application](./docs/nkp.md) documentation.
