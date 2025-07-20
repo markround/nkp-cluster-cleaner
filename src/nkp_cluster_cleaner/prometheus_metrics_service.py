@@ -316,7 +316,7 @@ class PrometheusMetricsService:
         if not database_stats or 'error' in database_stats:
             return []
         
-        return [
+        metrics = [
             "# HELP nkp_cluster_cleaner_snapshots_total Total number of analytics snapshots stored",
             "# TYPE nkp_cluster_cleaner_snapshots_total gauge",
             f"nkp_cluster_cleaner_snapshots_total {database_stats.get('total_snapshots', 0)}",
@@ -330,6 +330,64 @@ class PrometheusMetricsService:
             f"nkp_cluster_cleaner_redis_uptime_days {database_stats.get('redis_uptime_days', 0)}",
             ""
         ]
+        
+        # Add Redis memory metrics (parse human-readable values to bytes)
+        if database_stats.get('redis_memory_used'):
+            memory_used_bytes = self._parse_memory_value(database_stats['redis_memory_used'])
+            if memory_used_bytes is not None:
+                metrics.extend([
+                    "# HELP nkp_cluster_cleaner_redis_memory_used_bytes Redis memory usage in bytes",
+                    "# TYPE nkp_cluster_cleaner_redis_memory_used_bytes gauge",
+                    f"nkp_cluster_cleaner_redis_memory_used_bytes {memory_used_bytes}",
+                    ""
+                ])
+        
+        if database_stats.get('redis_memory_peak'):
+            memory_peak_bytes = self._parse_memory_value(database_stats['redis_memory_peak'])
+            if memory_peak_bytes is not None:
+                metrics.extend([
+                    "# HELP nkp_cluster_cleaner_redis_memory_peak_bytes Redis peak memory usage in bytes",
+                    "# TYPE nkp_cluster_cleaner_redis_memory_peak_bytes gauge",
+                    f"nkp_cluster_cleaner_redis_memory_peak_bytes {memory_peak_bytes}",
+                    ""
+                ])
+        
+        # Add Redis version as info metric
+        if database_stats.get('redis_version'):
+            version = self._sanitize_label_value(database_stats['redis_version'])
+            metrics.extend([
+                "# HELP nkp_cluster_cleaner_redis_info Redis version information",
+                "# TYPE nkp_cluster_cleaner_redis_info gauge",
+                f'nkp_cluster_cleaner_redis_info{{version="{version}"}} 1',
+                ""
+            ])
+        
+        # Add snapshot date range metrics
+        if database_stats.get('earliest_snapshot'):
+            try:
+                earliest_timestamp = datetime.fromisoformat(database_stats['earliest_snapshot'].replace('Z', '')).timestamp()
+                metrics.extend([
+                    "# HELP nkp_cluster_cleaner_earliest_snapshot_timestamp Unix timestamp of earliest stored snapshot",
+                    "# TYPE nkp_cluster_cleaner_earliest_snapshot_timestamp gauge",
+                    f"nkp_cluster_cleaner_earliest_snapshot_timestamp {earliest_timestamp}",
+                    ""
+                ])
+            except (ValueError, AttributeError):
+                pass
+        
+        if database_stats.get('latest_snapshot'):
+            try:
+                latest_timestamp = datetime.fromisoformat(database_stats['latest_snapshot'].replace('Z', '')).timestamp()
+                metrics.extend([
+                    "# HELP nkp_cluster_cleaner_latest_snapshot_timestamp Unix timestamp of latest stored snapshot",
+                    "# TYPE nkp_cluster_cleaner_latest_snapshot_timestamp gauge",
+                    f"nkp_cluster_cleaner_latest_snapshot_timestamp {latest_timestamp}",
+                    ""
+                ])
+            except (ValueError, AttributeError):
+                pass
+        
+        return metrics
     
     def _get_timestamp_metrics(self) -> List[str]:
         """Get timestamp metrics."""
@@ -361,3 +419,54 @@ class PrometheusMetricsService:
     def _sanitize_label_value(self, value: str) -> str:
         """Sanitize label values for Prometheus format."""
         return value.replace('"', '\\"').replace('\\', '\\\\')
+    
+    def _parse_memory_value(self, memory_str: str) -> Optional[int]:
+        """
+        Parse human-readable memory values to bytes.
+        
+        Args:
+            memory_str: Memory value like "1.5M", "512K", "2G", etc.
+            
+        Returns:
+            Memory value in bytes, or None if parsing fails
+        """
+        if not memory_str:
+            return None
+        
+        try:
+            # Remove any whitespace and convert to uppercase
+            memory_str = memory_str.strip().upper()
+            
+            # Handle different suffixes
+            multipliers = {
+                'B': 1,
+                'K': 1024,
+                'KB': 1024,
+                'M': 1024 * 1024,
+                'MB': 1024 * 1024,
+                'G': 1024 * 1024 * 1024,
+                'GB': 1024 * 1024 * 1024,
+                'T': 1024 * 1024 * 1024 * 1024,
+                'TB': 1024 * 1024 * 1024 * 1024
+            }
+            
+            # Extract number and suffix
+            import re
+            match = re.match(r'([0-9.]+)([A-Z]*)', memory_str)
+            if not match:
+                return None
+            
+            number_str, suffix = match.groups()
+            number = float(number_str)
+            
+            # Default to bytes if no suffix
+            if not suffix:
+                suffix = 'B'
+            
+            if suffix in multipliers:
+                return int(number * multipliers[suffix])
+            else:
+                return None
+                
+        except (ValueError, AttributeError):
+            return None
