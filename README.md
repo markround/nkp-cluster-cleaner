@@ -137,11 +137,11 @@ Options:
 ### Analytics
 The NKP Cluster Cleaner includes an analytics dashboard that provides historical tracking, trends analysis, and reporting capabilities. It uses a Redis-based data collector that creates periodic snapshots of cluster state. 
 
-Data is collected by running `nkp-cluster-cleaner collect-analytics`. If you deploy the [NKP application](/docs/nkp.md) into your cluster, it will automatically configure a CronJob to collect data each day for you, along with a dedicated [Valkey](https://valkey.io/) server. 
+Data is collected by running `nkp-cluster-cleaner collect-analytics`. If you deploy the [NKP application](/docs/nkp.md) into your cluster, it will automatically configure a CronJob to collect data, along with a bundled [Valkey](https://valkey.io/) server. 
 
 Historical data is stored with a configurable retention period. The default is to store data for 90 days, but you can change this by passing the `--keep-days` argument to the `collect-analytics` command. 
 
-If you want to make use of the analytics service, you must provide connection details to a Redis/Valkey server when running the `serve` or `collect-analytics` commands. They both accept the following arguments:
+If you want to make use of an alternative Redis/Valkey service, you must provide connection details when running the `serve` or `collect-analytics` commands. They both accept the following arguments:
 
 | Argument | Type | Description |
 |----------|------|-------------|
