@@ -7,7 +7,7 @@
   <img src="/docs/analytics.png" width="180">
 </p>
    
-A simple yet comprehensive tool to automatically delete and report on Nutanix Kubernetes Platform (NKP) clusters that do not meet a specific criteria. Useful for cleaning up resources and managing costs in a lab/demo environment, similar to common "cloud cleaner" tools. Available as an [NKP Catalog Application](./docs/nkp.md) and [Helm Chart](./charts/nkp-cluster-cleaner/README.md).
+A simple yet comprehensive tool to automatically delete and report on Nutanix Kubernetes Platform (NKP) clusters that do not meet a specific criteria. Useful for cleaning up resources and managing costs in a lab/demo environment, similar to common "cloud cleaner" tools. Available as an [NKP Catalog Application](./docs/nkp.md), [Helm Chart](./charts/nkp-cluster-cleaner/README.md) and [Container Image](https://github.com/markround/nkp-cluster-cleaner/pkgs/container/nkp-cluster-cleaner).
 
 ![Platform](https://img.shields.io/badge/platform-Nutanix_NKP-blue)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/markround/nkp-cluster-cleaner/docker.yml)
@@ -42,6 +42,9 @@ You can however run the application from a Docker container or direct from the C
   - For example, `12h` , `2d` , `1w`, `1y`
 - A set of additional labels and acceptable regex patterns can be provided. Any cluster without matching labels will be deleted.
   - For example, the default [Helm Chart](./charts/nkp-cluster-cleaner/README.md) configuration defines a required `owner` label. Any cluster without an `owner` label will be deleted.
+
+> [!NOTE]
+> The default for both the CLI tool and the NKP Application is to run in "dry-run" mode, and will just show what _would_ be deleted. To actually delete the clusters you must pass in the `--delete` flag to the `delete-clusters` command, or explicitly enable the `cronjob.delete` value in the Helm chart / NKP application.
 
 ### Protected clusters
 The management cluster is always excluded from deletion, and a configuration file can be provided that accepts a list of regex-based namespaces or cluster names that will be excluded. For example:
@@ -115,11 +118,6 @@ Commands:
 - You must pass in a valid `kubeconfig` context with admin privileges to the NKP management cluster. This can be done by e.g. setting the `KUBECONFIG` environment variable or using the `--kubeconfig` parameter to commands. 
 
 - To pass in a custom configuration file, use the `--config /path/to/config.yaml` argument to any command. A sample configuration file can be created with `nkp-cluster-cleaner generate-config /path/to/config.yaml`.
-
-### Deletion Of Clusters
-Note that the default for both the CLI tool and the NKP Application is to run in "dry-run" mode, and will just show what _would_ be deleted.
-
-To actually delete the clusters you must pass in the `--delete` flag to the `delete-clusters` command, or explicitly enable the Helm value in the NKP application.
 
 ### Web interface
 There is a bundled web interface that displays the cluster deletion status, protection rules, analytics and general configuration. Start the built-in Flask-based webserver with the `serve` command that takes the usual arguments to specify port and bind host etc:
