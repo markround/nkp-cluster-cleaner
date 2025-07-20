@@ -80,8 +80,8 @@ monitoring:
     # -- Scrape timeout for metrics collection
     scrapeTimeout: "10s"
     # -- Additional labels for ServiceMonitor
-    labels: {}
-      # monitoring: prometheus
+    labels:
+      prometheus.kommander.d2iq.io/select: "true"
     # -- Additional annotations for ServiceMonitor
     annotations: {}
     # -- Metric relabeling rules

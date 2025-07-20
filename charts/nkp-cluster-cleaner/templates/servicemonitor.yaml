@@ -5,7 +5,6 @@ metadata:
   name: nkp-cluster-cleaner
   namespace: kommander
   labels:
-    app: nkp-cluster-cleaner
     {{- if .Values.monitoring.serviceMonitor.labels }}
     {{- toYaml .Values.monitoring.serviceMonitor.labels | nindent 4 }}
     {{- end }}

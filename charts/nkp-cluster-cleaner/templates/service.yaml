@@ -3,6 +3,8 @@ kind: Service
 metadata:
   name: nkp-cluster-cleaner
   namespace: kommander
+  labels:
+    app: nkp-cluster-cleaner
 spec:
   selector:
     app: nkp-cluster-cleaner
