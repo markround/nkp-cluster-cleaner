@@ -16,6 +16,9 @@ ingress:
     enabled: true
 
 analytics:
+  # -- Enable the analytics service and components
+  enabled: true
+  
   redis:
     # -- Hostname of the Redis/Valkey instance
     hostname: nkp-cluster-cleaner-valkey

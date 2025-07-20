@@ -30,12 +30,16 @@ spec:
         - /config/app/config.yaml
         - --prefix
         - {{ $.Values.ingress.prefix }}
+{{- if eq .Values.analytics.enabled true }}
         - --redis-host
         - {{ $.Values.analytics.redis.hostname }}
         - --redis-port
         - "{{ $.Values.analytics.redis.port }}"
         - --redis-db
         - "{{ $.Values.analytics.redis.db }}"
+{{- else }}
+        - --no-analytics
+{{- end }}
         ports:
         - containerPort: 8080
         volumeMounts:

@@ -12,6 +12,7 @@ A simple tool to automatically delete Nutanix NKP clusters that do not meet a sp
 | analytics.cronjob.failedJobsHistoryLimit | int | `1` | How many failed jobs to keep |
 | analytics.cronjob.schedule | string | `"@hourly"` | Schedule to run the job. Uses standard Kubernetes CronJob syntax. |
 | analytics.cronjob.successfulJobsHistoryLimit | int | `3` | How many successful jobs to keep |
+| analytics.enabled | bool | `true` | Enable the analytics service and components |
 | analytics.redis.db | int | `0` | Redis database number |
 | analytics.redis.hostname | string | `"nkp-cluster-cleaner-valkey"` | Hostname of the Redis/Valkey instance |
 | analytics.redis.port | int | `6379` | Port of the Redis/Valkey instance |
