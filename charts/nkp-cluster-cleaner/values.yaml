@@ -70,3 +70,27 @@ app:
     extra_labels:
     - name: owner
       description: Cluster owner identifier
+
+monitoring:
+  serviceMonitor:
+    # -- Enable ServiceMonitor for Prometheus monitoring
+    enabled: false
+    # -- Scrape interval for metrics collection
+    interval: "30s"
+    # -- Scrape timeout for metrics collection
+    scrapeTimeout: "10s"
+    # -- Additional labels for ServiceMonitor
+    labels: {}
+      # monitoring: prometheus
+    # -- Additional annotations for ServiceMonitor
+    annotations: {}
+    # -- Metric relabeling rules
+    metricRelabelings: []
+      # - sourceLabels: [__name__]
+      #   regex: 'nkp_cluster_cleaner_.*'
+      #   action: keep
+    # -- Relabeling rules
+    relabelings: []
+      # - sourceLabels: [__meta_kubernetes_pod_name]
+      #   targetLabel: pod
+      #   action: replace
