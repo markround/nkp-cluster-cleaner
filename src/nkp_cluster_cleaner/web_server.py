@@ -11,6 +11,7 @@ from .config import ConfigManager
 from .cluster_manager import ClusterManager
 from .cronjob_manager import CronJobManager
 from .redis_analytics_service import RedisAnalyticsService
+from .prometheus_metrics_service import PrometheusMetricsService
 import nkp_cluster_cleaner
 
 __version__ = nkp_cluster_cleaner.__version__
@@ -447,6 +448,27 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
                 'error': str(e),
                 'timestamp': datetime.now().isoformat()
             }), 500
+    
+    @app.route(url_prefix + '/metrics')
+    def metrics():
+        """Prometheus metrics endpoint."""
+        try:
+            if app.config['NO_ANALYTICS']:
+                # Create metrics service without analytics
+                metrics_service = PrometheusMetricsService()
+            else:
+                # Create metrics service with analytics
+                analytics_service = get_analytics_service()
+                metrics_service = PrometheusMetricsService(analytics_service)
+            
+            metrics_output = metrics_service.generate_metrics()
+            return metrics_output, 200, {'Content-Type': 'text/plain; charset=utf-8'}
+            
+        except Exception as e:
+            # Fallback to basic metrics on any error
+            metrics_service = PrometheusMetricsService()
+            metrics_output = metrics_service._generate_error_metrics(str(e))
+            return metrics_output, 200, {'Content-Type': 'text/plain; charset=utf-8'}
     #
     # End of routes
     #
@@ -488,7 +510,9 @@ def run_server(host: str = '127.0.0.1', port: int = 8080, debug: bool = False,
     print(f"   • http://{host}:{port}{display_prefix}/ - Dashboard")
     print(f"   • http://{host}:{port}{display_prefix}/clusters - Cluster listing")
     print(f"   • http://{host}:{port}{display_prefix}/rules - Deletion rules")
-    print(f"   • http://{host}:{port}{display_prefix}/analytics - Analytics dashboard")
+    if not no_analytics:
+        print(f"   • http://{host}:{port}{display_prefix}/analytics - Analytics dashboard")
+    print(f"   • http://{host}:{port}{display_prefix}/metrics - Prometheus metrics")    
     print(f"   • http://{host}:{port}{display_prefix}/scheduled-tasks - CronJob status")
     print(f"   • http://{host}:{port}{display_prefix}/health - Health check")
     print(f"🛑 Press Ctrl+C to stop the server")
