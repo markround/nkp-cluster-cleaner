@@ -1,5 +1,5 @@
 # NKP Catalog Application
-![](catalog.png)
+<img src="/docs/catalog.png" width="200">
 
 The Web UI can be installed as a NKP Catalog Application and makes use of features enabled in the Management Cluster:
 
@@ -26,7 +26,7 @@ You can then select the application in the Management Cluster Workspace and enab
 
 Assuming a standard installation of NKP Ultimate[https://github.com/markround/nkp-cluster-cleaner/issues/8], the application will work without any further configuration required. Further configuration can be carried out by setting the Application Configuration Override within the NKP interface:
 
-![](config.png)
+<img src="/docs/config.png" width="400">
 
 For a full reference of the Helm values, see the included [Chart documentation](/charts/nkp-cluster-cleaner/README.md). 
 
@@ -78,7 +78,7 @@ monitoring:
 
 A simple Grafana dashboard is also included which you might like to use. 
 
-<img src="/docs/grafana.png" width="300">
+<img src="/docs/grafana.png" width="400">
 
 This is also configured with the appropriate labels and settings for discovery by the Management Cluster Grafana. Enable this with the following settings:
 
