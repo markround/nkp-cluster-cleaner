@@ -68,7 +68,7 @@ You can view the status and logs of the enabled CronJobs in the Web UI:
 <img src="/docs/cron.png" width="400">
 
 ### NKP Monitoring Integration
-As the application exposes Prometheus metrics, it can be integrated into the standard NKP monitoring and metrics stack. If you would like to enable this, you can enable the ServiceMonitor which is configured with the appropriate labels for auto-discovery:
+Although the application has its own built-in dashboard and reporting capabilities, you may wish to integrate it with the standard NKP monitoring and metrics stack. If you would like to enable this feature, you can enable the ServiceMonitor which is configured with the appropriate labels for auto-discovery:
 
 ```yaml
 monitoring:
@@ -76,11 +76,11 @@ monitoring:
     enabled: true
 ```
 
-A simple Grafana dashboard is also included which you might like to use. 
+The `nkp_cluster_cleaner_*` metrics will then start to populate the Management Cluster's Prometheus instance. A simple Grafana dashboard is also included which you might like to use. 
 
 <img src="/docs/grafana.png" width="400">
 
-This is also configured with the appropriate labels and settings for discovery by the Management Cluster Grafana. Enable this with the following settings:
+This is also configured with the appropriate labels and settings for discovery by the Management Cluster's Grafana. Enable this with the following settings:
 
 ```yaml
 monitoring:
@@ -89,7 +89,7 @@ monitoring:
 ```
 
 > [!IMPORTANT] 
-> The Grafana dashboard will be deployed to the Management Cluster local Grafana (accessed through viewing the cluster details/dashboards page), and not the fleet-wide global Grafana instance (accessed through the Global workspace/Centralized Monitoring & Alerts).
+> The Grafana dashboard will be deployed to the Management Cluster Grafana (accessed through viewing the cluster details/dashboards page), and not the fleet-wide global Grafana instance (accessed through the Global workspace/Centralized Monitoring & Alerts).
 
 ## Upgrading
 
