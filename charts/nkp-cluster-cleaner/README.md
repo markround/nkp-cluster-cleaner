@@ -32,10 +32,11 @@ A simple tool to automatically delete Nutanix NKP clusters that do not meet a sp
 | cronjob.successfulJobsHistoryLimit | int | `3` | How many successful jobs to keep |
 | app.kubeconfigSecretRef | string | `"kommander-self-attach-kubeconfig"` | Secret containing a valid kubeconfig for the management cluster |
 | app.config | string | `"excluded_namespace_patterns:\n- ^default$\nprotected_cluster_patterns:\n- .*-prod-.*\nextra_labels:\n- name: owner\n  description: Cluster owner identifier\n"` | Default set of exclusion rules |
-| monitoring.serviceMonitor.enabled | bool | `false` | Enable ServiceMonitor for Prometheus monitoring |
+| monitoring.grafanaDashboard.enabled | bool | `false` |  |
+| monitoring.serviceMonitor.enabled | bool | `false` | Enable ServiceMonitor for integration with NKP Prometheus monitoring |
 | monitoring.serviceMonitor.interval | string | `"30s"` | Scrape interval for metrics collection |
 | monitoring.serviceMonitor.scrapeTimeout | string | `"10s"` | Scrape timeout for metrics collection |
-| monitoring.serviceMonitor.labels | object | `{}` | Additional labels for ServiceMonitor |
+| monitoring.serviceMonitor.labels | object | `{"prometheus.kommander.d2iq.io/select":"true"}` | Additional labels for ServiceMonitor |
 | monitoring.serviceMonitor.annotations | object | `{}` | Additional annotations for ServiceMonitor |
 | monitoring.serviceMonitor.metricRelabelings | list | `[]` | Metric relabeling rules |
 | monitoring.serviceMonitor.relabelings | list | `[]` | Relabeling rules |

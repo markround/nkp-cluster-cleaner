@@ -1,0 +1,13 @@
+{{- if eq .Values.monitoring.grafanaDashboard.enabled true }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nkp-cluster-cleaner-grafana-dashboard
+  namespace: kommander
+  labels:
+    grafana_dashboard: "1"
+data:
+  kubernetes.json: |
+{{ .Files.Get "grafana-dashboards/nkp-cluster-cleaner.json" | indent 4 }}
+{{- end }}

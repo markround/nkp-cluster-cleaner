@@ -72,8 +72,12 @@ app:
       description: Cluster owner identifier
 
 monitoring:
+  grafanaDashboard:
+    ## -- Deploy a Dashboard into the NKP Grafana instance
+    enabled: false
+
   serviceMonitor:
-    # -- Enable ServiceMonitor for Prometheus monitoring
+    # -- Enable ServiceMonitor for integration with NKP Prometheus monitoring
     enabled: false
     # -- Scrape interval for metrics collection
     interval: "30s"

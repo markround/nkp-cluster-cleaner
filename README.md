@@ -98,6 +98,8 @@ extra_labels:
 These can also be viewed in the Web UI, along with the other matching rules and list of clusters scheduled for deletion.
 
 ## General Usage
+Although the preferred method of deployment and configuration is as an NKP application, you can still run the tool from the CLI or container image:
+
 ```
 Usage: nkp-cluster-cleaner [OPTIONS] COMMAND [ARGS]...
 
@@ -163,7 +165,9 @@ If you want to make use of an alternative Redis/Valkey service, you must provide
 You can pass the argument `--no-analytics` to the `serve` command, and it will disable the analytics components (including links in the Web UI) and will not attempt to connect to any Redis/Valkey instance.
 
 #### Prometheus Metrics
-Prometheus metrics for all collected analytics data is exposed under the `/metrics` endpoint. A ServiceMonitor can be created using the Helm chart for automatic discovery and incorporation of data into the Prometheus stack used by NKP. For more information, see the [Helm Chart](./charts/nkp-cluster-cleaner/README.md) and [NKP Application](./docs/nkp.md) documentation.
+Prometheus metrics for all collected analytics data is exposed under the `/metrics` endpoint. A ServiceMonitor can be created using the Helm chart for automatic discovery and incorporation of data into the Prometheus stack used by NKP. 
+
+A sample [Grafana dashboard](./charts/nkp-cluster-cleaner/grafana-dashboards/nkp-cluster-cleaner.json) is provided that can be integrated into the NKP Grafana stack. For more information, see the [Helm Chart](./charts/nkp-cluster-cleaner/README.md) and [NKP Application](./docs/nkp.md) documentation.
 
 ## Docker Usage
 ### Tags
