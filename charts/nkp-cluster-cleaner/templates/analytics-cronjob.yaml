@@ -1,4 +1,4 @@
-{{- if eq .Values.analytics.cronjob.enabled true }}
+{{- if and (eq .Values.analytics.cronjob.enabled true) (eq .Values.analytics.enabled true) }}
 ---
 apiVersion: batch/v1
 kind: CronJob

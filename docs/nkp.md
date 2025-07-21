@@ -1,10 +1,11 @@
 # NKP Catalog Application
-![](catalog.png)
+<img src="/docs/catalog.png" width="200">
 
-The Web UI can be installed as a NKP Catalog Application and makes use of features enabled in the Management Cluster:
+The NKP Cluster Cleaner tool can be installed as a NKP Catalog Application and makes use of features enabled in the Management Cluster:
 
 - Traefik ingress controller (with optional authentication, enabled by default)
 - The default kommander kubeconfig secret for self-attachment. 
+- Optional integration with the NKP Prometheus & Grafana stack
 
 The Helm Chart used by the application will also install a CronJob to handle the automated deletion of clusters. This is set to dry-run by default, and must be explicitly enabled before any destructive actions will be carried out.
 
@@ -15,15 +16,27 @@ To install the custom catalog, run the following command:
 ```bash
 nkp create catalog nkp-cluster-cleaner \
     -w kommander-workspace \
-    --tag 0.8.1 \
+    --tag 0.9.0 \
     --url https://github.com/markround/nkp-cluster-cleaner
 ```
 
-You can then select the application in the Management Cluster Workspace and enable it. After it has been deployed, the dashboard can be accessed in the usual way, e.g. by browsing to the Management Cluster and selecting the Application Dashboards tab.
+You can then select the application in the Management Cluster Workspace and enable it. After it has been deployed, the dashboard can be accessed in the usual way, e.g. by browsing to the Management Cluster and selecting the Application Dashboards tab:
+
+<img src="/docs/dashboard.png" width="400">
+
+
 
 ## Configuration
 
-Assuming a standard installation of NKP Ultimate[https://github.com/markround/nkp-cluster-cleaner/issues/8], the application will work without any further configuration required. For a full reference of the Helm values, see the included [Chart documentation](/charts/nkp-cluster-cleaner/README.md). Note that the defaults will require an admin account to log-in and view the dashboard. More granular RBAC will be added in a future release - see https://github.com/markround/nkp-cluster-cleaner/issues/4.
+Assuming a standard installation of NKP Ultimate[https://github.com/markround/nkp-cluster-cleaner/issues/8], the application will work without any further configuration required. Further configuration can be carried out by setting the Application Configuration Override within the NKP interface:
+
+<img src="/docs/config.png" width="400">
+
+For a full reference of the Helm values, see the included [Chart documentation](/charts/nkp-cluster-cleaner/README.md). 
+
+
+> [!TIP]
+> The default settings will require an admin account to log-in and view the dashboard. More granular RBAC will be added in a future release - see https://github.com/markround/nkp-cluster-cleaner/issues/4.
 
 ### Default rules
 
@@ -58,6 +71,29 @@ You can view the status and logs of the enabled CronJobs in the Web UI:
 
 <img src="/docs/cron.png" width="400">
 
+### NKP Monitoring Integration
+Although the application has its own built-in dashboard and reporting capabilities, you may wish to integrate it with the standard NKP monitoring and metrics stack. If you would like to enable this feature, you can enable the ServiceMonitor which is configured with the appropriate labels for auto-discovery:
+
+```yaml
+monitoring:
+  serviceMonitor:
+    enabled: true
+```
+
+The `nkp_cluster_cleaner_*` metrics will then start to populate the Management Cluster's Prometheus instance. A simple Grafana dashboard is also included which you might like to use. 
+
+<img src="/docs/grafana.png" width="400">
+
+This is also configured with the appropriate labels and settings for discovery by the Management Cluster's Grafana. Enable this with the following settings:
+
+```yaml
+monitoring:
+  grafanaDashboard:
+    enabled: true
+```
+
+> [!IMPORTANT] 
+> The Grafana dashboard will be deployed to the Management Cluster Grafana (accessed through viewing the cluster details/dashboards page), and not the fleet-wide global Grafana instance (accessed through the Global workspace/Centralized Monitoring & Alerts).
 
 ## Upgrading
 
@@ -68,7 +104,7 @@ kubectl patch \
   --type merge \
   -n kommander \
   gitrepository nkp-cluster-cleaner \
-  --patch '{"spec": {"ref":{"tag":"0.8.1"}}}'
+  --patch '{"spec": {"ref":{"tag":"0.9.0"}}}'
 ```
 
 And then updating your AppDeployment to the latest release:
@@ -78,5 +114,5 @@ kubectl patch \
   --type merge \
   -n kommander \
   AppDeployment nkp-cluster-cleaner \
-  --patch '{"spec":{"appRef":{"name":"nkp-cluster-cleaner-0.8.1"}}}'
+  --patch '{"spec":{"appRef":{"name":"nkp-cluster-cleaner-0.9.0"}}}'
 ```

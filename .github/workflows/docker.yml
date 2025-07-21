@@ -55,6 +55,10 @@ jobs:
             type=semver,pattern=v{{version}}
             # Tag name for releases (e.g., v1.0.0 -> 1.0.0)
             type=semver,pattern={{version}}
+            # Major version (e.g., 1.2.3 -> 1)
+            type=semver,pattern={{major}}
+            # Major.minor version (e.g., 1.2.3 -> 1.2)
+            type=semver,pattern={{major}}.{{minor}}
             # Raw tag name (e.g., 0.1.0 -> 0.1.0)
             type=ref,event=tag
             # Latest tag for any tag push

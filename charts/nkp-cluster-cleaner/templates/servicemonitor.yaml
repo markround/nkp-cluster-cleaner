@@ -1,0 +1,32 @@
+{{- if .Values.monitoring.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: nkp-cluster-cleaner
+  namespace: kommander
+  labels:
+    {{- if .Values.monitoring.serviceMonitor.labels }}
+    {{- toYaml .Values.monitoring.serviceMonitor.labels | nindent 4 }}
+    {{- end }}
+  {{- if .Values.monitoring.serviceMonitor.annotations }}
+  annotations:
+    {{- toYaml .Values.monitoring.serviceMonitor.annotations | nindent 4 }}
+  {{- end }}
+spec:
+  selector:
+    matchLabels:
+      app: nkp-cluster-cleaner
+  endpoints:
+  - port: http
+    path: {{ .Values.ingress.prefix | default "" }}/metrics
+    interval: {{ .Values.monitoring.serviceMonitor.interval | default "30s" }}
+    scrapeTimeout: {{ .Values.monitoring.serviceMonitor.scrapeTimeout | default "10s" }}
+    {{- if .Values.monitoring.serviceMonitor.metricRelabelings }}
+    metricRelabelings:
+      {{- toYaml .Values.monitoring.serviceMonitor.metricRelabelings | nindent 6 }}
+    {{- end }}
+    {{- if .Values.monitoring.serviceMonitor.relabelings }}
+    relabelings:
+      {{- toYaml .Values.monitoring.serviceMonitor.relabelings | nindent 6 }}
+    {{- end }}
+{{- end }}

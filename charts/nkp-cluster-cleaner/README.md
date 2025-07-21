@@ -1,36 +1,45 @@
 # nkp-cluster-cleaner
 
-![Version: 0.8.1](https://img.shields.io/badge/Version-0.8.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.8.1](https://img.shields.io/badge/AppVersion-0.8.1-informational?style=flat-square)
+![Version: 0.9.0](https://img.shields.io/badge/Version-0.9.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.9.0](https://img.shields.io/badge/AppVersion-0.9.0-informational?style=flat-square)
 
-A simple tool to automatically delete Nutanix NKP clusters that do not meet a specific criteria
+A simple tool to automatically delete Nutanix NKP clusters that do not meet a specific criteria. Note that this chart is designed to be installed directly into the NKP Management Cluster, so various settings/templates have been hard-coded or configured accordingly.
 
 ## Values
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| analytics.cronjob.enabled | bool | `true` | Enable periodic collection of historical data |
-| analytics.cronjob.failedJobsHistoryLimit | int | `1` | How many failed jobs to keep |
-| analytics.cronjob.schedule | string | `"@hourly"` | Schedule to run the job. Uses standard Kubernetes CronJob syntax. |
-| analytics.cronjob.successfulJobsHistoryLimit | int | `3` | How many successful jobs to keep |
-| analytics.redis.db | int | `0` | Redis database number |
+| deployment.image | string | `"ghcr.io/markround/nkp-cluster-cleaner:0.9.0"` | Container image to use |
+| deployment.replicas | int | `1` | Number of replicas to deploy |
+| ingress.enabled | bool | `true` | Enables ingress through the Kommander Traefik deployment |
+| ingress.prefix | string | `"/mdr/nkp-cluster-cleaner"` | URL Prefix for the dashboard |
+| ingress.class | string | `"kommander-traefik"` | Ingress class to use |
+| ingress.authentication.enabled | bool | `true` | If true, access to the dashboard will require logging in with an admin account. Setting to false will enable anonymous access. |
+| analytics.enabled | bool | `true` | Enable the analytics service and components |
 | analytics.redis.hostname | string | `"nkp-cluster-cleaner-valkey"` | Hostname of the Redis/Valkey instance |
 | analytics.redis.port | int | `6379` | Port of the Redis/Valkey instance |
+| analytics.redis.db | int | `0` | Redis database number |
+| analytics.cronjob.enabled | bool | `true` | Enable periodic collection of historical data |
+| analytics.cronjob.schedule | string | `"@hourly"` | Schedule to run the job. Uses standard Kubernetes CronJob syntax. |
+| analytics.cronjob.failedJobsHistoryLimit | int | `1` | How many failed jobs to keep |
+| analytics.cronjob.successfulJobsHistoryLimit | int | `3` | How many successful jobs to keep |
 | analytics.valkey.enabled | bool | `true` | Deploy a Valkey service for storing historical data |
 | analytics.valkey.image | string | `"ghcr.io/valkey-io/valkey:8-alpine"` | Valkey container image to use |
 | analytics.valkey.saveEnv | string | `"900 1"` | Valkey SAVE_ENV value to specify how often to ensure data is flushed to disk |
-| app.config | string | `"excluded_namespace_patterns:\n- ^default$\nprotected_cluster_patterns:\n- .*-prod-.*\nextra_labels:\n- name: owner\n  description: Cluster owner identifier"` | Default set of exclusion rules |
-| app.kubeconfigSecretRef | string | `"kommander-self-attach-kubeconfig"` | Secret containing a valid kubeconfig for the management cluster |
-| cronjob.delete | bool | `false` | Set to true to actually delete clusters, default is to operate in "dry-run" mode |
 | cronjob.enabled | bool | `true` | Enable scheduled deletion CronJobs |
-| cronjob.failedJobsHistoryLimit | int | `1` | How many failed jobs to keep |
+| cronjob.delete | bool | `false` | Set to true to actually delete clusters, default is to operate in "dry-run" mode |
 | cronjob.schedule | string | `"@daily"` | Schedule to run the job. Uses standard Kubernetes CronJob syntax. |
+| cronjob.failedJobsHistoryLimit | int | `1` | How many failed jobs to keep |
 | cronjob.successfulJobsHistoryLimit | int | `3` | How many successful jobs to keep |
-| deployment.image | string | `"ghcr.io/markround/nkp-cluster-cleaner:0.8.1"` | Container image to use |
-| deployment.replicas | int | `1` | Number of replicas to deploy |
-| ingress.authentication.enabled | bool | `true` | If true, access to the dashboard will require logging in with an admin account. Setting to false will enable anonymous access. |
-| ingress.class | string | `"kommander-traefik"` | Ingress class to use |
-| ingress.enabled | bool | `true` | Enables ingress through the Kommander Traefik deployment |
-| ingress.prefix | string | `"/mdr/nkp-cluster-cleaner"` | URL Prefix for the dashboard |
+| app.kubeconfigSecretRef | string | `"kommander-self-attach-kubeconfig"` | Secret containing a valid kubeconfig for the management cluster |
+| app.config | string | `"excluded_namespace_patterns:\n- ^default$\nprotected_cluster_patterns:\n- .*-prod-.*\nextra_labels:\n- name: owner\n  description: Cluster owner identifier\n"` | Default set of exclusion rules |
+| monitoring.grafanaDashboard.enabled | bool | `false` | Deploy a Dashboard into the NKP Grafana instance |
+| monitoring.serviceMonitor.enabled | bool | `false` | Enable ServiceMonitor for integration with NKP Prometheus monitoring |
+| monitoring.serviceMonitor.interval | string | `"30s"` | Scrape interval for metrics collection |
+| monitoring.serviceMonitor.scrapeTimeout | string | `"10s"` | Scrape timeout for metrics collection |
+| monitoring.serviceMonitor.labels | object | `{"prometheus.kommander.d2iq.io/select":"true"}` | Additional labels for ServiceMonitor |
+| monitoring.serviceMonitor.annotations | object | `{}` | Additional annotations for ServiceMonitor |
+| monitoring.serviceMonitor.metricRelabelings | list | `[]` | Metric relabeling rules |
+| monitoring.serviceMonitor.relabelings | list | `[]` | Relabeling rules |
 
 ----------------------------------------------
 Autogenerated from chart metadata using [helm-docs v1.14.2](https://github.com/norwoodj/helm-docs/releases/v1.14.2)

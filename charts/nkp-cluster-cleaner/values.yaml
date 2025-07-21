@@ -1,6 +1,6 @@
 deployment:
   # -- Container image to use
-  image: ghcr.io/markround/nkp-cluster-cleaner:0.8.1
+  image: ghcr.io/markround/nkp-cluster-cleaner:0.9.0
   # -- Number of replicas to deploy
   replicas: 1
 
@@ -16,6 +16,9 @@ ingress:
     enabled: true
 
 analytics:
+  # -- Enable the analytics service and components
+  enabled: true
+  
   redis:
     # -- Hostname of the Redis/Valkey instance
     hostname: nkp-cluster-cleaner-valkey
@@ -67,3 +70,31 @@ app:
     extra_labels:
     - name: owner
       description: Cluster owner identifier
+
+monitoring:
+  grafanaDashboard:
+    # -- Deploy a Dashboard into the NKP Grafana instance
+    enabled: false
+
+  serviceMonitor:
+    # -- Enable ServiceMonitor for integration with NKP Prometheus monitoring
+    enabled: false
+    # -- Scrape interval for metrics collection
+    interval: "30s"
+    # -- Scrape timeout for metrics collection
+    scrapeTimeout: "10s"
+    # -- Additional labels for ServiceMonitor
+    labels:
+      prometheus.kommander.d2iq.io/select: "true"
+    # -- Additional annotations for ServiceMonitor
+    annotations: {}
+    # -- Metric relabeling rules
+    metricRelabelings: []
+      # - sourceLabels: [__name__]
+      #   regex: 'nkp_cluster_cleaner_.*'
+      #   action: keep
+    # -- Relabeling rules
+    relabelings: []
+      # - sourceLabels: [__meta_kubernetes_pod_name]
+      #   targetLabel: pod
+      #   action: replace

@@ -271,7 +271,12 @@ def generate_config(output_file):
     type=int,
     help='Redis database number (default: 0)'
 )
-def serve(kubeconfig, config, host, port, debug, prefix, redis_host, redis_port, redis_db):
+@click.option(
+    '--no-analytics',
+    is_flag=True,
+    help='Disable analytics and do not connect to Redis'
+)
+def serve(kubeconfig, config, host, port, debug, prefix, redis_host, redis_port, redis_db, no_analytics):
     """Start the web server for the cluster cleaner UI."""
     try:
         from .web_server import run_server
@@ -284,7 +289,8 @@ def serve(kubeconfig, config, host, port, debug, prefix, redis_host, redis_port,
             url_prefix=prefix,
             redis_host=redis_host,
             redis_port=redis_port,
-            redis_db=redis_db
+            redis_db=redis_db,
+            no_analytics=no_analytics
         )
     except KeyboardInterrupt:
         click.echo(f"\n{Fore.YELLOW}Server stopped by user.{Style.RESET_ALL}")

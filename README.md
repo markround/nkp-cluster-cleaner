@@ -7,18 +7,29 @@
   <img src="/docs/analytics.png" width="180">
 </p>
    
-A simple CLI tool (with optional web interface) to automatically delete Nutanix NKP clusters that do not meet a specific criteria. Useful for cleaning up resources in a lab/demo environment, similar to common "cloud cleaner" tools. Also available as a [Helm Chart](./charts/nkp-cluster-cleaner/README.md) and [NKP Catalog Application](./docs/nkp.md).
+A simple yet comprehensive tool to automatically delete and report on Nutanix Kubernetes Platform (NKP) clusters that do not meet a specific criteria. Useful for cleaning up resources and managing costs in a lab/demo environment, similar to common "cloud cleaner" tools. Available as an [NKP Catalog Application](./docs/nkp.md), [Helm Chart](./charts/nkp-cluster-cleaner/README.md) and [Container Image](https://github.com/markround/nkp-cluster-cleaner/pkgs/container/nkp-cluster-cleaner).
 
 ![Platform](https://img.shields.io/badge/platform-Nutanix_NKP-blue)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/markround/nkp-cluster-cleaner/docker.yml)
 ![GitHub branch check runs](https://img.shields.io/github/check-runs/markround/nkp-cluster-cleaner/main)
 ![GitHub Release](https://img.shields.io/github/v/release/markround/nkp-cluster-cleaner)
 
+## Features
 
-_Disclaimer: This is a personal project and is in no way supported/endorsed by, or otherwise connected to Nutanix_
+- 🚀 Simple "one-click" catalog installation and tight integration with NKP features
+- 📋 Flexible rulesets and custom criteria
+- 📈 Trend analysis, compliance monitoring and historical data tracking
+- 📊 Built-in web dashboard and administration console
+- 🔥 Prometheus metrics, NKP monitoring integration and Grafana dashboard 
+- 🖥️ Also runs as a standalone console application
 
-## NKP Catalog Application
+> [!NOTE] 
+> This is a personal project and is in no way supported/endorsed by, or otherwise connected to Nutanix
+
+## Installation
 See the documentation at [docs/nkp.md](./docs/nkp.md) for details on how to deploy the application as a NKP catalog application, running inside the NKP Management Cluster itself. This is the recommended way to run the application as it includes the scheduled tasks, web interface and analytics with no further configuration needed. 
+
+You can however run the application from a Docker container or direct from the CLI. These options are discussed below.
 
 ## Strategy
 - Any cluster without an `expires` label will be deleted.
@@ -31,6 +42,9 @@ See the documentation at [docs/nkp.md](./docs/nkp.md) for details on how to depl
   - For example, `12h` , `2d` , `1w`, `1y`
 - A set of additional labels and acceptable regex patterns can be provided. Any cluster without matching labels will be deleted.
   - For example, the default [Helm Chart](./charts/nkp-cluster-cleaner/README.md) configuration defines a required `owner` label. Any cluster without an `owner` label will be deleted.
+
+> [!NOTE]
+> The default for both the CLI tool and the NKP Application is to run in "dry-run" mode, and will just show what _would_ be deleted. To actually delete the clusters you must pass in the `--delete` flag to the `delete-clusters` command, or explicitly enable the `cronjob.delete` value in the Helm chart / NKP application.
 
 ### Protected clusters
 The management cluster is always excluded from deletion, and a configuration file can be provided that accepts a list of regex-based namespaces or cluster names that will be excluded. For example:
@@ -81,12 +95,11 @@ extra_labels:
   regex: "^(dev|test|staging|prod)$"
 ```
 
-These can also be viewed in the Web UI, along with the other matching rules and list of clusters scheduled for deletion:
-
-<img src="/docs/labels.png" width="500">
-
+These can also be viewed in the Web UI, along with the other matching rules and list of clusters scheduled for deletion.
 
 ## General Usage
+Although the preferred method of deployment and configuration is as an NKP application, you can still run the tool from the CLI or container image:
+
 ```
 Usage: nkp-cluster-cleaner [OPTIONS] COMMAND [ARGS]...
 
@@ -128,23 +141,18 @@ Options:
   --redis-host TEXT     Redis host for analytics data (default: redis)
   --redis-port INTEGER  Redis port (default: 6379)
   --redis-db INTEGER    Redis database number (default: 0)
+  --no-analytics        Disable analytics and do not connect to Redis
   --help                Show this message and exit.
 ```
-
-
-### Deletion Of Clusters
-Note that the default for both the CLI tool and the NKP Application is to run in "dry-run" mode, and will just show what _would_ be deleted.
-
-To actually delete the clusters you must pass in the `--delete` flag to the `delete-clusters` command, or explicitly enable the Helm value in the NKP application.
 
 ### Analytics
 The NKP Cluster Cleaner includes an analytics dashboard that provides historical tracking, trends analysis, and reporting capabilities. It uses a Redis-based data collector that creates periodic snapshots of cluster state. 
 
-Data is collected by running `nkp-cluster-cleaner collect-analytics`. If you deploy the [NKP application](/docs/nkp.md) into your cluster, it will automatically configure a CronJob to collect data each day for you, along with a dedicated [Valkey](https://valkey.io/) server. 
+Data is collected by running `nkp-cluster-cleaner collect-analytics`. If you deploy the [NKP application](/docs/nkp.md) into your cluster, it will automatically configure a CronJob to collect data, along with a bundled [Valkey](https://valkey.io/) server. 
 
 Historical data is stored with a configurable retention period. The default is to store data for 90 days, but you can change this by passing the `--keep-days` argument to the `collect-analytics` command. 
 
-If you want to make use of the analytics service, you must provide connection details to a Redis/Valkey server when running the `serve` or `collect-analytics` commands. They both accept the following arguments:
+If you want to make use of an alternative Redis/Valkey service, you must provide connection details when running the `serve` or `collect-analytics` commands. They both accept the following arguments:
 
 | Argument | Type | Description |
 |----------|------|-------------|
@@ -152,31 +160,21 @@ If you want to make use of the analytics service, you must provide connection de
 |`--redis-port` | INTEGER  | Redis port (default: 6379)  |
 |`--redis-db`   | INTEGER  | Redis database number (default: 0) |
 
-If a server is not available then you will simply see a connection error in the "Analytics" page of the Web UI, it will not affect the core operation of the application.
+#### Disabling Analytics
 
-#### Reports
-The analytics dashboard (/analytics) provides the following visualizations and reports:
+You can pass the argument `--no-analytics` to the `serve` command, and it will disable the analytics components (including links in the Web UI) and will not attempt to connect to any Redis/Valkey instance.
 
-- Summary Cards
-  - Clusters for Deletion: Current count with trend indicator (increasing/decreasing/stable)
-  - Protected Clusters: Number of clusters currently excluded from deletion
-  - Label Compliance: Overall compliance rate with trending direction
-  - Average Daily Deletions: Rolling 7-day average of deletion activity
+#### Prometheus Metrics
+Prometheus metrics for all collected analytics data is exposed under the `/metrics` endpoint. A ServiceMonitor can be created using the Helm chart for automatic discovery and incorporation of data into the Prometheus stack used by NKP. 
 
-- Charts and Reports
-  - Cluster Trends (30 Days)
-  - Label Compliance Trends 
-  - Deletion Activity Analysis
-  - Namespace Activity
-  - Owner Distribution
-  - Expiration Analysis
+A sample [Grafana dashboard](./charts/nkp-cluster-cleaner/grafana-dashboards/nkp-cluster-cleaner.json) is provided that can be integrated into the NKP Grafana stack. For more information, see the [Helm Chart](./charts/nkp-cluster-cleaner/README.md) and [NKP Application](./docs/nkp.md) documentation.
 
 ## Docker Usage
 ### Tags
 - The container image can be pulled from GitHub Container Registry: `ghcr.io/markround/nkp-cluster-cleaner:<TAG>`
 - Available tags are:
   - Branch (e.g. `main`, `feature/xxx`, etc.)
-  - Release tag (e.g. `0.8.1`) 
+  - Release tag (e.g. `0.9.0`) 
   - Latest released version (e.g. `latest`)
 - Full list on the [packages page](https://github.com/markround/nkp-cluster-cleaner/pkgs/container/nkp-cluster-cleaner)
 

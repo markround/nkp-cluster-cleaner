@@ -79,6 +79,7 @@ class ClusterManager:
     def list_all_kommander_clusters(self, namespace: Optional[str] = None) -> List[Dict]:
         """
         List all KommanderCluster objects across all namespaces or in a specific namespace.
+        Excludes clusters that do not have a spec.clusterRef.capiCluster dictionary (attached clusters).
         
         Args:
             namespace: If specified, only list KommanderClusters in this namespace
@@ -109,10 +110,21 @@ class ClusterManager:
                     
                     kommander_clusters = response.get("items", [])
                     for kc in kommander_clusters:
+                        # Filter out clusters without spec.clusterRef.capiCluster (attached clusters)
+                        spec = kc.get("spec", {})
+                        cluster_ref = spec.get("clusterRef", {})
+                        capi_cluster = cluster_ref.get("capiCluster")
+                        
+                        # Skip clusters that don't have a capiCluster dictionary
+                        if not isinstance(capi_cluster, dict):
+                            kc_name = kc.get("metadata", {}).get("name", "unknown")
+                            print(f"{Fore.CYAN}Info: Skipping attached cluster {kc_name} (no spec.clusterRef.capiCluster){Style.RESET_ALL}")
+                            continue
+                        
                         # Add namespace info for easier handling
                         kc["_namespace"] = namespace_name
                         all_kommander_clusters.append(kc)
-                        
+                                      
                 except ApiException as e:
                     if e.status == 404:
                         # No KommanderClusters in this namespace, continue
@@ -120,13 +132,13 @@ class ClusterManager:
                     else:
                         print(f"{Fore.YELLOW}Warning: Could not list KommanderClusters in namespace {namespace_name}: {e}{Style.RESET_ALL}")
                         continue
-                        
+                    
         except ApiException as e:
             if e.status == 404:
                 print(f"{Fore.YELLOW}Warning: KommanderCluster CRDs not found. Is Kommander installed?{Style.RESET_ALL}")
                 return []
             raise Exception(f"Failed to list namespaces: {e}")
-        
+    
         return all_kommander_clusters
     
     def check_kommander_crds(self) -> bool:

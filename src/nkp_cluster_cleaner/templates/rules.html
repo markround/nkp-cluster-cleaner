@@ -7,6 +7,31 @@
 
 {% block extra_css %}
 <style>
+    .summary-cards {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 20px;
+          margin-bottom: 30px;
+    }
+    .summary-card {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        text-align: center;
+        border-left: 4px solid #667eea;
+    }
+    .summary-number {
+        font-size: 2em;
+        font-weight: bold;
+        color: #667eea;
+        margin-bottom: 5px;
+    }
+    .summary-label {
+        color: #718096;
+        font-size: 0.9em;
+        font-weight: 500;
+    }
     .rules-section {
         margin-bottom: 30px;
         background: white;
@@ -154,30 +179,29 @@
 
 {% block content %}
     <!-- Configuration Summary -->
-    <div class="summary-box">
-        <h2 style="margin-top: 0; border-bottom: 2px solid #bbdefb;">📋 Configuration Summary</h2>
-        <div class="summary-stat">
+    <div class="summary-cards">
+        <div class="summary-card">
             <div class="summary-number">{{ rule_count }}</div>
             <div class="summary-label">Core Rules</div>
         </div>
-        <div class="summary-stat">
+        <div class="summary-card">
             <div class="summary-number">{{ protected_cluster_count }}</div>
             <div class="summary-label">Protected Patterns</div>
         </div>
-        <div class="summary-stat">
+        <div class="summary-card">
             <div class="summary-number">{{ excluded_namespace_count }}</div>
             <div class="summary-label">Excluded Namespaces</div>
         </div>
-        <div class="summary-stat">
+        <div class="summary-card">
             <div class="summary-number">{{ extra_labels_count }}</div>
             <div class="summary-label">Required Labels</div>
         </div>
-        <div class="summary-stat">
+        <div class="summary-card">
             <div class="summary-number">{{ time_format_count }}</div>
             <div class="summary-label">Time Formats</div>
         </div>
     </div>
-
+    
     <!-- Protection Rules -->
     <div class="rules-section">
         <h2>🛡️ Protection Rules</h2>
