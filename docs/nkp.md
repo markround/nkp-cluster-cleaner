@@ -68,7 +68,7 @@ You can view the status and logs of the enabled CronJobs in the Web UI:
 <img src="/docs/cron.png" width="400">
 
 ### NKP Monitoring Integration
-As the application exposes Prometheus metrics, it can be integrated into the standard NKP monitoring and metrics stack. If you would like to enable this, you can enable the ServiceMonitor which is configured with the appropriate labels to be discovered by the NKP Prometheus stack running in the Management Cluster:
+As the application exposes Prometheus metrics, it can be integrated into the standard NKP monitoring and metrics stack. If you would like to enable this, you can enable the ServiceMonitor which is configured with the appropriate labels for auto-discovery:
 
 ```yaml
 monitoring:
@@ -88,6 +88,8 @@ monitoring:
     enabled: true
 ```
 
+> [!IMPORTANT] 
+> The Grafana dashboard will be deployed to the Management Cluster local Grafana (accessed through viewing the cluster details/dashboards page), and not the fleet-wide global Grafana instance (accessed through the Global workspace/Centralized Monitoring & Alerts).
 
 ## Upgrading
 
