@@ -73,7 +73,7 @@ app:
 
 monitoring:
   grafanaDashboard:
-    ## -- Deploy a Dashboard into the NKP Grafana instance
+    # -- Deploy a Dashboard into the NKP Grafana instance
     enabled: false
 
   serviceMonitor:

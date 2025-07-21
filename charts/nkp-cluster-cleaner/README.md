@@ -2,7 +2,7 @@
 
 ![Version: 0.8.1](https://img.shields.io/badge/Version-0.8.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.8.1](https://img.shields.io/badge/AppVersion-0.8.1-informational?style=flat-square)
 
-A simple tool to automatically delete Nutanix NKP clusters that do not meet a specific criteria
+A simple tool to automatically delete Nutanix NKP clusters that do not meet a specific criteria. Note that this chart is designed to be installed directly into the NKP Management Cluster, so various settings/templates have been hard-coded or configured accordingly.
 
 ## Values
 
@@ -32,7 +32,7 @@ A simple tool to automatically delete Nutanix NKP clusters that do not meet a sp
 | cronjob.successfulJobsHistoryLimit | int | `3` | How many successful jobs to keep |
 | app.kubeconfigSecretRef | string | `"kommander-self-attach-kubeconfig"` | Secret containing a valid kubeconfig for the management cluster |
 | app.config | string | `"excluded_namespace_patterns:\n- ^default$\nprotected_cluster_patterns:\n- .*-prod-.*\nextra_labels:\n- name: owner\n  description: Cluster owner identifier\n"` | Default set of exclusion rules |
-| monitoring.grafanaDashboard.enabled | bool | `false` |  |
+| monitoring.grafanaDashboard.enabled | bool | `false` | Deploy a Dashboard into the NKP Grafana instance |
 | monitoring.serviceMonitor.enabled | bool | `false` | Enable ServiceMonitor for integration with NKP Prometheus monitoring |
 | monitoring.serviceMonitor.interval | string | `"30s"` | Scrape interval for metrics collection |
 | monitoring.serviceMonitor.scrapeTimeout | string | `"10s"` | Scrape timeout for metrics collection |

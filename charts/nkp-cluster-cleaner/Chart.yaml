@@ -1,6 +1,6 @@
 apiVersion: v2
 name: nkp-cluster-cleaner
-description: A simple tool to automatically delete Nutanix NKP clusters that do not meet a specific criteria
+description: A simple tool to automatically delete Nutanix NKP clusters that do not meet a specific criteria. Note that this chart is designed to be installed directly into the NKP Management Cluster, so various settings/templates have been hard-coded or configured accordingly.
 type: application
 version: 0.8.1
 appVersion: "0.8.1"

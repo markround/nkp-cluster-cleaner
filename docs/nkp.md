@@ -5,6 +5,7 @@ The Web UI can be installed as a NKP Catalog Application and makes use of featur
 
 - Traefik ingress controller (with optional authentication, enabled by default)
 - The default kommander kubeconfig secret for self-attachment. 
+- Optional integration with the NKP Prometheus & Grafana stack
 
 The Helm Chart used by the application will also install a CronJob to handle the automated deletion of clusters. This is set to dry-run by default, and must be explicitly enabled before any destructive actions will be carried out.
 
@@ -23,7 +24,15 @@ You can then select the application in the Management Cluster Workspace and enab
 
 ## Configuration
 
-Assuming a standard installation of NKP Ultimate[https://github.com/markround/nkp-cluster-cleaner/issues/8], the application will work without any further configuration required. For a full reference of the Helm values, see the included [Chart documentation](/charts/nkp-cluster-cleaner/README.md). Note that the defaults will require an admin account to log-in and view the dashboard. More granular RBAC will be added in a future release - see https://github.com/markround/nkp-cluster-cleaner/issues/4.
+Assuming a standard installation of NKP Ultimate[https://github.com/markround/nkp-cluster-cleaner/issues/8], the application will work without any further configuration required. Further configuration can be carried out by setting the Application Configuration Override within the NKP interface:
+
+![](config.png)
+
+For a full reference of the Helm values, see the included [Chart documentation](/charts/nkp-cluster-cleaner/README.md). 
+
+
+> ![TIP]
+> The default settings will require an admin account to log-in and view the dashboard. More granular RBAC will be added in a future release - see https://github.com/markround/nkp-cluster-cleaner/issues/4.
 
 ### Default rules
 
@@ -57,6 +66,27 @@ cronjob:
 You can view the status and logs of the enabled CronJobs in the Web UI:
 
 <img src="/docs/cron.png" width="400">
+
+### NKP Monitoring Integration
+As the application exposes Prometheus metrics, it can be integrated into the standard NKP monitoring and metrics stack. If you would like to enable this, you can enable the ServiceMonitor which is configured with the appropriate labels to be discovered by the NKP Prometheus stack running in the Management Cluster:
+
+```yaml
+monitoring:
+  serviceMonitor:
+    enabled: true
+```
+
+A simple Grafana dashboard is also included which you might like to use. 
+
+<img src="/docs/grafana.png" width="300">
+
+This is also configured with the appropriate labels and settings for discovery by the Management Cluster Grafana. Enable this with the following settings:
+
+```yaml
+monitoring:
+  grafanaDashboard:
+    enabled: true
+```
 
 
 ## Upgrading
