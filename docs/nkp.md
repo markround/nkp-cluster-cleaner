@@ -1,7 +1,7 @@
 # NKP Catalog Application
 <img src="/docs/catalog.png" width="200">
 
-The Web UI can be installed as a NKP Catalog Application and makes use of features enabled in the Management Cluster:
+The NKP Cluster Cleaner tool can be installed as a NKP Catalog Application and makes use of features enabled in the Management Cluster:
 
 - Traefik ingress controller (with optional authentication, enabled by default)
 - The default kommander kubeconfig secret for self-attachment. 
