@@ -12,7 +12,7 @@ spec:
         kind: GitRepository
         name: nkp-cluster-cleaner
         namespace: kommander
-      version: 0.9.1
+      version: 0.9.3
   install:
     remediation:
       retries: 30
@@ -24,4 +24,4 @@ spec:
       retries: 30
   valuesFrom:
     - kind: ConfigMap
-      name: nkp-cluster-cleaner-0.9.1-mdr-defaults
+      name: nkp-cluster-cleaner-0.9.3-mdr-defaults
