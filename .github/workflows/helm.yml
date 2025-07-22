@@ -1,0 +1,101 @@
+name: Publish Helm Chart
+
+on:
+  push:
+    tags:
+      - 'v*'
+      - '[0-9]+.[0-9]+.[0-9]+'
+
+env:
+  HELM_REPO_URL: https://helm.markround.com
+  CHART_PATH: charts/nkp-cluster-cleaner
+
+jobs:
+  publish-helm-chart:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from tag
+        id: extract_version
+        run: |
+          # Remove 'v' prefix if present
+          VERSION=${GITHUB_REF#refs/tags/}
+          VERSION=${VERSION#v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Get chart version
+        id: get_chart_version
+        run: |
+          CHART_VERSION=$(grep "version:" ${{ env.CHART_PATH }}/Chart.yaml | awk '{print $2}')
+          echo "chart_version=$CHART_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Verify version consistency
+        run: |
+          if [ "${{ steps.extract_version.outputs.version }}" != "${{ steps.get_chart_version.outputs.chart_version }}" ]; then
+            echo "Error: Tag version (${{ steps.extract_version.outputs.version }}) does not match chart version (${{ steps.get_chart_version.outputs.chart_version }})"
+            exit 1
+          fi
+          echo "✅ Version consistency verified: ${{ steps.extract_version.outputs.version }}"
+
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: '3.13.0'
+
+      - name: Package Helm chart
+        run: |
+          helm package ${{ env.CHART_PATH }} --destination ./packaged-charts
+          echo "Chart packaged successfully"
+          ls -la ./packaged-charts/
+
+      - name: Upload chart to Helm repository
+        run: |
+          CHART_FILE="nkp-cluster-cleaner-${{ steps.extract_version.outputs.version }}.tgz"
+          
+          echo "Uploading $CHART_FILE to ${{ env.HELM_REPO_URL }}"
+          
+          curl -u "${{ secrets.HELM_REPO_USERNAME }}:${{ secrets.HELM_REPO_PASSWORD }}" \
+            --data-binary "@./packaged-charts/$CHART_FILE" \
+            "${{ env.HELM_REPO_URL }}/api/charts"
+          
+          echo "Chart upload completed"
+
+      - name: Verify chart upload
+        run: |
+          # Wait a moment for the repository to update
+          sleep 5
+          
+          # Check if the chart is available in the repository
+          echo "Verifying chart availability..."
+          helm repo add mdr ${{ env.HELM_REPO_URL }}
+          helm repo update
+          
+          if helm search repo mdr/nkp-cluster-cleaner --version ${{ steps.extract_version.outputs.version }} | grep -q "${{ steps.extract_version.outputs.version }}"; then
+            echo "✅ Chart successfully published and available in repository"
+          else
+            echo "❌ Chart not found in repository after upload"
+            exit 1
+          fi
+
+      - name: Output publication details
+        run: |
+          echo "## 📦 Helm Chart Published Successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Chart:** nkp-cluster-cleaner" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.extract_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Repository:** ${{ env.HELM_REPO_URL }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Installation Commands:" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "helm repo add mdr ${{ env.HELM_REPO_URL }}" >> $GITHUB_STEP_SUMMARY
+          echo "helm repo update" >> $GITHUB_STEP_SUMMARY
+          echo "helm install nkp-cluster-cleaner mdr/nkp-cluster-cleaner --version ${{ steps.extract_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
