@@ -11,7 +11,7 @@ from .config import ConfigManager
 from .redis_data_collector import RedisDataCollector
 from .notify_command import execute_notify_command
 
-# Initialize colorama for cross-platform colored output
+# Initialize colorama
 init()
 
 # Common options that are used across multiple commands
