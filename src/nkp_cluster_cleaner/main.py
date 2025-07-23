@@ -9,9 +9,9 @@ from tabulate import tabulate
 from .cluster_manager import ClusterManager
 from .config import ConfigManager
 from .redis_data_collector import RedisDataCollector
-from .notification_manager import NotificationManager
+from .notify_command import execute_notify_command
 
-# Initialize colorama for cross-platform colored output
+# Initialize colorama
 init()
 
 # Common options that are used across multiple commands
@@ -225,6 +225,30 @@ def delete_clusters(kubeconfig, config, namespace, delete):
         raise click.Abort()
 
 #
+# Notify
+#
+@cli.command()
+@common_options
+@namespace_option
+@click.option(
+    '--warning-threshold',
+    envvar='WARNING_THRESHOLD',
+    default=80,
+    type=int,
+    help='Warning threshold percentage (0-100) of time elapsed (default: 80)'
+)
+@click.option(
+    '--critical-threshold',
+    envvar='CRITICAL_THRESHOLD',
+    default=95,
+    type=int,
+    help='Critical threshold percentage (0-100) of time elapsed (default: 95)'
+)
+def notify(kubeconfig, config, namespace, warning_threshold, critical_threshold):
+    """Send notifications for clusters approaching deletion."""
+    execute_notify_command(kubeconfig, config, namespace, warning_threshold, critical_threshold)
+
+#
 # Example config
 #
 @cli.command()
@@ -394,109 +418,6 @@ def collect_analytics(kubeconfig, config, keep_days, debug, redis_host, redis_po
         click.echo(f"{Fore.RED}Error collecting analytics: {e}{Style.RESET_ALL}")
         raise click.Abort()
 
-#
-# Notify
-#
-@cli.command()
-@common_options
-@namespace_option
-@click.option(
-    '--warning-threshold',
-    envvar='WARNING_THRESHOLD',
-    default=75,
-    type=int,
-    help='Warning threshold percentage (0-100) of time elapsed (default: 80)'
-)
-@click.option(
-    '--critical-threshold',
-    envvar='CRITICAL_THRESHOLD',
-    default=90,
-    type=int,
-    help='Critical threshold percentage (0-100) of time elapsed (default: 95)'
-)
-def notify(kubeconfig, config, namespace, warning_threshold, critical_threshold):
-    """Send notifications for clusters approaching deletion."""
-    if namespace:
-        click.echo(f"{Fore.BLUE}Checking clusters for notification in namespace '{namespace}'...{Style.RESET_ALL}")
-    else:
-        click.echo(f"{Fore.BLUE}Checking clusters for notification across all namespaces...{Style.RESET_ALL}")
-    
-    try:
-        # Initialize configuration and notification manager
-        config_manager = ConfigManager(config) if config else ConfigManager()
-        notification_manager = NotificationManager(kubeconfig, config_manager)
-        
-        # Get clusters requiring notifications
-        critical_clusters, warning_clusters = notification_manager.get_clusters_for_notification(
-            warning_threshold, critical_threshold, namespace
-        )
-        
-        # Display results
-        total_notifications = len(warning_clusters) + len(critical_clusters)
-        
-        if total_notifications == 0:
-            click.echo(f"\n{Fore.GREEN}No clusters require notifications at current thresholds.{Style.RESET_ALL}")
-            click.echo(f"{Fore.CYAN}Thresholds: Warning {warning_threshold}%, Critical {critical_threshold}%{Style.RESET_ALL}")
-            return
-        
-        click.echo(f"\n{Fore.YELLOW}Found {total_notifications} clusters requiring notifications:{Style.RESET_ALL}")
-        click.echo(f"{Fore.CYAN}Thresholds: Warning {warning_threshold}%, Critical {critical_threshold}%{Style.RESET_ALL}")
-        
-        # Display critical clusters
-        if critical_clusters:
-            critical_table_data = []
-            for cluster_info, elapsed_percentage, expiry_time in critical_clusters:
-                cluster_data = notification_manager.get_cluster_notification_data(
-                    cluster_info, elapsed_percentage, expiry_time
-                )
-                
-                critical_table_data.append([
-                    cluster_data["cluster_name"],
-                    cluster_data["namespace"],
-                    cluster_data["owner"],
-                    cluster_data["expires"],
-                    f"{cluster_data['elapsed_percentage']:.1f}%",
-                    cluster_data["time_remaining"]
-                ])
-            
-            headers = ["Cluster Name", "Namespace", "Owner", "Expires", "Elapsed", "Remaining"]
-            click.echo(f"\n{Fore.RED}🚨 CRITICAL: {len(critical_clusters)} clusters (≥{critical_threshold}% elapsed):{Style.RESET_ALL}")
-            click.echo(tabulate(critical_table_data, headers=headers, tablefmt="grid"))
-        
-        # Display warning clusters
-        if warning_clusters:
-            warning_table_data = []
-            for cluster_info, elapsed_percentage, expiry_time in warning_clusters:
-                cluster_data = notification_manager.get_cluster_notification_data(
-                    cluster_info, elapsed_percentage, expiry_time
-                )
-                
-                warning_table_data.append([
-                    cluster_data["cluster_name"],
-                    cluster_data["namespace"],
-                    cluster_data["owner"],
-                    cluster_data["expires"],
-                    f"{cluster_data['elapsed_percentage']:.1f}%",
-                    cluster_data["time_remaining"]
-                ])
-            
-            headers = ["Cluster Name", "Namespace", "Owner", "Expires", "Elapsed", "Remaining"]
-            click.echo(f"\n{Fore.YELLOW}⚠️  WARNING: {len(warning_clusters)} clusters ({warning_threshold}%-{critical_threshold-1}% elapsed):{Style.RESET_ALL}")
-            click.echo(tabulate(warning_table_data, headers=headers, tablefmt="grid"))
-        
-        # Summary
-        click.echo(f"\n{Fore.CYAN}Notification Summary:{Style.RESET_ALL}")
-        click.echo(f"  • Critical notifications: {len(critical_clusters)}")
-        click.echo(f"  • Warning notifications: {len(warning_clusters)}")
-        click.echo(f"  • Total notifications: {total_notifications}")
-        
-    except ValueError as e:
-        click.echo(f"{Fore.RED}Error: {e}{Style.RESET_ALL}")
-        raise click.Abort()
-    except Exception as e:
-        click.echo(f"{Fore.RED}Error: {e}{Style.RESET_ALL}")
-        raise click.Abort()
-    
+
 if __name__ == '__main__':
     cli()
-
