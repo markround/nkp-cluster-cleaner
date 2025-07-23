@@ -22,23 +22,25 @@ spec:
         - nkp-cluster-cleaner
         args:
         - serve 
-        - --host 
-        - 0.0.0.0 
-        - --kubeconfig 
-        - /config/kube/kubeconfig
-        - --config 
-        - /config/app/config.yaml
-        - --prefix
-        - {{ $.Values.ingress.prefix }}
+        env:
+        - name: HOST
+          value: "0.0.0.0"
+        - name: KUBECONFIG
+          value: "/config/kube/kubeconfig"
+        - name: CONFIG
+          value: "/config/app/config.yaml"
+        - name: "PREFIX"
+          value: "{{ $.Values.ingress.prefix }}"
 {{- if eq .Values.analytics.enabled true }}
-        - --redis-host
-        - {{ $.Values.analytics.redis.hostname }}
-        - --redis-port
-        - "{{ $.Values.analytics.redis.port }}"
-        - --redis-db
-        - "{{ $.Values.analytics.redis.db }}"
+        - name: "REDIS_HOST"
+          value: "{{ $.Values.analytics.redis.hostname }}"
+        - name: "REDIS_PORT"
+          value: "{{ $.Values.analytics.redis.port }}"
+        - name: "REDIS_DB"
+          value: "{{ $.Values.analytics.redis.db }}"
 {{- else }}
-        - --no-analytics
+        - name: "NO_ANALYTICS"
+          value: "true"
 {{- end }}
         ports:
         - containerPort: 8080

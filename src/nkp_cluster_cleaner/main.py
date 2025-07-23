@@ -18,11 +18,13 @@ def common_options(f):
     """Decorator to add common kubeconfig and config options."""
     f = click.option(
         '--kubeconfig',
+        envvar='KUBECONFIG',
         type=click.Path(exists=True),
         help='Path to kubeconfig file (default: ~/.kube/config or $KUBECONFIG)'
     )(f)
     f = click.option(
         '--config',
+        envvar='CONFIG',
         type=click.Path(exists=True),
         help='Path to configuration file for protection rules'
     )(f)
@@ -32,6 +34,7 @@ def namespace_option(f):
     """Decorator to add namespace option."""
     return click.option(
         '--namespace',
+        envvar='NAMESPACE',
         help='Limit operation to specific namespace (default: examine all namespaces)'
     )(f)
 
@@ -50,6 +53,7 @@ def cli():
 @namespace_option
 @click.option(
     '--no-exclusions',
+    envvar='NO_EXCLUSIONS',
     is_flag=True,
     help='Skip showing excluded clusters (only show clusters for deletion)'
 )
@@ -129,6 +133,7 @@ def list_clusters(kubeconfig, config, namespace, no_exclusions):
 @namespace_option
 @click.option(
     '--delete',
+    envvar='DELETE',
     is_flag=True,
     help='Actually delete clusters (default: dry-run mode)'
 )
@@ -236,43 +241,51 @@ def generate_config(output_file):
 @common_options
 @click.option(
     '--host',
+    envvar='HOST',
     default='127.0.0.1',
     help='Host to bind to (default: 127.0.0.1)'
 )
 @click.option(
     '--port',
+    envvar='PORT',
     default=8080,
     help='Port to bind to (default: 8080)'
 )
 @click.option(
     '--debug',
+    envvar='DEBUG',
     is_flag=True,
     help='Enable debug mode'
 )
 @click.option(
     '--prefix',
+    envvar='PREFIX',
     default='',
     help='URL prefix for all routes (e.g., /foo for /foo/clusters)'
 )
 @click.option(
     '--redis-host',
+    envvar='REDIS_HOST',
     default='redis',
     help='Redis host for analytics data (default: redis)'
 )
 @click.option(
     '--redis-port',
+    envvar='REDIS_PORT',
     default=6379,
     type=int,
     help='Redis port (default: 6379)'
 )
 @click.option(
     '--redis-db',
+    envvar='REDIS_DB',
     default=0,
     type=int,
     help='Redis database number (default: 0)'
 )
 @click.option(
     '--no-analytics',
+    envvar='NO_ANALYTICS',
     is_flag=True,
     help='Disable analytics and do not connect to Redis'
 )
@@ -304,28 +317,33 @@ def serve(kubeconfig, config, host, port, debug, prefix, redis_host, redis_port,
 @common_options
 @click.option(
     '--keep-days',
+    envvar='KEEP_DAYS',
     default=90,
     type=int,
     help='Number of days of analytics data to retain (default: 90)'
 )
 @click.option(
     '--debug',
+    envvar='DEBUG',
     is_flag=True,
     help='Enable debug output during collection'
 )
 @click.option(
     '--redis-host',
+    envvar='REDIS_HOST',
     default='redis',
     help='Redis host (default: redis)'
 )
 @click.option(
     '--redis-port',
+    envvar='REDIS_PORT',
     default=6379,
     type=int,
     help='Redis port (default: 6379)'
 )
 @click.option(
     '--redis-db',
+    envvar='REDIS_DB',
     default=0,
     type=int,
     help='Redis database number (default: 0)'
