@@ -2,6 +2,8 @@
 Notification Manager module for handling cluster expiration notifications.
 """
 
+import requests
+import json
 from datetime import datetime
 from typing import List, Dict, Optional, Tuple
 from colorama import Fore, Style
@@ -189,3 +191,110 @@ class NotificationManager:
             "time_remaining": self.format_time_remaining(expiry_time),
             "expiry_time": expiry_time
         }
+    
+    def send_notification(self, backend: str, clusters: List[Tuple], severity: str, threshold: int, **kwargs):
+        """
+        Send notification using the specified backend.
+        
+        Args:
+            backend: Notification backend to use ("slack", etc.)
+            clusters: List of cluster data tuples
+            severity: "critical" or "warning"
+            threshold: The threshold percentage that triggered this notification
+            **kwargs: Backend-specific parameters
+            
+        Raises:
+            ValueError: If backend is not supported
+            Exception: If notification sending fails
+        """
+        if backend == "slack":
+            self._send_slack_notification(clusters, severity, threshold, **kwargs)
+        else:
+            raise ValueError(f"Unsupported notification backend: {backend}")
+    
+    def _send_slack_notification(self, clusters: List[Tuple], severity: str, threshold: int, **kwargs):
+        """
+        Send a Slack notification for a group of clusters.
+        
+        Args:
+            clusters: List of cluster data tuples
+            severity: "critical" or "warning"
+            threshold: The threshold percentage that triggered this notification
+            **kwargs: Slack-specific parameters (token, channel, username, icon_emoji)
+            
+        Raises:
+            Exception: If Slack API call fails
+        """
+        # Extract Slack parameters
+        token = kwargs.get('token')
+        channel = kwargs.get('channel')
+        username = kwargs.get('username', 'NKP Cluster Cleaner')
+        icon_emoji = kwargs.get('icon_emoji', ':warning:')
+        
+        if not token or not channel:
+            raise ValueError("Slack token and channel are required")
+        
+        # Prepare message content based on severity
+        if severity == "critical":
+            title = f"🚨 CRITICAL: {len(clusters)} clusters will be deleted soon"
+            color = "#ff0000"  # Red
+            emoji = "🚨"
+            threshold_text = f"These clusters have exceeded {threshold}% of their lifetime or have immediate deletion issues:"
+        else:
+            title = f"⚠️ WARNING: {len(clusters)} clusters will be deleted soon"
+            color = "#ff9900"  # Orange
+            emoji = "⚠️"
+            threshold_text = f"These clusters have exceeded {threshold}% of their lifetime:"
+        
+        # Build cluster list for message
+        cluster_details = []
+        for cluster_info, elapsed_percentage, expiry_time in clusters:
+            cluster_data = self.get_cluster_notification_data(cluster_info, elapsed_percentage, expiry_time)
+            
+            # Format cluster info
+            cluster_text = (
+                f"• *{cluster_data['cluster_name']}* "
+                f"(ns: `{cluster_data['namespace']}`, "
+                f"owner: `{cluster_data['owner']}`, "
+                f"expires: `{cluster_data['expires']}`, "
+                f"consumed: `{cluster_data['elapsed_percentage']:.1f}%`, "
+                f"remaining: `{cluster_data['time_remaining']}`)"
+            )
+            cluster_details.append(cluster_text)
+        
+        # Create Slack message payload
+        message = {
+            "channel": channel,
+            "username": username,
+            "icon_emoji": icon_emoji,
+            "attachments": [
+                {
+                    "color": color,
+                    "title": title,
+                    "text": f"{emoji} {threshold_text}\n\n" + "\n".join(cluster_details),
+                    "footer": "NKP Cluster Cleaner",
+                    "ts": int(expiry_time.timestamp()) if clusters else None
+                }
+            ]
+        }
+        
+        # Send to Slack
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+        
+        response = requests.post(
+            "https://slack.com/api/chat.postMessage",
+            headers=headers,
+            data=json.dumps(message)
+        )
+        
+        # Check response
+        if response.status_code != 200:
+            raise Exception(f"HTTP {response.status_code}: {response.text}")
+        
+        result = response.json()
+        if not result.get("ok"):
+            error = result.get("error", "Unknown error")
+            raise Exception(f"Slack API error: {error}")
