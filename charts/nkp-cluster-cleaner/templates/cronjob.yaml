@@ -22,13 +22,15 @@ spec:
             - nkp-cluster-cleaner
             args:
             - delete-clusters 
+            env:
 {{- if eq .Values.cronjob.delete true }}
-            - --delete
+            - name: "DELETE"
+              value: "true"
 {{- end }}
-            - --kubeconfig 
-            - /config/kube/kubeconfig
-            - --config 
-            - /config/app/config.yaml
+            - name: "KUBECONFIG"
+              value: "/config/kube/kubeconfig"
+            - name: "CONFIG" 
+              value: "/config/app/config.yaml"
             volumeMounts:
             - name: kubeconfig
               mountPath: /config/kube

@@ -22,16 +22,17 @@ spec:
             - nkp-cluster-cleaner
             args:
             - collect-analytics
-            - --redis-host
-            - {{ $.Values.analytics.redis.hostname }}
-            - --redis-port
-            - "{{ $.Values.analytics.redis.port }}"
-            - --redis-db
-            - "{{ $.Values.analytics.redis.db }}"
-            - --kubeconfig 
-            - /config/kube/kubeconfig
-            - --config 
-            - /config/app/config.yaml
+            env:
+            - name: "REDIS_HOST"
+              value: "{{ $.Values.analytics.redis.hostname }}"
+            - name: "REDIS_PORT"
+              value: "{{ $.Values.analytics.redis.port }}"
+            - name: "REDIS_DB"
+              value: "{{ $.Values.analytics.redis.db }}"
+            - name: "KUBECONFIG" 
+              value: "/config/kube/kubeconfig"
+            - name: "CONFIG" 
+              value: "/config/app/config.yaml"
             volumeMounts:
             - name: kubeconfig
               mountPath: /config/kube
