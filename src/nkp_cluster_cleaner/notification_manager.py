@@ -56,12 +56,13 @@ class NotificationManager:
         critical_clusters = []
         current_time = datetime.now()
         
-        # First, add all expired clusters to critical list
+        # First, add all clusters marked for deletion to critical list
         for cluster_info, reason in clusters_to_delete:
+            labels = cluster_info.get("labels", {})
+            expires_value = labels.get("expires")
+            
             if "expired" in reason.lower():
-                labels = cluster_info.get("labels", {})
-                expires_value = labels.get("expires")
-                
+                # Expired clusters
                 if expires_value:
                     # Get creation timestamp and calculate expiry time
                     kommander_cluster = cluster_info.get("kommander_cluster", {})
@@ -76,6 +77,13 @@ class NotificationManager:
                         except (ValueError, TypeError):
                             # If we can't parse the time, still include it with current time as expiry
                             critical_clusters.append((cluster_info, 100.0, current_time))
+                else:
+                    # Expired cluster without expires label
+                    critical_clusters.append((cluster_info, 100.0, current_time))
+            else:
+                # Clusters marked for deletion due to missing/invalid labels
+                # These are also critical since they will be deleted immediately
+                critical_clusters.append((cluster_info, 100.0, current_time))
         
         # Then process excluded clusters to find those approaching expiration
         for cluster_info, reason in excluded_clusters:
@@ -136,10 +144,14 @@ class NotificationManager:
             expiry_time: When the cluster expires
             
         Returns:
-            Formatted time remaining (e.g., "2d", "5h", "EXPIRED")
+            Formatted time remaining (e.g., "2d", "5h", "EXPIRED", "IMMEDIATE")
         """
         current_time = datetime.now()
         time_remaining = expiry_time - current_time
+        
+        # If expiry time is current time, this indicates immediate deletion
+        if expiry_time == current_time:
+            return "IMMEDIATE"
         
         if time_remaining.total_seconds() <= 0:
             return "EXPIRED"
