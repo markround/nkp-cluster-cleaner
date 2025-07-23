@@ -18,6 +18,7 @@ def common_options(f):
     """Decorator to add common kubeconfig and config options."""
     f = click.option(
         '--kubeconfig',
+        envvar='KUBECONFIG',
         type=click.Path(exists=True),
         help='Path to kubeconfig file (default: ~/.kube/config or $KUBECONFIG)'
     )(f)

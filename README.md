@@ -123,7 +123,7 @@ Commands:
 
 ### Environment variables
 
-You can pass argument values in using environment variables as well as CLI flags. Each variable accepted is simply the flag name, converted to uppercase and with dash characters changed to underscores:
+You can pass configuration values in using environment variables as well as CLI flags. Each variable accepted is simply the flag name, converted to uppercase and with dash characters changed to underscores:
 
 | CLI flag | Environment variable equivalent |
 | ---------|-------------------------------- |
@@ -132,6 +132,7 @@ You can pass argument values in using environment variables as well as CLI flags
 | `--delete` | `DELETE` | 
 | `--host` | `HOST` | 
 | `--keep-days` | `KEEP_DAYS` | 
+| `--kubeconfig` | `KUBECONFIG` | 
 | `--namespace` | `NAMESPACE` | 
 | `--no-analytics` | `NO_ANALYTICS` | 
 | `--no-exclusions` | `NO_EXCLUSIONS` | 
