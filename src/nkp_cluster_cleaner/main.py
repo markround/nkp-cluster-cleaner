@@ -11,7 +11,7 @@ from .config import ConfigManager
 from .redis_data_collector import RedisDataCollector
 from .notify_command import execute_notify_command
 
-# Initialize colorama
+# Initialize colorama for cross-platform colored output
 init()
 
 # Common options that are used across multiple commands
@@ -244,9 +244,48 @@ def delete_clusters(kubeconfig, config, namespace, delete):
     type=int,
     help='Critical threshold percentage (0-100) of time elapsed (default: 95)'
 )
-def notify(kubeconfig, config, namespace, warning_threshold, critical_threshold):
+@click.option(
+    '--notify-backend',
+    envvar='NOTIFY_BACKEND',
+    help='Notification backend to use (supported: slack)'
+)
+@click.option(
+    '--slack-token',
+    envvar='SLACK_TOKEN',
+    help='Slack Bot User OAuth Token (required for slack backend)'
+)
+@click.option(
+    '--slack-channel',
+    envvar='SLACK_CHANNEL',
+    help='Slack channel to send notifications to (required for slack backend)'
+)
+@click.option(
+    '--slack-username',
+    envvar='SLACK_USERNAME',
+    default='NKP Cluster Cleaner',
+    help='Username to display in Slack messages (default: NKP Cluster Cleaner)'
+)
+@click.option(
+    '--slack-icon-emoji',
+    envvar='SLACK_ICON_EMOJI',
+    default=':warning:',
+    help='Emoji icon for Slack messages (default: :warning:)'
+)
+def notify(kubeconfig, config, namespace, warning_threshold, critical_threshold, 
+          notify_backend, slack_token, slack_channel, slack_username, slack_icon_emoji):
     """Send notifications for clusters approaching deletion."""
-    execute_notify_command(kubeconfig, config, namespace, warning_threshold, critical_threshold)
+    execute_notify_command(
+        kubeconfig=kubeconfig,
+        config=config, 
+        namespace=namespace,
+        warning_threshold=warning_threshold,
+        critical_threshold=critical_threshold,
+        notify_backend=notify_backend,
+        slack_token=slack_token,
+        slack_channel=slack_channel,
+        slack_username=slack_username,
+        slack_icon_emoji=slack_icon_emoji
+    )
 
 #
 # Example config
