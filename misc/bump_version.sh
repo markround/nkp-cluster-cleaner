@@ -40,4 +40,6 @@ done
 
 mv services/nkp-cluster-cleaner/$OLD_VERSION services/nkp-cluster-cleaner/$NEW_VERSION
 
+git add .
+
 echo "Version bump complete!"
