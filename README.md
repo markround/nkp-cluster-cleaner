@@ -127,20 +127,19 @@ You can pass argument values in using environment variables as well as CLI flags
 
 | CLI flag | Environment variable equivalent |
 | ---------|-------------------------------- |
-| --config | CONFIG | 
-| --debug | DEBUG | 
-| --delete | DELETE | 
-| --host | HOST | 
-| --keep-days | KEEP_DAYS | 
-| --namespace | NAMESPACE | 
-| --no-analytics | NO_ANALYTICS | 
-| --no-exclusions | NO_EXCLUSIONS | 
-| --port | PORT | 
-| --prefix | PREFIX | 
-| --redis-db | REDIS_DB | 
-| --redis-host | REDIS_HOST | 
-| --redis-port | REDIS_PORT | 
-
+| `--config` | `CONFIG` | 
+| `--debug` | `DEBUG` | 
+| `--delete` | `DELETE` | 
+| `--host` | `HOST` | 
+| `--keep-days` | `KEEP_DAYS` | 
+| `--namespace` | `NAMESPACE` | 
+| `--no-analytics` | `NO_ANALYTICS` | 
+| `--no-exclusions` | `NO_EXCLUSIONS` | 
+| `--port` | `PORT` | 
+| `--prefix` | `PREFIX` | 
+| `--redis-db` | `REDIS_DB` | 
+| `--redis-host` | `REDIS_HOST` | 
+| `--redis-port` | `REDIS_PORT` | 
 
 ### Web interface
 There is a bundled web interface that displays the cluster deletion status, protection rules, analytics and general configuration. Start the built-in Flask-based webserver with the `serve` command that takes the usual arguments to specify port and bind host etc:
