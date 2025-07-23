@@ -268,7 +268,7 @@ def delete_clusters(kubeconfig, config, namespace, delete):
 @click.option(
     '--slack-icon-emoji',
     envvar='SLACK_ICON_EMOJI',
-    default=':warning:',
+    default=':broom:',
     help='Emoji icon for Slack messages (default: :warning:)'
 )
 def notify(kubeconfig, config, namespace, warning_threshold, critical_threshold, 

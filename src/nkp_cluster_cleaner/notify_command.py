@@ -96,6 +96,8 @@ def execute_notify_command(kubeconfig: Optional[str], config: Optional[str], nam
                 warning_clusters, 
                 notify_backend,
                 notification_manager,
+                warning_threshold=warning_threshold,
+                critical_threshold=critical_threshold,
                 slack_token=slack_token,
                 slack_channel=slack_channel, 
                 slack_username=slack_username,
@@ -197,6 +199,8 @@ def _send_slack_notifications(critical_clusters: List[Tuple], warning_clusters: 
     slack_channel = kwargs.get('slack_channel')
     slack_username = kwargs.get('slack_username', 'NKP Cluster Cleaner')
     slack_icon_emoji = kwargs.get('slack_icon_emoji', ':warning:')
+    warning_threshold = kwargs.get('warning_threshold', 80)
+    critical_threshold = kwargs.get('critical_threshold', 95)
     
     total_notifications = len(critical_clusters) + len(warning_clusters)
     
@@ -216,7 +220,8 @@ def _send_slack_notifications(critical_clusters: List[Tuple], warning_clusters: 
                 slack_channel, 
                 slack_username, 
                 slack_icon_emoji,
-                notification_manager
+                notification_manager,
+                critical_threshold
             )
         
         # Send warning notifications
@@ -228,7 +233,8 @@ def _send_slack_notifications(critical_clusters: List[Tuple], warning_clusters: 
                 slack_channel, 
                 slack_username, 
                 slack_icon_emoji,
-                notification_manager
+                notification_manager,
+                warning_threshold
             )
         
         click.echo(f"{Fore.GREEN}Successfully sent notifications to Slack!{Style.RESET_ALL}")
@@ -239,7 +245,8 @@ def _send_slack_notifications(critical_clusters: List[Tuple], warning_clusters: 
 
 
 def _send_slack_message(clusters: List[Tuple], severity: str, token: str, channel: str, 
-                       username: str, icon_emoji: str, notification_manager: NotificationManager):
+                       username: str, icon_emoji: str, notification_manager: NotificationManager, 
+                       threshold: int):
     """
     Send a single Slack message for a group of clusters.
     
@@ -251,16 +258,19 @@ def _send_slack_message(clusters: List[Tuple], severity: str, token: str, channe
         username: Bot username
         icon_emoji: Bot icon emoji
         notification_manager: NotificationManager instance
+        threshold: The threshold percentage that triggered this notification
     """
     # Prepare message
     if severity == "critical":
-        title = f"🚨 CRITICAL: {len(clusters)} clusters require immediate attention"
+        title = f"🚨 CRITICAL: {len(clusters)} clusters will be deleted soon"
         color = "#ff0000"  # Red
         emoji = "🚨"
+        threshold_text = f"These clusters have exceeded {threshold}% of their lifetime or have immediate deletion issues:"
     else:
-        title = f"⚠️ WARNING: {len(clusters)} clusters approaching deletion"
+        title = f"⚠️ WARNING: {len(clusters)} clusters will be deleted soon"
         color = "#ff9900"  # Orange
         emoji = "⚠️"
+        threshold_text = f"These clusters have exceeded {threshold}% of their lifetime:"
     
     # Build cluster list for message
     cluster_details = []
@@ -275,7 +285,7 @@ def _send_slack_message(clusters: List[Tuple], severity: str, token: str, channe
             f"(ns: `{cluster_data['namespace']}`, "
             f"owner: `{cluster_data['owner']}`, "
             f"expires: `{cluster_data['expires']}`, "
-            f"elapsed: `{cluster_data['elapsed_percentage']:.1f}%`, "
+            f"consumed: `{cluster_data['elapsed_percentage']:.1f}%`, "
             f"remaining: `{cluster_data['time_remaining']}`)"
         )
         cluster_details.append(cluster_text)
@@ -289,7 +299,7 @@ def _send_slack_message(clusters: List[Tuple], severity: str, token: str, channe
             {
                 "color": color,
                 "title": title,
-                "text": f"{emoji} The following clusters require attention:\n\n" + "\n".join(cluster_details),
+                "text": f"{emoji} {threshold_text}\n\n" + "\n".join(cluster_details),
                 "footer": "NKP Cluster Cleaner",
                 "ts": int(expiry_time.timestamp()) if clusters else None
             }
