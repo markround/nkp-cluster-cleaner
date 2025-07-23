@@ -271,8 +271,29 @@ def delete_clusters(kubeconfig, config, namespace, delete):
     default=':broom:',
     help='Emoji icon for Slack messages (default: :warning:)'
 )
+@click.option(
+    '--redis-host',
+    envvar='REDIS_HOST',
+    default='redis',
+    help='Redis host for notification history (default: redis)'
+)
+@click.option(
+    '--redis-port',
+    envvar='REDIS_PORT',
+    default=6379,
+    type=int,
+    help='Redis port (default: 6379)'
+)
+@click.option(
+    '--redis-db',
+    envvar='REDIS_DB',
+    default=0,
+    type=int,
+    help='Redis database number (default: 0)'
+)
 def notify(kubeconfig, config, namespace, warning_threshold, critical_threshold, 
-          notify_backend, slack_token, slack_channel, slack_username, slack_icon_emoji):
+          notify_backend, slack_token, slack_channel, slack_username, slack_icon_emoji,
+          redis_host, redis_port, redis_db):
     """Send notifications for clusters approaching deletion."""
     execute_notify_command(
         kubeconfig=kubeconfig,
@@ -284,7 +305,10 @@ def notify(kubeconfig, config, namespace, warning_threshold, critical_threshold,
         slack_token=slack_token,
         slack_channel=slack_channel,
         slack_username=slack_username,
-        slack_icon_emoji=slack_icon_emoji
+        slack_icon_emoji=slack_icon_emoji,
+        redis_host=redis_host,
+        redis_port=redis_port,
+        redis_db=redis_db
     )
 
 #
