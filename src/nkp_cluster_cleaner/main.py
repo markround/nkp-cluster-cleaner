@@ -292,9 +292,12 @@ def delete_clusters(kubeconfig, config, namespace, delete):
     help='Redis database number (default: 0)'
 )
 def notify(kubeconfig, config, namespace, warning_threshold, critical_threshold, 
-          notify_backend, slack_token, slack_channel, slack_username, slack_icon_emoji,
-          redis_host, redis_port, redis_db):
+          notify_backend, redis_host, redis_port, redis_db, **kwargs):
     """Send notifications for clusters approaching deletion."""
+    
+    # Filter out None values from kwargs to only pass relevant backend parameters
+    backend_params = {k: v for k, v in kwargs.items() if v is not None}
+    
     execute_notify_command(
         kubeconfig=kubeconfig,
         config=config, 
@@ -302,13 +305,10 @@ def notify(kubeconfig, config, namespace, warning_threshold, critical_threshold,
         warning_threshold=warning_threshold,
         critical_threshold=critical_threshold,
         notify_backend=notify_backend,
-        slack_token=slack_token,
-        slack_channel=slack_channel,
-        slack_username=slack_username,
-        slack_icon_emoji=slack_icon_emoji,
         redis_host=redis_host,
         redis_port=redis_port,
-        redis_db=redis_db
+        redis_db=redis_db,
+        **backend_params
     )
 
 #
