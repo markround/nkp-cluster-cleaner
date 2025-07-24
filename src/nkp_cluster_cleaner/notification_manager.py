@@ -34,18 +34,14 @@ class NotificationManager:
         Args:
             warning_threshold: Warning threshold percentage (0-100)
             critical_threshold: Critical threshold percentage (0-100)
-            namespace: If specified, only examine clusters in this namespace
+            namespace: Namespace to filter by (optional)
             
         Returns:
-            Tuple of (critical_clusters, warning_clusters) where each contains 
+            Tuple of (critical_clusters, warning_clusters) where each is a list of 
             (cluster_info, elapsed_percentage, expiry_time) tuples
         """
-        # Validate thresholds
-        if warning_threshold < 0 or warning_threshold > 100:
-            raise ValueError("Warning threshold must be between 0 and 100")
-        
-        if critical_threshold < 0 or critical_threshold > 100:
-            raise ValueError("Critical threshold must be between 0 and 100")
+        if not (0 <= warning_threshold <= 100) or not (0 <= critical_threshold <= 100):
+            raise ValueError("Thresholds must be between 0 and 100")
         
         if warning_threshold >= critical_threshold:
             raise ValueError("Warning threshold must be less than critical threshold")
@@ -53,58 +49,28 @@ class NotificationManager:
         # Get all clusters and categorize them
         clusters_to_delete, excluded_clusters = self.cluster_manager.get_clusters_with_exclusions(namespace)
         
-        # Process clusters to find those requiring notifications
-        warning_clusters = []
+        # We want to examine ALL clusters (both for deletion and excluded) for notifications
+        # since clusters may be approaching expiry but still excluded for other reasons
+        all_clusters = []
+        for cluster_info, reason in clusters_to_delete:
+            all_clusters.append(cluster_info)
+        for cluster_info, reason in excluded_clusters:
+            all_clusters.append(cluster_info)
+        
         critical_clusters = []
+        warning_clusters = []
         current_time = datetime.now()
         
-        # First, add all clusters marked for deletion to critical list
-        for cluster_info, reason in clusters_to_delete:
+        for cluster_info in all_clusters:
             labels = cluster_info.get("labels", {})
             expires_value = labels.get("expires")
             
-            if "expired" in reason.lower():
-                # Expired clusters
-                if expires_value:
-                    # Get creation timestamp and calculate expiry time
-                    kommander_cluster = cluster_info.get("kommander_cluster", {})
-                    metadata = kommander_cluster.get("metadata", {})
-                    creation_timestamp = metadata.get("creationTimestamp")
-                    
-                    if creation_timestamp:
-                        try:
-                            expiry_time = self.cluster_manager._parse_expires_label(expires_value, creation_timestamp)
-                            # Expired clusters are 100% elapsed
-                            critical_clusters.append((cluster_info, 100.0, expiry_time))
-                        except (ValueError, TypeError):
-                            # If we can't parse the time, still include it with current time as expiry
-                            critical_clusters.append((cluster_info, 100.0, current_time))
-                else:
-                    # Expired cluster without expires label
-                    critical_clusters.append((cluster_info, 100.0, current_time))
-            else:
-                # Clusters marked for deletion due to missing/invalid labels
-                # These are also critical since they will be deleted immediately
-                critical_clusters.append((cluster_info, 100.0, current_time))
-        
-        # Then process excluded clusters to find those approaching expiration
-        for cluster_info, reason in excluded_clusters:
-            # Only process clusters that are excluded because they haven't expired yet
-            if "has not expired yet" not in reason:
-                continue
-            
-            labels = cluster_info.get("labels", {})
-            expires_value = labels.get("expires")
-            
-            if not expires_value:
-                continue
-            
-            # Get creation timestamp
+            # Get creation timestamp from kommander cluster metadata
             kommander_cluster = cluster_info.get("kommander_cluster", {})
             metadata = kommander_cluster.get("metadata", {})
             creation_timestamp = metadata.get("creationTimestamp")
             
-            if not creation_timestamp:
+            if not expires_value or not creation_timestamp:
                 continue
             
             try:
@@ -171,96 +137,69 @@ class NotificationManager:
         Extract notification-relevant data from a cluster.
         
         Args:
-            cluster_info: Cluster information dictionary
-            elapsed_percentage: Percentage of time elapsed
+            cluster_info: Raw cluster information dictionary
+            elapsed_percentage: Percentage of cluster lifetime elapsed
             expiry_time: When the cluster expires
             
         Returns:
-            Dictionary with notification data
+            Dictionary containing formatted notification data
         """
-        capi_cluster_name = cluster_info.get("capi_cluster_name", "unknown")
-        capi_cluster_namespace = cluster_info.get("capi_cluster_namespace", "unknown")
-        labels = cluster_info.get("labels", {})
-        
         return {
-            "cluster_name": capi_cluster_name,
-            "namespace": capi_cluster_namespace,
-            "owner": labels.get("owner", "N/A"),
-            "expires": labels.get("expires", "N/A"),
+            "cluster_name": cluster_info.get("capi_cluster_name", "unknown"),
+            "namespace": cluster_info.get("capi_cluster_namespace", "unknown"),
+            "owner": cluster_info.get("owner", "unknown"),
+            "expires": expiry_time.strftime("%Y-%m-%d %H:%M:%S"),
             "elapsed_percentage": elapsed_percentage,
-            "time_remaining": self.format_time_remaining(expiry_time),
-            "expiry_time": expiry_time
+            "time_remaining": self.format_time_remaining(expiry_time)
         }
     
-    def send_notification(self, backend: str, clusters: List[Tuple], severity: str, threshold: int, **kwargs):
+    def send_notification(self, backend: str, title: str, text: str, severity: str = "info", **kwargs):
         """
-        Send notification using the specified backend.
+        Send a generic notification using the specified backend.
         
         Args:
             backend: Notification backend to use ("slack", etc.)
-            clusters: List of cluster data tuples
-            severity: "critical" or "warning"
-            threshold: The threshold percentage that triggered this notification
+            title: Notification title
+            text: Notification message text
+            severity: Notification severity level ("info", "warning", "critical")
             **kwargs: Backend-specific parameters
-            
-        Raises:
-            ValueError: If backend is not supported
-            Exception: If notification sending fails
         """
         if backend == "slack":
-            self._send_slack_notification(clusters, severity, threshold, **kwargs)
+            self._send_slack_notification(title, text, severity, **kwargs)
         else:
             raise ValueError(f"Unsupported notification backend: {backend}")
     
-    def _send_slack_notification(self, clusters: List[Tuple], severity: str, threshold: int, **kwargs):
+    def _send_slack_notification(self, title: str, text: str, severity: str, **kwargs):
         """
-        Send a Slack notification for a group of clusters.
+        Send a generic Slack notification.
         
         Args:
-            clusters: List of cluster data tuples
-            severity: "critical" or "warning"
-            threshold: The threshold percentage that triggered this notification
+            title: Message title
+            text: Message text
+            severity: Severity level ("info", "warning", "critical")
             **kwargs: Slack-specific parameters (token, channel, username, icon_emoji)
-            
-        Raises:
-            Exception: If Slack API call fails
         """
-        # Extract Slack parameters
         token = kwargs.get('token')
         channel = kwargs.get('channel')
         username = kwargs.get('username', 'NKP Cluster Cleaner')
-        icon_emoji = kwargs.get('icon_emoji', ':warning:')
+        icon_emoji = kwargs.get('icon_emoji', ':robot_face:')
         
         if not token or not channel:
             raise ValueError("Slack token and channel are required")
         
-        # Prepare message content based on severity
+        # Select color and emoji based on severity
         if severity == "critical":
-            title = f"🚨 CRITICAL: {len(clusters)} clusters will be deleted soon"
             color = "#ff0000"  # Red
             emoji = "🚨"
-            threshold_text = f"These clusters have exceeded {threshold}% of their lifetime or have immediate deletion issues:"
-        else:
-            title = f"⚠️ WARNING: {len(clusters)} clusters will be deleted soon"
-            color = "#ff9900"  # Orange
+        elif severity == "warning":
+            color = "#ff9900"  # Orange  
             emoji = "⚠️"
-            threshold_text = f"These clusters have exceeded {threshold}% of their lifetime:"
-        
-        # Build cluster list for message
-        cluster_details = []
-        for cluster_info, elapsed_percentage, expiry_time in clusters:
-            cluster_data = self.get_cluster_notification_data(cluster_info, elapsed_percentage, expiry_time)
-            
-            # Format cluster info
-            cluster_text = (
-                f"• *{cluster_data['cluster_name']}* "
-                f"(ns: `{cluster_data['namespace']}`, "
-                f"owner: `{cluster_data['owner']}`, "
-                f"expires: `{cluster_data['expires']}`, "
-                f"consumed: `{cluster_data['elapsed_percentage']:.1f}%`, "
-                f"remaining: `{cluster_data['time_remaining']}`)"
-            )
-            cluster_details.append(cluster_text)
+        elif severity == "info":
+            color = "#0099ff"  # Blue
+            emoji = "ℹ️"
+        else:
+            color = "#808080"  # Gray
+            emoji = "📢"
         
         # Create Slack message payload
         message = {
@@ -271,9 +210,9 @@ class NotificationManager:
                 {
                     "color": color,
                     "title": title,
-                    "text": f"{emoji} {threshold_text}\n\n" + "\n".join(cluster_details),
+                    "text": f"{emoji} {text}",
                     "footer": "NKP Cluster Cleaner",
-                    "ts": int(expiry_time.timestamp()) if clusters else None
+                    "ts": int(datetime.now().timestamp())
                 }
             ]
         }
@@ -298,3 +237,53 @@ class NotificationManager:
         if not result.get("ok"):
             error = result.get("error", "Unknown error")
             raise Exception(f"Slack API error: {error}")
+    
+    def send_expiry_notification(self, backend: str, clusters: List[Tuple[Dict, float, datetime]], 
+                               severity: str, threshold: int, **kwargs):
+        """
+        Send expiry notifications for a group of clusters.
+        
+        Args:
+            backend: Notification backend to use
+            clusters: List of (cluster_info, elapsed_percentage, expiry_time) tuples
+            severity: Notification severity ("warning" or "critical")
+            threshold: The threshold percentage that triggered this notification
+            **kwargs: Backend-specific parameters
+        """
+        if not clusters:
+            return
+        
+        # Build title and message text for expiry notifications
+        if severity == "critical":
+            title = f"CRITICAL: {len(clusters)} clusters will be deleted soon"
+            threshold_text = f"These clusters have exceeded {threshold}% of their lifetime or have immediate deletion issues:"
+        elif severity == "warning":
+            title = f"WARNING: {len(clusters)} clusters will be deleted soon"
+            threshold_text = f"These clusters have exceeded {threshold}% of their lifetime:"
+        else:
+            title = f"INFO: {len(clusters)} clusters notification"
+            threshold_text = f"These clusters require attention:"
+        
+        # Build cluster details
+        cluster_details = []
+        for cluster_info, elapsed_percentage, expiry_time in clusters:
+            cluster_data = self.get_cluster_notification_data(
+                cluster_info, elapsed_percentage, expiry_time
+            )
+            
+            # Format cluster info
+            cluster_text = (
+                f"• *{cluster_data['cluster_name']}* "
+                f"(ns: `{cluster_data['namespace']}`, "
+                f"owner: `{cluster_data['owner']}`, "
+                f"expires: `{cluster_data['expires']}`, "
+                f"consumed: `{cluster_data['elapsed_percentage']:.1f}%`, "
+                f"remaining: `{cluster_data['time_remaining']}`)"
+            )
+            cluster_details.append(cluster_text)
+        
+        # Combine threshold text and cluster details
+        full_text = f"{threshold_text}\n\n" + "\n".join(cluster_details)
+        
+        # Send the notification
+        self.send_notification(backend, title, full_text, severity, **kwargs)
