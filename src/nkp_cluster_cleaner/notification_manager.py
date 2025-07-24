@@ -4,6 +4,7 @@ Notification Manager module for handling cluster expiration notifications.
 
 import requests
 import json
+import redis
 from datetime import datetime
 from typing import List, Dict, Optional, Tuple
 from colorama import Fore, Style
@@ -12,8 +13,10 @@ from .config import ConfigManager
 
 
 class NotificationManager:
-    """Manages notifications for clusters approaching expiration."""
+    """Manages notifications for clusters."""
     
+    SUPPORTED_BACKENDS = ["slack"]
+
     def __init__(self, kubeconfig_path: Optional[str] = None, config_manager: Optional[ConfigManager] = None):
         """
         Initialize the notification manager.
@@ -25,6 +28,8 @@ class NotificationManager:
         self.kubeconfig_path = kubeconfig_path
         self.config_manager = config_manager or ConfigManager()
         self.cluster_manager = ClusterManager(kubeconfig_path, config_manager)
+        
+
     
     def get_clusters_for_notification(self, warning_threshold: int, critical_threshold: int, 
                                 namespace: Optional[str] = None) -> Tuple[List[Tuple[Dict, float, datetime]], List[Tuple[Dict, float, datetime]]]:
@@ -329,3 +334,5 @@ class NotificationManager:
         
         # Send the notification
         self.send_notification(backend, title, full_text, severity, **kwargs)
+
+
