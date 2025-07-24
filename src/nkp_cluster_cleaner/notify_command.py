@@ -215,9 +215,7 @@ def _send_slack_expiry_notifications(critical_clusters: List[Tuple], warning_clu
 
 def execute_notify_command(kubeconfig: Optional[str], config: Optional[str], namespace: Optional[str], 
                           warning_threshold: int, critical_threshold: int, notify_backend: Optional[str] = None,
-                          slack_token: Optional[str] = None, slack_channel: Optional[str] = None,
-                          slack_username: str = "NKP Cluster Cleaner", slack_icon_emoji: str = ":warning:",
-                          redis_host: str = 'redis', redis_port: int = 6379, redis_db: int = 0):
+                          redis_host: str = 'redis', redis_port: int = 6379, redis_db: int = 0, **kwargs):
     """
     Execute the notify command with the given parameters.
     
@@ -228,13 +226,10 @@ def execute_notify_command(kubeconfig: Optional[str], config: Optional[str], nam
         warning_threshold: Warning threshold percentage
         critical_threshold: Critical threshold percentage
         notify_backend: Notification backend to use (slack, etc.)
-        slack_token: Slack Bot User OAuth Token
-        slack_channel: Slack channel to send notifications to
-        slack_username: Username to display in Slack messages
-        slack_icon_emoji: Emoji icon for Slack messages
         redis_host: Redis host for notification history
         redis_port: Redis port
         redis_db: Redis database number
+        **kwargs: Backend-specific parameters (e.g. slack_token, slack_channel for slack backend)
     """
     # Validate notification backend
     if notify_backend and notify_backend not in SUPPORTED_BACKENDS:
@@ -243,11 +238,11 @@ def execute_notify_command(kubeconfig: Optional[str], config: Optional[str], nam
     
     # Validate backend-specific requirements
     if notify_backend == "slack":
-        if not slack_token:
-            click.echo(f"{Fore.RED}Error: --slack-token is required when using slack backend{Style.RESET_ALL}")
+        if not kwargs.get('slack_token'):
+            click.echo(f"{Fore.RED}Error: slack_token is required when using slack backend{Style.RESET_ALL}")
             raise click.Abort()
-        if not slack_channel:
-            click.echo(f"{Fore.RED}Error: --slack-channel is required when using slack backend{Style.RESET_ALL}")
+        if not kwargs.get('slack_channel'):
+            click.echo(f"{Fore.RED}Error: slack_channel is required when using slack backend{Style.RESET_ALL}")
             raise click.Abort()
     
     if namespace:
@@ -331,10 +326,7 @@ def execute_notify_command(kubeconfig: Optional[str], config: Optional[str], nam
                 notification_history,
                 warning_threshold=warning_threshold,
                 critical_threshold=critical_threshold,
-                slack_token=slack_token,
-                slack_channel=slack_channel, 
-                slack_username=slack_username,
-                slack_icon_emoji=slack_icon_emoji
+                **kwargs
             )
         
     except ValueError as e:
