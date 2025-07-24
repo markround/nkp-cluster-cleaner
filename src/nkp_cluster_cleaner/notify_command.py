@@ -155,7 +155,7 @@ def _send_slack_expiry_notifications(critical_clusters: List[Tuple], warning_clu
     slack_token = kwargs.get('slack_token')
     slack_channel = kwargs.get('slack_channel')
     slack_username = kwargs.get('slack_username', 'NKP Cluster Cleaner')
-    slack_icon_emoji = kwargs.get('slack_icon_emoji', ':warning:')
+    slack_icon_emoji = kwargs.get('slack_icon_emoji', ':broom:')
     warning_threshold = kwargs.get('warning_threshold', 80)
     critical_threshold = kwargs.get('critical_threshold', 95)
     

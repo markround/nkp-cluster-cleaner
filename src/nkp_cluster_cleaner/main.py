@@ -269,7 +269,7 @@ def delete_clusters(kubeconfig, config, namespace, delete):
     '--slack-icon-emoji',
     envvar='SLACK_ICON_EMOJI',
     default=':broom:',
-    help='Emoji icon for Slack messages (default: :warning:)'
+    help='Emoji icon for Slack messages (default: :broom:)'
 )
 @click.option(
     '--redis-host',

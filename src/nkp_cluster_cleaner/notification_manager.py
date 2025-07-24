@@ -182,7 +182,7 @@ class NotificationManager:
         token = kwargs.get('token')
         channel = kwargs.get('channel')
         username = kwargs.get('username', 'NKP Cluster Cleaner')
-        icon_emoji = kwargs.get('icon_emoji', ':robot_face:')
+        icon_emoji = kwargs.get('icon_emoji', ':broom:')
         
         if not token or not channel:
             raise ValueError("Slack token and channel are required")
