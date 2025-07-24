@@ -27,21 +27,25 @@ class NotificationManager:
         self.cluster_manager = ClusterManager(kubeconfig_path, config_manager)
     
     def get_clusters_for_notification(self, warning_threshold: int, critical_threshold: int, 
-                                    namespace: Optional[str] = None) -> Tuple[List[Tuple[Dict, float, datetime]], List[Tuple[Dict, float, datetime]]]:
+                                namespace: Optional[str] = None) -> Tuple[List[Tuple[Dict, float, datetime]], List[Tuple[Dict, float, datetime]]]:
         """
         Get clusters that require notifications based on thresholds.
         
         Args:
             warning_threshold: Warning threshold percentage (0-100)
             critical_threshold: Critical threshold percentage (0-100)
-            namespace: Namespace to filter by (optional)
+            namespace: If specified, only examine clusters in this namespace
             
         Returns:
-            Tuple of (critical_clusters, warning_clusters) where each is a list of 
+            Tuple of (critical_clusters, warning_clusters) where each contains 
             (cluster_info, elapsed_percentage, expiry_time) tuples
         """
-        if not (0 <= warning_threshold <= 100) or not (0 <= critical_threshold <= 100):
-            raise ValueError("Thresholds must be between 0 and 100")
+        # Validate thresholds
+        if warning_threshold < 0 or warning_threshold > 100:
+            raise ValueError("Warning threshold must be between 0 and 100")
+        
+        if critical_threshold < 0 or critical_threshold > 100:
+            raise ValueError("Critical threshold must be between 0 and 100")
         
         if warning_threshold >= critical_threshold:
             raise ValueError("Warning threshold must be less than critical threshold")
@@ -49,57 +53,95 @@ class NotificationManager:
         # Get all clusters and categorize them
         clusters_to_delete, excluded_clusters = self.cluster_manager.get_clusters_with_exclusions(namespace)
         
-        # We want to examine ALL clusters (both for deletion and excluded) for notifications
-        # since clusters may be approaching expiry but still excluded for other reasons
-        all_clusters = []
-        for cluster_info, reason in clusters_to_delete:
-            all_clusters.append(cluster_info)
-        for cluster_info, reason in excluded_clusters:
-            all_clusters.append(cluster_info)
-        
-        critical_clusters = []
+        # Process clusters to find those requiring notifications
         warning_clusters = []
+        critical_clusters = []
         current_time = datetime.now()
         
-        for cluster_info in all_clusters:
+        # Add all clusters marked for deletion to critical list
+        for cluster_info, reason in clusters_to_delete:
             labels = cluster_info.get("labels", {})
             expires_value = labels.get("expires")
             
-            # Get creation timestamp from kommander cluster metadata
+            # Check if this is due to missing/invalid labels (immediate deletion)
+            reason_lower = reason.lower()
+            is_missing_labels = any(keyword in reason_lower for keyword in [
+                "missing required label", "missing expires label", 
+                "does not match pattern", "invalid expires format"
+            ])
+            
+            if is_missing_labels:
+                # Clusters with missing/invalid labels are deleted immediately - always critical
+                critical_clusters.append((cluster_info, 100.0, current_time))
+            elif "expired" in reason_lower:
+                # Expired clusters
+                if expires_value:
+                    # Get creation timestamp and calculate expiry time
+                    kommander_cluster = cluster_info.get("kommander_cluster", {})
+                    metadata = kommander_cluster.get("metadata", {})
+                    creation_timestamp = metadata.get("creationTimestamp")
+                    
+                    if creation_timestamp:
+                        try:
+                            expiry_time = self.cluster_manager._parse_expires_label(expires_value, creation_timestamp)
+                            # Expired clusters are 100% elapsed
+                            critical_clusters.append((cluster_info, 100.0, expiry_time))
+                        except (ValueError, TypeError):
+                            # If we can't parse the time, still include it with current time as expiry
+                            critical_clusters.append((cluster_info, 100.0, current_time))
+                else:
+                    # Expired cluster without expires label
+                    critical_clusters.append((cluster_info, 100.0, current_time))
+            else:
+                # Other deletion reasons - also critical since they will be deleted
+                critical_clusters.append((cluster_info, 100.0, current_time))
+        
+        # Then process excluded clusters to find those approaching expiration
+        for cluster_info, reason in excluded_clusters:
+            # Only process clusters that are excluded because they haven't expired yet
+            if "has not expired yet" not in reason:
+                continue
+            
+            labels = cluster_info.get("labels", {})
+            expires_value = labels.get("expires")
+            
+            if not expires_value:
+                continue
+            
+            # Get creation timestamp
             kommander_cluster = cluster_info.get("kommander_cluster", {})
             metadata = kommander_cluster.get("metadata", {})
             creation_timestamp = metadata.get("creationTimestamp")
             
-            if not expires_value or not creation_timestamp:
+            if not creation_timestamp:
                 continue
             
             try:
-                # Calculate the expiry time using the same logic as ClusterManager
+                # Parse the expires label and calculate elapsed percentage
                 expiry_time = self.cluster_manager._parse_expires_label(expires_value, creation_timestamp)
                 
-                # Parse creation time
+                # Parse creation timestamp 
                 if creation_timestamp.endswith('Z'):
                     creation_time = datetime.fromisoformat(creation_timestamp[:-1])
                 else:
                     creation_time = datetime.fromisoformat(creation_timestamp)
                 
-                # Calculate time elapsed and total duration
-                total_duration = expiry_time - creation_time
-                elapsed_duration = current_time - creation_time
+                # Calculate elapsed percentage
+                total_duration = (expiry_time - creation_time).total_seconds()
+                elapsed_duration = (current_time - creation_time).total_seconds()
                 
-                # Calculate percentage of time elapsed
-                if total_duration.total_seconds() > 0:
-                    elapsed_percentage = (elapsed_duration.total_seconds() / total_duration.total_seconds()) * 100
+                if total_duration > 0:
+                    elapsed_percentage = (elapsed_duration / total_duration) * 100
                     elapsed_percentage = max(0, min(100, elapsed_percentage))  # Clamp to 0-100
                     
-                    # Determine notification level
+                    # Categorize based on thresholds
                     if elapsed_percentage >= critical_threshold:
                         critical_clusters.append((cluster_info, elapsed_percentage, expiry_time))
                     elif elapsed_percentage >= warning_threshold:
                         warning_clusters.append((cluster_info, elapsed_percentage, expiry_time))
-                
+                    
             except (ValueError, TypeError):
-                # Skip clusters with invalid time formats
+                # Skip clusters with invalid expires format
                 continue
         
         return critical_clusters, warning_clusters
