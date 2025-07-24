@@ -317,7 +317,7 @@ def execute_notify_command(kubeconfig: Optional[str], config: Optional[str], nam
         _display_summary(critical_clusters, warning_clusters)
         
         # Send notifications if backend is specified
-        if notify_backend == 'slack':
+        if notify_backend:
             _send_notifications(
                 critical_clusters, 
                 warning_clusters, 
