@@ -1,5 +1,5 @@
 # Helm Chart
-This Helm chart provides a complete deployment solution for the NKP Cluster Cleaner tool. The chart includes web interface, scheduled jobs, analytics, notifications, and monitoring integration, with sensible defaults requiring little additional configuration.
+This Helm chart provides a complete deployment solution for the NKP Cluster Cleaner tool. The chart includes web interface, scheduled jobs, analytics, notifications, and monitoring integration, with defaults requiring little additional configuration.
 
 ## Prerequisites
 
