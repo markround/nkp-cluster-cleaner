@@ -35,7 +35,8 @@ helm install -n kommander nkp-cluster-cleaner ./charts/nkp-cluster-cleaner
 git checkout 0.10.1
 helm install -n kommander nkp-cluster-cleaner ./charts/nkp-cluster-cleaner
 ```
-> [!INFO]
+
+> [!NOTE]
 > This is the approach used when installing as a [NKP application](nkp.md). The repository is checked out at a specific tag, and the bundled chart is used without needing to connect to an external Helm repository.
 
 ### Version-Specific Installation
