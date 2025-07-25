@@ -39,6 +39,64 @@ def namespace_option(f):
         help='Limit operation to specific namespace (default: examine all namespaces)'
     )(f)
 
+def redis_options(f):
+    """Decorator to add Redis connection options."""
+    f = click.option(
+        '--redis-host',
+        envvar='REDIS_HOST',
+        default='redis',
+        help='Redis host (default: redis)'
+    )(f)
+    f = click.option(
+        '--redis-port',
+        envvar='REDIS_PORT',
+        default=6379,
+        type=int,
+        help='Redis port (default: 6379)'
+    )(f)
+    f = click.option(
+        '--redis-db',
+        envvar='REDIS_DB',
+        default=0,
+        type=int,
+        help='Redis database number (default: 0)'
+    )(f)
+    return f
+
+def slack_options(f):
+    """Decorator to add Slack notification options."""
+    f = click.option(
+        '--slack-token',
+        envvar='SLACK_TOKEN',
+        help='Slack Bot User OAuth Token (required for slack backend)'
+    )(f)
+    f = click.option(
+        '--slack-channel',
+        envvar='SLACK_CHANNEL',
+        help='Slack channel to send notifications to (required for slack backend)'
+    )(f)
+    f = click.option(
+        '--slack-username',
+        envvar='SLACK_USERNAME',
+        default='NKP Cluster Cleaner',
+        help='Username to display in Slack messages (default: NKP Cluster Cleaner)'
+    )(f)
+    f = click.option(
+        '--slack-icon-emoji',
+        envvar='SLACK_ICON_EMOJI',
+        default=':broom:',
+        help='Emoji icon for Slack messages (default: :broom:)'
+    )(f)
+    return f
+
+def notification_backend_option(f):
+    """Decorator to add notification backend option."""
+    return click.option(
+        '--notify-backend',
+        envvar='NOTIFY_BACKEND',
+        help='Notification backend to use (supported: slack)'
+    )(f)
+
 @click.group()
 # Built-in function with click!
 @click.version_option()
@@ -138,53 +196,9 @@ def list_clusters(kubeconfig, config, namespace, no_exclusions):
     is_flag=True,
     help='Actually delete clusters (default: dry-run mode)'
 )
-@click.option(
-    '--notify-backend',
-    envvar='NOTIFY_BACKEND',
-    help='Send deletion notifications via specified backend (supported: slack)'
-)
-@click.option(
-    '--slack-token',
-    envvar='SLACK_TOKEN',
-    help='Slack Bot User OAuth Token (required for slack notifications)'
-)
-@click.option(
-    '--slack-channel',
-    envvar='SLACK_CHANNEL',
-    help='Slack channel to send notifications to (required for slack notifications)'
-)
-@click.option(
-    '--slack-username',
-    envvar='SLACK_USERNAME',
-    default='NKP Cluster Cleaner',
-    help='Username to display in Slack messages (default: NKP Cluster Cleaner)'
-)
-@click.option(
-    '--slack-icon-emoji',
-    envvar='SLACK_ICON_EMOJI',
-    default=':broom:',
-    help='Emoji icon for Slack messages (default: :broom:)'
-)
-@click.option(
-    '--redis-host',
-    envvar='REDIS_HOST',
-    default='redis',
-    help='Redis host for notification history (default: redis)'
-)
-@click.option(
-    '--redis-port',
-    envvar='REDIS_PORT',
-    default=6379,
-    type=int,
-    help='Redis port (default: 6379)'
-)
-@click.option(
-    '--redis-db',
-    envvar='REDIS_DB',
-    default=0,
-    type=int,
-    help='Redis database number (default: 0)'
-)
+@notification_backend_option
+@slack_options
+@redis_options
 def delete_clusters(kubeconfig, config, namespace, delete, notify_backend,
                    redis_host, redis_port, redis_db, **kwargs):
     """Delete CAPI clusters that match deletion criteria."""
@@ -365,57 +379,12 @@ def delete_clusters(kubeconfig, config, namespace, delete, notify_backend,
     type=int,
     help='Critical threshold percentage (0-100) of time elapsed (default: 95)'
 )
-@click.option(
-    '--notify-backend',
-    envvar='NOTIFY_BACKEND',
-    help='Notification backend to use (supported: slack)'
-)
-@click.option(
-    '--slack-token',
-    envvar='SLACK_TOKEN',
-    help='Slack Bot User OAuth Token (required for slack backend)'
-)
-@click.option(
-    '--slack-channel',
-    envvar='SLACK_CHANNEL',
-    help='Slack channel to send notifications to (required for slack backend)'
-)
-@click.option(
-    '--slack-username',
-    envvar='SLACK_USERNAME',
-    default='NKP Cluster Cleaner',
-    help='Username to display in Slack messages (default: NKP Cluster Cleaner)'
-)
-@click.option(
-    '--slack-icon-emoji',
-    envvar='SLACK_ICON_EMOJI',
-    default=':broom:',
-    help='Emoji icon for Slack messages (default: :broom:)'
-)
-@click.option(
-    '--redis-host',
-    envvar='REDIS_HOST',
-    default='redis',
-    help='Redis host for notification history (default: redis)'
-)
-@click.option(
-    '--redis-port',
-    envvar='REDIS_PORT',
-    default=6379,
-    type=int,
-    help='Redis port (default: 6379)'
-)
-@click.option(
-    '--redis-db',
-    envvar='REDIS_DB',
-    default=0,
-    type=int,
-    help='Redis database number (default: 0)'
-)
+@notification_backend_option
+@slack_options
+@redis_options
 def notify(kubeconfig, config, namespace, warning_threshold, critical_threshold, 
           notify_backend, redis_host, redis_port, redis_db, **kwargs):
     """Send notifications for clusters approaching deletion."""
-    
     # Filter out None values from kwargs to only pass relevant backend parameters
     backend_params = {k: v for k, v in kwargs.items() if v is not None}
     
@@ -472,26 +441,7 @@ def generate_config(output_file):
     default='',
     help='URL prefix for all routes (e.g., /foo for /foo/clusters)'
 )
-@click.option(
-    '--redis-host',
-    envvar='REDIS_HOST',
-    default='redis',
-    help='Redis host for analytics data (default: redis)'
-)
-@click.option(
-    '--redis-port',
-    envvar='REDIS_PORT',
-    default=6379,
-    type=int,
-    help='Redis port (default: 6379)'
-)
-@click.option(
-    '--redis-db',
-    envvar='REDIS_DB',
-    default=0,
-    type=int,
-    help='Redis database number (default: 0)'
-)
+@redis_options
 @click.option(
     '--no-analytics',
     envvar='NO_ANALYTICS',
@@ -519,6 +469,7 @@ def serve(kubeconfig, config, host, port, debug, prefix, redis_host, redis_port,
     except Exception as e:
         click.echo(f"{Fore.RED}Error starting server: {e}{Style.RESET_ALL}")
         raise click.Abort()
+
 #
 # Analytics
 #
@@ -537,26 +488,7 @@ def serve(kubeconfig, config, host, port, debug, prefix, redis_host, redis_port,
     is_flag=True,
     help='Enable debug output during collection'
 )
-@click.option(
-    '--redis-host',
-    envvar='REDIS_HOST',
-    default='redis',
-    help='Redis host (default: redis)'
-)
-@click.option(
-    '--redis-port',
-    envvar='REDIS_PORT',
-    default=6379,
-    type=int,
-    help='Redis port (default: 6379)'
-)
-@click.option(
-    '--redis-db',
-    envvar='REDIS_DB',
-    default=0,
-    type=int,
-    help='Redis database number (default: 0)'
-)
+@redis_options
 def collect_analytics(kubeconfig, config, keep_days, debug, redis_host, redis_port, redis_db):
     """Collect analytics snapshot for historical tracking and reporting."""
     try:
@@ -602,6 +534,5 @@ def collect_analytics(kubeconfig, config, keep_days, debug, redis_host, redis_po
         click.echo(f"{Fore.RED}Error collecting analytics: {e}{Style.RESET_ALL}")
         raise click.Abort()
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     cli()
