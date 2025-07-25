@@ -31,7 +31,7 @@ spec:
           value: "/config/app/config.yaml"
         - name: "PREFIX"
           value: "{{ $.Values.ingress.prefix }}"
-{{- if eq .Values.analytics.enabled true }}
+{{- if or (eq .Values.analytics.enabled true) (eq .Values.notifications.enabled true) }}
         - name: "REDIS_HOST"
           value: "{{ $.Values.redis.hostname }}"
         - name: "REDIS_PORT"

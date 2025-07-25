@@ -76,7 +76,7 @@ After installation, the application dashboard can be accessed in the usual way, 
 
 ## Configuration
 
-You can view a full set of configuration options in the charts [README.md](/charts/nkp-cluster-cleaner/README.md).
+You can view a full set of configuration options in the charts [README.md](/charts/nkp-cluster-cleaner/README.md), or browse the default [values.yaml](../charts/nkp-cluster-cleaner/values.yaml).
 
 ### Common Configuration Scenarios
 

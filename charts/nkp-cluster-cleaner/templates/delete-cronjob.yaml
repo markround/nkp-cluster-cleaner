@@ -38,10 +38,7 @@ spec:
               value: "{{ $.Values.redis.port }}"
             - name: "REDIS_DB"
               value: "{{ $.Values.redis.db }}"
-            - name: "KUBECONFIG" 
-              value: "/config/kube/kubeconfig"
-            - name: "CONFIG" 
-              value: "/config/app/config.yaml"
+
             - name: "NOTIFY_BACKEND"
               value: "{{ $.Values.notifications.backend }}"
 {{- if eq .Values.notifications.backend "slack" }}
