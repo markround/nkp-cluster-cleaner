@@ -1,44 +1,106 @@
 # Helm Chart
+This Helm chart provides a complete deployment solution for the NKP Cluster Cleaner tool. The chart includes web interface, scheduled jobs, analytics, notifications, and monitoring integration, with sensible defaults requiring little additional configuration.
+
+## Prerequisites
+
+- Helm 3.x installed
+- Access to the NKP Management Cluster
+- Admin privileges in the `kommander` namespace
 
 ## Installation
 
-Install from the helm chart in the git repository (as used when installing the NKP app) or my own Helm repository
+### Install from the official Helm repository:
 
 ```bash
 helm repo add mdr https://helm.mdr.dev
+helm repo update
+helm install -n kommander nkp-cluster-cleaner mdr/nkp-cluster-cleaner
 ```
 
-## Common configuration options
+> [!IMPORTANT]
+> This chart must be installed in the `kommander` namespace of the NKP Management Cluster and will *not* work elsewhere.
 
-> [!TIP]
-> You can view a full set of [Helm values](/charts/nkp-cluster-cleaner/README.md) to see all configuration options.
+### From Git Repository
+You can also install directly from the source repository using a specific version:
 
-### Default rules
+```bash
+# Clone the repository
+git clone https://github.com/markround/nkp-cluster-cleaner.git
+cd nkp-cluster-cleaner
 
-The default rules provided exclude the `default` namespace and any cluster with `-prod-` in the name. It will also require an `owner` label to be set on each cluster. 
+# Install from local chart directory
+helm install -n kommander nkp-cluster-cleaner ./charts/nkp-cluster-cleaner
 
-To change this, set the `app.config` key when deploying the application, e.g.
+# Or install from a specific tag
+git checkout 0.10.1
+helm install -n kommander nkp-cluster-cleaner ./charts/nkp-cluster-cleaner
+```
+> [!INFO]
+> This is the approach used when installing as a [NKP application](nkp.md). The repository is checked out at a specific tag, and the bundled chart is used without needing to connect to an external Helm repository.
+
+### Version-Specific Installation
+To install a specific version from the Helm repository:
+
+```bash
+helm install -n kommander nkp-cluster-cleaner mdr/nkp-cluster-cleaner --version 0.10.1
+```
+
+
+## Upgrading
+### From Helm Repository
+To upgrade an existing installation to the latest version:
+```bash
+helm repo update
+helm upgrade -n kommander nkp-cluster-cleaner mdr/nkp-cluster-cleaner
+```
+### To Specific Version
+To upgrade to a specific version:
+```bash
+helm upgrade -n kommander nkp-cluster-cleaner mdr/nkp-cluster-cleaner --version 0.10.1
+```
+
+### Upgrade Considerations
+When upgrading:
+
+- Analytics data and notification history are preserved across upgrades
+- CronJob schedules may be reset to default values if not explicitly configured
+- Backup your current values before upgrading: `helm get values -n kommander nkp-cluster-cleaner > my-values.yaml`
+
+## Configuration
+
+You can view a full set of configuration options im the charts [README.md](/charts/nkp-cluster-cleaner/README.md).
+
+### Common Configuration Scenarios
+
+#### Default rules
+
+The default rules exclude the default namespace and any cluster with -prod- in the name, and require an owner label on each cluster:
 
 ```yaml
 app:
   config: |
     excluded_namespace_patterns:
     - ^default$
-    - ^some-other-namespace$ 
     protected_cluster_patterns:
     - .*-prod-.*
-    - .*-production-.*
-    - ^critical-.*
+    extra_labels:
+    - name: owner
+      description: Cluster owner identifier
 ```
 
+You can modify this to suit your requirements. See the main [README.md](../README.md) for details.
+
 ### Deletion Cron Job
-The Helm chart will create a daily CronJob to handle the deletion of clusters. By default, this is set to run daily at midnight in "dry-run" mode, so will not actually delete anything without explicit configuration. See the [Chart documentation](/charts/nkp-cluster-cleaner/README.md) for values that can be set. For example, to enable the deletion  you would set the following value:
+The Helm chart will create a daily CronJob to handle the deletion of clusters. By default, this is set to run daily at midnight in "dry-run" mode, so will not actually delete anything without explicit configuration. To enable the deletion, set the following value:
 
 ```yaml
 cronjob:
   # Actually delete clusters!
   delete: true
 ```
+
+> [!WARNING]
+> Enabling deletion will permanently remove clusters that match the deletion criteria. Ensure your protection rules are correctly configured - I strongly suggest running in dry-run mode with notifications enabled before you consider enabling deletion!
 
 You can view the status and logs of the enabled CronJobs in the Web UI:
 
@@ -77,12 +139,20 @@ notifications:
   backend: slack
   slack:
     # Channel to send notifications to
-    channel: alerts
+    channel: "alerts"
     # How the notifications will appear
     username: "NKP Cluster Cleaner"
     iconEmoji: ":broom:"
 ```
 
+#### Notification Thresholds
+Customize when notifications are sent:
+
+```yaml
+notifications:
+  warningThreshold: "75"   # First warning at 75% of cluster lifetime
+  criticalThreshold: "90"  # Critical alert at 90% of cluster lifetime
+```
 
 ### NKP Monitoring Integration
 Although the application has its own built-in dashboard and reporting capabilities, you may wish to integrate it with the standard NKP monitoring and metrics stack. If you would like to enable this feature, you can enable the ServiceMonitor which is configured with the appropriate labels for auto-discovery:
