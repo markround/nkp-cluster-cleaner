@@ -67,6 +67,13 @@ When upgrading:
 - CronJob schedules may be reset to default values if not explicitly configured
 - Backup your current values before upgrading: `helm get values -n kommander nkp-cluster-cleaner > my-values.yaml`
 
+## Usage
+
+After installation, the application dashboard can be accessed in the usual way, e.g. by browsing to the Management Cluster and selecting the Application Dashboards tab:
+
+<img src="/docs/dashboard.png" width="400">
+
+
 ## Configuration
 
 You can view a full set of configuration options im the charts [README.md](/charts/nkp-cluster-cleaner/README.md).
