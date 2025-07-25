@@ -3,10 +3,9 @@ Notify command implementation for the NKP Cluster Cleaner tool.
 """
 
 import click
-from datetime import datetime, timedelta
 from colorama import Fore, Style
 from tabulate import tabulate
-from typing import Optional, List, Tuple, Dict, Any, Set
+from typing import Optional, List, Tuple
 from ..config import ConfigManager
 from ..notification_manager import NotificationManager
 from ..notification_history import NotificationHistory
