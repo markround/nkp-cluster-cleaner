@@ -105,3 +105,21 @@ class NotificationHistory:
             cluster_name = cluster_info.get("capi_cluster_name", "unknown")
             namespace = cluster_info.get("capi_cluster_namespace", "unknown")
             self.mark_as_notified(cluster_name, namespace, severity)
+
+    def clear_cluster_history(self, cluster_name: str, namespace: str):
+        """
+        Clear all notification history for a deleted cluster.
+        
+        Args:
+            cluster_name: Name of the cluster
+            namespace: Namespace of the cluster
+        """
+        key = self._get_cluster_key(cluster_name, namespace)
+        
+        # Delete the entire key from Redis
+        deleted = self.redis_client.delete(key)
+        
+        if deleted:
+            print(f"{Fore.CYAN}Cleared notification history for {cluster_name} in {namespace}{Style.RESET_ALL}")
+        
+        return deleted > 0

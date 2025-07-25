@@ -138,10 +138,74 @@ def list_clusters(kubeconfig, config, namespace, no_exclusions):
     is_flag=True,
     help='Actually delete clusters (default: dry-run mode)'
 )
-def delete_clusters(kubeconfig, config, namespace, delete):
+@click.option(
+    '--notify-backend',
+    envvar='NOTIFY_BACKEND',
+    help='Send deletion notifications via specified backend (supported: slack)'
+)
+@click.option(
+    '--slack-token',
+    envvar='SLACK_TOKEN',
+    help='Slack Bot User OAuth Token (required for slack notifications)'
+)
+@click.option(
+    '--slack-channel',
+    envvar='SLACK_CHANNEL',
+    help='Slack channel to send notifications to (required for slack notifications)'
+)
+@click.option(
+    '--slack-username',
+    envvar='SLACK_USERNAME',
+    default='NKP Cluster Cleaner',
+    help='Username to display in Slack messages (default: NKP Cluster Cleaner)'
+)
+@click.option(
+    '--slack-icon-emoji',
+    envvar='SLACK_ICON_EMOJI',
+    default=':broom:',
+    help='Emoji icon for Slack messages (default: :broom:)'
+)
+@click.option(
+    '--redis-host',
+    envvar='REDIS_HOST',
+    default='redis',
+    help='Redis host for notification history (default: redis)'
+)
+@click.option(
+    '--redis-port',
+    envvar='REDIS_PORT',
+    default=6379,
+    type=int,
+    help='Redis port (default: 6379)'
+)
+@click.option(
+    '--redis-db',
+    envvar='REDIS_DB',
+    default=0,
+    type=int,
+    help='Redis database number (default: 0)'
+)
+def delete_clusters(kubeconfig, config, namespace, delete, notify_backend, 
+                   slack_token, slack_channel, slack_username, slack_icon_emoji,
+                   redis_host, redis_port, redis_db):
     """Delete CAPI clusters that match deletion criteria."""
     # Default behavior is dry-run unless --delete is specified
     dry_run = not delete
+    
+    # Validate notification backend if specified
+    if notify_backend:
+        if notify_backend not in ["slack"]:
+            click.echo(f"{Fore.RED}Error: Unsupported notification backend '{notify_backend}'. Supported: slack{Style.RESET_ALL}")
+            raise click.Abort()
+        
+        # Validate backend-specific requirements
+        if notify_backend == "slack":
+            if not slack_token:
+                click.echo(f"{Fore.RED}Error: --slack-token is required when using slack notification backend{Style.RESET_ALL}")
+                raise click.Abort()
+            if not slack_channel:
+                click.echo(f"{Fore.RED}Error: --slack-channel is required when using slack notification backend{Style.RESET_ALL}")
+                raise click.Abort()
     
     if dry_run:
         if namespace:
@@ -159,6 +223,23 @@ def delete_clusters(kubeconfig, config, namespace, delete):
         # Initialize configuration and cluster manager
         config_manager = ConfigManager(config) if config else ConfigManager()
         cluster_manager = ClusterManager(kubeconfig, config_manager)
+        
+        # Initialize notification manager if backend is specified
+        notification_manager = None
+        if notify_backend and not dry_run:
+            from .notification_manager import NotificationManager
+            notification_manager = NotificationManager(kubeconfig, config_manager)
+        
+        # Initialize notification history for clearing deleted cluster records
+        notification_history = None
+        if not dry_run:
+            try:
+                from .notification_history import NotificationHistory
+                notification_history = NotificationHistory(redis_host, redis_port, redis_db)
+                click.echo(f"{Fore.CYAN}Connected to notification history at {redis_host}:{redis_port} (db {redis_db}){Style.RESET_ALL}")
+            except Exception as e:
+                click.echo(f"{Fore.YELLOW}Warning: Could not connect to Redis for notification history: {e}{Style.RESET_ALL}")
+                click.echo(f"{Fore.YELLOW}Continuing without clearing notification history...{Style.RESET_ALL}")
         
         # Get clusters that match deletion criteria
         clusters_to_delete, excluded_clusters = cluster_manager.get_clusters_with_exclusions(namespace)
@@ -197,10 +278,12 @@ def delete_clusters(kubeconfig, config, namespace, delete):
         # Delete clusters (or simulate deletion)
         deleted_count = 0
         failed_count = 0
+        successfully_deleted = []  # Track successfully deleted clusters for notifications
         
         for cluster_info, reason in clusters_to_delete:
             capi_cluster_name = cluster_info.get("capi_cluster_name", "unknown")
             capi_cluster_namespace = cluster_info.get("capi_cluster_namespace", "unknown")
+            labels = cluster_info.get("labels", {})
             
             if dry_run:
                 click.echo(f"{Fore.YELLOW}[DRY RUN] Would delete: {capi_cluster_name} in {capi_cluster_namespace} ({reason}){Style.RESET_ALL}")
@@ -208,13 +291,47 @@ def delete_clusters(kubeconfig, config, namespace, delete):
             else:
                 if cluster_manager.delete_cluster(capi_cluster_name, capi_cluster_namespace, dry_run):
                     deleted_count += 1
+                    # Track successfully deleted cluster for notification
+                    successfully_deleted.append({
+                        "name": capi_cluster_name,
+                        "namespace": capi_cluster_namespace,
+                        "owner": labels.get("owner", "unknown"),
+                        "reason": reason
+                    })
+                    
+                    # Clear notification history for the deleted cluster
+                    if notification_history:
+                        try:
+                            notification_history.clear_cluster_history(capi_cluster_name, capi_cluster_namespace)
+                        except Exception as e:
+                            click.echo(f"{Fore.YELLOW}Warning: Could not clear notification history for {capi_cluster_name}: {e}{Style.RESET_ALL}")
                 else:
                     failed_count += 1
+        
+        # Send deletion notification if configured and clusters were deleted
+        if notification_manager and successfully_deleted:
+            click.echo(f"\n{Fore.CYAN}Sending deletion notification via {notify_backend}...{Style.RESET_ALL}")
+            try:
+                notification_manager.send_deletion_notification(
+                    backend=notify_backend,
+                    deleted_clusters=successfully_deleted,
+                    severity="info",
+                    token=slack_token,
+                    channel=slack_channel,
+                    username=slack_username,
+                    icon_emoji=slack_icon_emoji
+                )
+                click.echo(f"{Fore.GREEN}Successfully sent deletion notification to {notify_backend}!{Style.RESET_ALL}")
+            except Exception as e:
+                click.echo(f"{Fore.YELLOW}Warning: Failed to send deletion notification: {e}{Style.RESET_ALL}")
+                # Don't fail the entire operation if notification fails
         
         # Summary
         if dry_run:
             click.echo(f"\n{Fore.CYAN}Dry run completed. {deleted_count} clusters would be deleted.{Style.RESET_ALL}")
             click.echo(f"{Fore.CYAN}To actually delete these clusters, run the command again with --delete{Style.RESET_ALL}")
+            if notify_backend:
+                click.echo(f"{Fore.CYAN}Note: Deletion notifications would be sent via {notify_backend} when running with --delete{Style.RESET_ALL}")
         else:
             click.echo(f"\n{Fore.GREEN}Deletion completed. {deleted_count} clusters deleted successfully.{Style.RESET_ALL}")
             if failed_count > 0:
