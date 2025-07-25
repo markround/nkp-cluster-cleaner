@@ -285,6 +285,9 @@ class NotificationManager:
             error = result.get("error", "Unknown error")
             raise Exception(f"Slack API error: {error}")
     
+    #
+    # Specific notifications
+    #
     def send_expiry_notification(self, backend: str, clusters: List[Tuple[Dict, float, datetime]], 
                                severity: str, threshold: int, **kwargs):
         """
@@ -335,4 +338,54 @@ class NotificationManager:
         # Send the notification
         self.send_notification(backend, title, full_text, severity, **kwargs)
 
+        
 
+    def send_deletion_notification(self, backend: str, deleted_clusters: List[Dict[str, any]], 
+                                  severity: str = "info", **kwargs):
+        """
+        Send deletion notifications for clusters that have been deleted.
+        
+        Args:
+            backend: Notification backend to use
+            deleted_clusters: List of dicts containing details of deleted clusters
+                Expected format: [{"name": str, "namespace": str, "owner": str, "reason": str}, ...]
+            severity: Notification severity (default: "info")
+            **kwargs: Backend-specific parameters
+        """
+        if not deleted_clusters:
+            return
+        
+        # Build title based on number of deleted clusters
+        cluster_count = len(deleted_clusters)
+        if cluster_count == 1:
+            title = "1 cluster has been deleted"
+        else:
+            title = f"{cluster_count} clusters have been deleted"
+        
+        # Build cluster details
+        cluster_details = []
+        for cluster in deleted_clusters:
+            cluster_name = cluster.get("name", "unknown")
+            namespace = cluster.get("namespace", "unknown")
+            owner = cluster.get("owner", "unknown")
+            reason = cluster.get("reason", "unknown reason")
+            
+            # Format cluster info
+            cluster_text = (
+                f"• *{cluster_name}* "
+                f"(ns: `{namespace}`, "
+                f"owner: `{owner}`, "
+                f"reason: `{reason}`)"
+            )
+            cluster_details.append(cluster_text)
+        
+        # Build the full message text
+        if cluster_count == 1:
+            intro_text = "The following cluster has been deleted:"
+        else:
+            intro_text = "The following clusters have been deleted:"
+        
+        full_text = f"{intro_text}\n\n" + "\n".join(cluster_details)
+        
+        # Send the notification
+        self.send_notification(backend, title, full_text, severity, **kwargs)
