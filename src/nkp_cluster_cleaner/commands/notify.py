@@ -7,9 +7,9 @@ from datetime import datetime, timedelta
 from colorama import Fore, Style
 from tabulate import tabulate
 from typing import Optional, List, Tuple, Dict, Any, Set
-from .config import ConfigManager
-from .notification_manager import NotificationManager
-from .notification_history import NotificationHistory
+from ..config import ConfigManager
+from ..notification_manager import NotificationManager
+from ..notification_history import NotificationHistory
 
 
 def _send_notifications(critical_clusters: List[Tuple], warning_clusters: List[Tuple], 

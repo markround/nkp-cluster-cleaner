@@ -9,7 +9,7 @@ from tabulate import tabulate
 from .cluster_manager import ClusterManager
 from .config import ConfigManager
 from .redis_data_collector import RedisDataCollector
-from .notify_command import execute_notify_command
+from .commands.notify import execute_notify_command
 
 # Initialize colorama
 init()
