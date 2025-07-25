@@ -18,13 +18,14 @@ A simple yet comprehensive tool to automatically delete and report on Nutanix Ku
 
 - 🚀 Simple "one-click" catalog installation and tight integration with NKP features
 - 📋 Flexible rulesets and custom criteria
+- 🔔 Notifications (Slack currently supported, more to come)
 - 📈 Trend analysis, compliance monitoring and historical data tracking
 - 📊 Built-in web dashboard and administration console
 - 🔥 Prometheus metrics, NKP monitoring integration and Grafana dashboard 
 - 🖥️ Also runs as a standalone console application
 
 > [!NOTE] 
-> This is a personal project and is in no way supported/endorsed by, or otherwise connected to Nutanix
+> This is a personal project and is not supported/endorsed by, or otherwise connected to Nutanix
 
 ## Installation
 See the documentation at [docs/nkp.md](./docs/nkp.md) for details on how to deploy the application as a NKP catalog application, running inside the NKP Management Cluster itself. This is the recommended way to run the application as it includes the scheduled tasks, web interface and analytics with no further configuration needed. 
@@ -180,10 +181,6 @@ If you want to make use of an alternative Redis/Valkey service, you must provide
 |`--redis-host` | TEXT     | Redis host (default: redis) |
 |`--redis-port` | INTEGER  | Redis port (default: 6379)  |
 |`--redis-db`   | INTEGER  | Redis database number (default: 0) |
-
-#### Disabling Analytics
-
-You can pass the argument `--no-analytics` to the `serve` command, and it will disable the analytics components (including links in the Web UI) and will not attempt to connect to any Redis/Valkey instance.
 
 #### Prometheus Metrics
 Prometheus metrics for all collected analytics data is exposed under the `/metrics` endpoint. A ServiceMonitor can be created using the Helm chart for automatic discovery and incorporation of data into the Prometheus stack used by NKP. 
