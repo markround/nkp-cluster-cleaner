@@ -1,0 +1,79 @@
+{{- if eq .Values.cronjob.enabled true }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  labels:
+    app: nkp-cluster-cleaner
+  name: nkp-cluster-cleaner-delete
+  namespace: kommander
+spec:
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: {{ $.Values.cronjob.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+          - name: nkp-cluster-cleaner
+            image: {{ $.Values.deployment.image }}
+            command:
+            - nkp-cluster-cleaner
+            args:
+            - delete-clusters 
+            env:
+{{- if eq .Values.cronjob.delete true }}
+            - name: "DELETE"
+              value: "true"
+{{- end }}
+            - name: "KUBECONFIG"
+              value: "/config/kube/kubeconfig"
+            - name: "CONFIG" 
+              value: "/config/app/config.yaml"
+{{- if eq .Values.notifications.enabled true }}
+            - name: "REDIS_HOST"
+              value: "{{ $.Values.redis.hostname }}"
+            - name: "REDIS_PORT"
+              value: "{{ $.Values.redis.port }}"
+            - name: "REDIS_DB"
+              value: "{{ $.Values.redis.db }}"
+            - name: "KUBECONFIG" 
+              value: "/config/kube/kubeconfig"
+            - name: "CONFIG" 
+              value: "/config/app/config.yaml"
+            - name: "NOTIFY_BACKEND"
+              value: "{{ $.Values.notifications.backend }}"
+{{- if eq .Values.notifications.backend "slack" }}
+            - name: "SLACK_TOKEN"
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ $.Values.notifications.slack.tokenSecretName }}"
+                  key: "{{ $.Values.notifications.slack.tokenSecretKey }}"
+            - name: "SLACK_CHANNEL"
+              value: "{{ $.Values.notifications.slack.channel }}"
+            - name: "SLACK_USERNAME"
+              value: "{{ $.Values.notifications.slack.username }}"
+            - name: "SLACK_ICON_EMOJI"
+              value: "{{ $.Values.notifications.slack.iconEmoji }}"
+{{- end }}
+{{- end }}
+            volumeMounts:
+            - name: kubeconfig
+              mountPath: /config/kube
+              readOnly: true
+            - name: config
+              mountPath: /config/app
+              readOnly: true
+          volumes:
+          - name: kubeconfig
+            secret:
+              secretName: {{ $.Values.app.kubeconfigSecretRef }}
+              defaultMode: 0444
+          - name: config
+            configMap:
+              name: nkp-cluster-cleaner-config 
+              defaultMode: 0444
+  schedule: "{{ $.Values.cronjob.schedule }}"
+  successfulJobsHistoryLimit: {{ $.Values.cronjob.successfulJobsHistoryLimit }}
+{{- end }}
