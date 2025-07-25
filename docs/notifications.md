@@ -72,7 +72,7 @@ The notification system requires Redis for tracking sent notifications. You can 
 
 Slack is currently the only supported backend for notifications. The system sends rich notifications with cluster details, ownership information, and remaining time:
 
-<img src="/docs/slack.png" width="300">
+<img src="/docs/slack.png" width="400">
 
 #### Prerequisites
 

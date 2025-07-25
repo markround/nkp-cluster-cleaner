@@ -1,5 +1,12 @@
 # Helm Chart
 
+## Installation
+
+Install from the helm chart in the git repository (as used when installing the NKP app) or my own Helm repository
+
+```bash
+helm repo add mdr https://helm.mdr.dev
+```
 
 ## Common configuration options
 
