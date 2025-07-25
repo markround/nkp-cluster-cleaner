@@ -76,7 +76,7 @@ After installation, the application dashboard can be accessed in the usual way, 
 
 ## Configuration
 
-You can view a full set of configuration options im the charts [README.md](/charts/nkp-cluster-cleaner/README.md).
+You can view a full set of configuration options in the charts [README.md](/charts/nkp-cluster-cleaner/README.md).
 
 ### Common Configuration Scenarios
 
@@ -96,7 +96,7 @@ app:
       description: Cluster owner identifier
 ```
 
-You can modify this to suit your requirements. See the main [README.md](../README.md) for details.
+You can modify this to suit your requirements. See the main [README.md](../README.md) for details on creating your own [protection rules](../README.md#protected-clusters) or adding [required labels](../README.md#extra-labels).
 
 ### Deletion Cron Job
 The Helm chart will create a daily CronJob to handle the deletion of clusters. By default, this is set to run daily at midnight in "dry-run" mode, so will not actually delete anything without explicit configuration. To enable the deletion, set the following value:
