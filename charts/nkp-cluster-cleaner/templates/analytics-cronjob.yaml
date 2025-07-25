@@ -1,4 +1,4 @@
-{{- if and (eq .Values.analytics.cronjob.enabled true) (eq .Values.analytics.enabled true) }}
+{{- if eq .Values.analytics.enabled true }}
 ---
 apiVersion: batch/v1
 kind: CronJob
@@ -9,7 +9,7 @@ metadata:
   namespace: kommander
 spec:
   concurrencyPolicy: Forbid
-  failedJobsHistoryLimit: {{ $.Values.analytics.cronjob.failedJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ $.Values.analytics.failedJobsHistoryLimit }}
   jobTemplate:
     spec:
       template:
@@ -49,6 +49,6 @@ spec:
             configMap:
               name: nkp-cluster-cleaner-config 
               defaultMode: 0444
-  schedule: "{{ $.Values.analytics.cronjob.schedule }}"
-  successfulJobsHistoryLimit: {{ $.Values.analytics.cronjob.successfulJobsHistoryLimit }}
+  schedule: "{{ $.Values.analytics.schedule }}"
+  successfulJobsHistoryLimit: {{ $.Values.analytics.successfulJobsHistoryLimit }}
 {{- end }}

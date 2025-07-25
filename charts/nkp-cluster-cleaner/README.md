@@ -15,15 +15,14 @@ A simple tool to automatically delete Nutanix NKP clusters that do not meet a sp
 | ingress.class | string | `"kommander-traefik"` | Ingress class to use |
 | ingress.authentication.enabled | bool | `true` | If true, access to the dashboard will require logging in with an admin account. Setting to false will enable anonymous access. |
 | analytics.enabled | bool | `true` | Enable the analytics service and components |
-| analytics.cronjob.enabled | bool | `true` | Enable periodic collection of historical data |
-| analytics.cronjob.schedule | string | `"@hourly"` | Schedule to run the job. Uses standard Kubernetes CronJob syntax. |
-| analytics.cronjob.failedJobsHistoryLimit | int | `1` | How many failed jobs to keep |
-| analytics.cronjob.successfulJobsHistoryLimit | int | `3` | How many successful jobs to keep |
-| cronjob.enabled | bool | `true` | Enable scheduled deletion CronJobs |
-| cronjob.delete | bool | `false` | Set to true to actually delete clusters, default is to operate in "dry-run" mode |
-| cronjob.schedule | string | `"@daily"` | Schedule to run the job. Uses standard Kubernetes CronJob syntax. |
-| cronjob.failedJobsHistoryLimit | int | `1` | How many failed jobs to keep |
-| cronjob.successfulJobsHistoryLimit | int | `3` | How many successful jobs to keep |
+| analytics.schedule | string | `"@hourly"` | Schedule to run the collection job. Uses standard Kubernetes CronJob syntax. |
+| analytics.failedJobsHistoryLimit | int | `1` | How many failed jobs to keep |
+| analytics.successfulJobsHistoryLimit | int | `3` | How many successful jobs to keep |
+| deletion.enabled | bool | `true` | Enable scheduled deletion CronJobs |
+| deletion.delete | bool | `false` | Set to true to actually delete clusters, default is to operate in "dry-run" mode |
+| deletion.schedule | string | `"@daily"` | Schedule to run the job. Uses standard Kubernetes CronJob syntax. |
+| deletion.failedJobsHistoryLimit | int | `1` | How many failed jobs to keep |
+| deletion.successfulJobsHistoryLimit | int | `3` | How many successful jobs to keep |
 | app.kubeconfigSecretRef | string | `"kommander-self-attach-kubeconfig"` | Secret containing a valid kubeconfig for the management cluster |
 | app.config | string | `"excluded_namespace_patterns:\n- ^default$\nprotected_cluster_patterns:\n- .*-prod-.*\nextra_labels:\n- name: owner\n  description: Cluster owner identifier\n"` | Default set of exclusion rules |
 | monitoring.grafanaDashboard.enabled | bool | `false` | Deploy a Dashboard into the NKP Grafana instance |

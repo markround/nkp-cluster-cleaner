@@ -94,7 +94,7 @@ You can modify this to suit your requirements. See the main [README.md](../READM
 The Helm chart will create a daily CronJob to handle the deletion of clusters. By default, this is set to run daily at midnight in "dry-run" mode, so will not actually delete anything without explicit configuration. To enable the deletion, set the following value:
 
 ```yaml
-cronjob:
+deletion:
   # Actually delete clusters!
   delete: true
 ```

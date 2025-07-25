@@ -1,4 +1,4 @@
-{{- if eq .Values.cronjob.enabled true }}
+{{- if eq .Values.deletion.enabled true }}
 ---
 apiVersion: batch/v1
 kind: CronJob
@@ -9,7 +9,7 @@ metadata:
   namespace: kommander
 spec:
   concurrencyPolicy: Forbid
-  failedJobsHistoryLimit: {{ $.Values.cronjob.failedJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ $.Values.deletion.failedJobsHistoryLimit }}
   jobTemplate:
     spec:
       template:
@@ -23,7 +23,7 @@ spec:
             args:
             - delete-clusters 
             env:
-{{- if eq .Values.cronjob.delete true }}
+{{- if eq .Values.deletion.delete true }}
             - name: "DELETE"
               value: "true"
 {{- end }}
@@ -74,6 +74,6 @@ spec:
             configMap:
               name: nkp-cluster-cleaner-config 
               defaultMode: 0444
-  schedule: "{{ $.Values.cronjob.schedule }}"
-  successfulJobsHistoryLimit: {{ $.Values.cronjob.successfulJobsHistoryLimit }}
+  schedule: "{{ $.Values.deletion.schedule }}"
+  successfulJobsHistoryLimit: {{ $.Values.deletion.successfulJobsHistoryLimit }}
 {{- end }}

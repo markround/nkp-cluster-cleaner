@@ -18,18 +18,14 @@ ingress:
 analytics:
   # -- Enable the analytics service and components
   enabled: true
+  # -- Schedule to run the collection job. Uses standard Kubernetes CronJob syntax.
+  schedule: "@hourly"
+  # -- How many failed jobs to keep
+  failedJobsHistoryLimit: 1
+  # -- How many successful jobs to keep
+  successfulJobsHistoryLimit: 3
 
-  cronjob:
-    # -- Enable periodic collection of historical data
-    enabled: true
-    # -- Schedule to run the job. Uses standard Kubernetes CronJob syntax.
-    schedule: "@hourly"
-    # -- How many failed jobs to keep
-    failedJobsHistoryLimit: 1
-    # -- How many successful jobs to keep
-    successfulJobsHistoryLimit: 3
-
-cronjob:
+deletion:
   # -- Enable scheduled deletion CronJobs
   enabled: true
   # -- Set to true to actually delete clusters, default is to operate in "dry-run" mode
