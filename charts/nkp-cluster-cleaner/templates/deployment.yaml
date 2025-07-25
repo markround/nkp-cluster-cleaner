@@ -33,11 +33,11 @@ spec:
           value: "{{ $.Values.ingress.prefix }}"
 {{- if eq .Values.analytics.enabled true }}
         - name: "REDIS_HOST"
-          value: "{{ $.Values.analytics.redis.hostname }}"
+          value: "{{ $.Values.redis.hostname }}"
         - name: "REDIS_PORT"
-          value: "{{ $.Values.analytics.redis.port }}"
+          value: "{{ $.Values.redis.port }}"
         - name: "REDIS_DB"
-          value: "{{ $.Values.analytics.redis.db }}"
+          value: "{{ $.Values.redis.db }}"
 {{- else }}
         - name: "NO_ANALYTICS"
           value: "true"

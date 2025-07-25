@@ -24,11 +24,11 @@ spec:
             - collect-analytics
             env:
             - name: "REDIS_HOST"
-              value: "{{ $.Values.analytics.redis.hostname }}"
+              value: "{{ $.Values.redis.hostname }}"
             - name: "REDIS_PORT"
-              value: "{{ $.Values.analytics.redis.port }}"
+              value: "{{ $.Values.redis.port }}"
             - name: "REDIS_DB"
-              value: "{{ $.Values.analytics.redis.db }}"
+              value: "{{ $.Values.redis.db }}"
             - name: "KUBECONFIG" 
               value: "/config/kube/kubeconfig"
             - name: "CONFIG" 
