@@ -185,9 +185,8 @@ def list_clusters(kubeconfig, config, namespace, no_exclusions):
     type=int,
     help='Redis database number (default: 0)'
 )
-def delete_clusters(kubeconfig, config, namespace, delete, notify_backend, 
-                   slack_token, slack_channel, slack_username, slack_icon_emoji,
-                   redis_host, redis_port, redis_db):
+def delete_clusters(kubeconfig, config, namespace, delete, notify_backend,
+                   redis_host, redis_port, redis_db, **kwargs):
     """Delete CAPI clusters that match deletion criteria."""
     # Default behavior is dry-run unless --delete is specified
     dry_run = not delete
@@ -200,10 +199,10 @@ def delete_clusters(kubeconfig, config, namespace, delete, notify_backend,
         
         # Validate backend-specific requirements
         if notify_backend == "slack":
-            if not slack_token:
+            if not kwargs.get('slack_token'):
                 click.echo(f"{Fore.RED}Error: --slack-token is required when using slack notification backend{Style.RESET_ALL}")
                 raise click.Abort()
-            if not slack_channel:
+            if not kwargs.get('slack_channel'):
                 click.echo(f"{Fore.RED}Error: --slack-channel is required when using slack notification backend{Style.RESET_ALL}")
                 raise click.Abort()
     
@@ -312,14 +311,19 @@ def delete_clusters(kubeconfig, config, namespace, delete, notify_backend,
         if notification_manager and successfully_deleted:
             click.echo(f"\n{Fore.CYAN}Sending deletion notification via {notify_backend}...{Style.RESET_ALL}")
             try:
+                # Extract backend-specific parameters from kwargs
+                backend_params = {
+                    'token': kwargs.get('slack_token'),
+                    'channel': kwargs.get('slack_channel'),
+                    'username': kwargs.get('slack_username', 'NKP Cluster Cleaner'),
+                    'icon_emoji': kwargs.get('slack_icon_emoji', ':broom:')
+                }
+                
                 notification_manager.send_deletion_notification(
                     backend=notify_backend,
                     deleted_clusters=successfully_deleted,
                     severity="info",
-                    token=slack_token,
-                    channel=slack_channel,
-                    username=slack_username,
-                    icon_emoji=slack_icon_emoji
+                    **backend_params
                 )
                 click.echo(f"{Fore.GREEN}Successfully sent deletion notification to {notify_backend}!{Style.RESET_ALL}")
             except Exception as e:
