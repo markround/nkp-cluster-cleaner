@@ -115,6 +115,7 @@ Commands:
   delete-clusters    Delete CAPI clusters that match deletion criteria.
   generate-config    Generate an example configuration file.
   list-clusters      List CAPI clusters that match deletion criteria.
+  notify             Send notifications for clusters approaching deletion.
   serve              Start the web server for the cluster cleaner UI.
 ```
 
