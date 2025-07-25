@@ -29,7 +29,9 @@ You can then select the application in the Management Cluster Workspace and enab
 
 ## Configuration
 
-Assuming a standard installation of NKP Ultimate[https://github.com/markround/nkp-cluster-cleaner/issues/8], the application will work without any further configuration required. Further configuration can be carried out by setting the Application Configuration Override within the NKP interface:
+Assuming a standard installation of NKP Ultimate[https://github.com/markround/nkp-cluster-cleaner/issues/8], the application will work without any further configuration required. 
+
+Additional configuration can be carried out by setting the Application Configuration Override within the NKP interface:
 
 <img src="/docs/config.png" width="400">
 
