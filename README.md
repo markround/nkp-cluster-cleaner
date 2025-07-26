@@ -177,6 +177,9 @@ Options:
   --help                Show this message and exit.
 ```
 
+### Notifications
+See [docs/notifications.md](docs/notifications.md)
+
 ### Analytics
 The NKP Cluster Cleaner includes an analytics dashboard that provides historical tracking, trends analysis, and reporting capabilities. It uses a Redis-based data collector that creates periodic snapshots of cluster state. 
 
