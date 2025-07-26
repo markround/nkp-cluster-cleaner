@@ -15,21 +15,14 @@ A simple tool to automatically delete Nutanix NKP clusters that do not meet a sp
 | ingress.class | string | `"kommander-traefik"` | Ingress class to use |
 | ingress.authentication.enabled | bool | `true` | If true, access to the dashboard will require logging in with an admin account. Setting to false will enable anonymous access. |
 | analytics.enabled | bool | `true` | Enable the analytics service and components |
-| analytics.redis.hostname | string | `"nkp-cluster-cleaner-valkey"` | Hostname of the Redis/Valkey instance |
-| analytics.redis.port | int | `6379` | Port of the Redis/Valkey instance |
-| analytics.redis.db | int | `0` | Redis database number |
-| analytics.cronjob.enabled | bool | `true` | Enable periodic collection of historical data |
-| analytics.cronjob.schedule | string | `"@hourly"` | Schedule to run the job. Uses standard Kubernetes CronJob syntax. |
-| analytics.cronjob.failedJobsHistoryLimit | int | `1` | How many failed jobs to keep |
-| analytics.cronjob.successfulJobsHistoryLimit | int | `3` | How many successful jobs to keep |
-| analytics.valkey.enabled | bool | `true` | Deploy a Valkey service for storing historical data |
-| analytics.valkey.image | string | `"ghcr.io/valkey-io/valkey:8-alpine"` | Valkey container image to use |
-| analytics.valkey.saveEnv | string | `"900 1"` | Valkey SAVE_ENV value to specify how often to ensure data is flushed to disk |
-| cronjob.enabled | bool | `true` | Enable scheduled deletion CronJobs |
-| cronjob.delete | bool | `false` | Set to true to actually delete clusters, default is to operate in "dry-run" mode |
-| cronjob.schedule | string | `"@daily"` | Schedule to run the job. Uses standard Kubernetes CronJob syntax. |
-| cronjob.failedJobsHistoryLimit | int | `1` | How many failed jobs to keep |
-| cronjob.successfulJobsHistoryLimit | int | `3` | How many successful jobs to keep |
+| analytics.schedule | string | `"@hourly"` | Schedule to run the collection job. Uses standard Kubernetes CronJob syntax. |
+| analytics.failedJobsHistoryLimit | int | `1` | How many failed jobs to keep |
+| analytics.successfulJobsHistoryLimit | int | `3` | How many successful jobs to keep |
+| deletion.enabled | bool | `true` | Enable scheduled deletion CronJobs |
+| deletion.delete | bool | `false` | Set to true to actually delete clusters, default is to operate in "dry-run" mode |
+| deletion.schedule | string | `"@daily"` | Schedule to run the job. Uses standard Kubernetes CronJob syntax. |
+| deletion.failedJobsHistoryLimit | int | `1` | How many failed jobs to keep |
+| deletion.successfulJobsHistoryLimit | int | `3` | How many successful jobs to keep |
 | app.kubeconfigSecretRef | string | `"kommander-self-attach-kubeconfig"` | Secret containing a valid kubeconfig for the management cluster |
 | app.config | string | `"excluded_namespace_patterns:\n- ^default$\nprotected_cluster_patterns:\n- .*-prod-.*\nextra_labels:\n- name: owner\n  description: Cluster owner identifier\n"` | Default set of exclusion rules |
 | monitoring.grafanaDashboard.enabled | bool | `false` | Deploy a Dashboard into the NKP Grafana instance |
@@ -40,6 +33,24 @@ A simple tool to automatically delete Nutanix NKP clusters that do not meet a sp
 | monitoring.serviceMonitor.annotations | object | `{}` | Additional annotations for ServiceMonitor |
 | monitoring.serviceMonitor.metricRelabelings | list | `[]` | Metric relabeling rules |
 | monitoring.serviceMonitor.relabelings | list | `[]` | Relabeling rules |
+| notifications.enabled | bool | `false` | Enable sending notifications from CronJob |
+| notifications.backend | string | `"slack"` | Notification backend to use |
+| notifications.schedule | string | `"@hourly"` | When to run the scheduled notifications CronJob |
+| notifications.failedJobsHistoryLimit | int | `1` | How many failed CronJobs to keep |
+| notifications.successfulJobsHistoryLimit | int | `3` | How many successful CronJobs to keep |
+| notifications.warningThreshold | string | `"80"` | Warning threshold percentage of cluster time elapsed |
+| notifications.criticalThreshold | string | `"95"` | Critical threshold percentage of cluster time elapsed |
+| notifications.slack.tokenSecretName | string | `"slack-token"` | Secret name to retrieve the Slack OAuth token from |
+| notifications.slack.tokenSecretKey | string | `"token"` | Secret key to retrieve the Slack OAuth token from |
+| notifications.slack.channel | string | `"alerts"` | Slack channel to use for notifications |
+| notifications.slack.username | string | `"NKP Cluster Cleaner"` | Username to display in alerts |
+| notifications.slack.iconEmoji | string | `":broom:"` | Emjoi icon to use |
+| redis.hostname | string | `"nkp-cluster-cleaner-valkey"` | Hostname of the Redis/Valkey instance used by analytics and notifications |
+| redis.port | int | `6379` | Port of the Redis/Valkey instance |
+| redis.db | int | `0` | Redis database number |
+| valkey.enabled | bool | `true` | Deploy a Valkey Redis-compatible service for storing historical data and notifications |
+| valkey.image | string | `"ghcr.io/valkey-io/valkey:8-alpine"` | Valkey container image to use |
+| valkey.saveEnv | string | `"900 1"` | Valkey SAVE_ENV value to specify how often to ensure data is flushed to disk |
 
 ----------------------------------------------
 Autogenerated from chart metadata using [helm-docs v1.14.2](https://github.com/norwoodj/helm-docs/releases/v1.14.2)

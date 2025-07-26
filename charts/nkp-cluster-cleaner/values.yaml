@@ -18,35 +18,14 @@ ingress:
 analytics:
   # -- Enable the analytics service and components
   enabled: true
-  
-  redis:
-    # -- Hostname of the Redis/Valkey instance
-    hostname: nkp-cluster-cleaner-valkey
-    # -- Port of the Redis/Valkey instance
-    port: 6379
-    # -- Redis database number
-    db: 0
+  # -- Schedule to run the collection job. Uses standard Kubernetes CronJob syntax.
+  schedule: "@hourly"
+  # -- How many failed jobs to keep
+  failedJobsHistoryLimit: 1
+  # -- How many successful jobs to keep
+  successfulJobsHistoryLimit: 3
 
-  cronjob:
-    # -- Enable periodic collection of historical data
-    enabled: true
-    # -- Schedule to run the job. Uses standard Kubernetes CronJob syntax.
-    schedule: "@hourly"
-    # -- How many failed jobs to keep
-    failedJobsHistoryLimit: 1
-    # -- How many successful jobs to keep
-    successfulJobsHistoryLimit: 3
-
-  valkey:
-    # -- Deploy a Valkey service for storing historical data
-    enabled: true
-    # -- Valkey container image to use
-    image: ghcr.io/valkey-io/valkey:8-alpine
-    # -- Valkey SAVE_ENV value to specify how often to ensure data is flushed to disk
-    saveEnv: "900 1"
-
-
-cronjob:
+deletion:
   # -- Enable scheduled deletion CronJobs
   enabled: true
   # -- Set to true to actually delete clusters, default is to operate in "dry-run" mode
@@ -98,3 +77,47 @@ monitoring:
       # - sourceLabels: [__meta_kubernetes_pod_name]
       #   targetLabel: pod
       #   action: replace
+
+notifications:
+  # -- Enable sending notifications from CronJob
+  enabled: false
+  # -- Notification backend to use
+  backend: slack
+  # -- When to run the scheduled notifications CronJob
+  schedule: "@hourly"
+  # -- How many failed CronJobs to keep
+  failedJobsHistoryLimit: 1
+  # -- How many successful CronJobs to keep
+  successfulJobsHistoryLimit: 3
+  # -- Warning threshold percentage of cluster time elapsed
+  warningThreshold: "80"
+  # -- Critical threshold percentage of cluster time elapsed
+  criticalThreshold: "95"
+
+  slack:
+    # -- Secret name to retrieve the Slack OAuth token from
+    tokenSecretName: slack-token
+    # -- Secret key to retrieve the Slack OAuth token from
+    tokenSecretKey: token
+    # -- Slack channel to use for notifications
+    channel: alerts
+    # -- Username to display in alerts
+    username: "NKP Cluster Cleaner"
+    # -- Emjoi icon to use
+    iconEmoji: ":broom:"
+
+redis:
+  # -- Hostname of the Redis/Valkey instance used by analytics and notifications
+  hostname: nkp-cluster-cleaner-valkey
+  # -- Port of the Redis/Valkey instance
+  port: 6379
+  # -- Redis database number
+  db: 0
+
+valkey:
+  # -- Deploy a Valkey Redis-compatible service for storing historical data and notifications
+  enabled: true
+  # -- Valkey container image to use
+  image: ghcr.io/valkey-io/valkey:8-alpine
+  # -- Valkey SAVE_ENV value to specify how often to ensure data is flushed to disk
+  saveEnv: "900 1"

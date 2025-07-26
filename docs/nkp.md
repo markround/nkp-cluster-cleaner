@@ -1,4 +1,7 @@
 # NKP Catalog Application
+> [!IMPORTANT]  
+> The catalog installation method detailed below is only supported on NKP Ultimate and above license tiers. If you are running NKP Pro or lower, you can still use the application but must install it manually from the [Helm Chart](./helm.md)
+
 <img src="/docs/catalog.png" width="200">
 
 The NKP Cluster Cleaner tool can be installed as a NKP Catalog Application and makes use of features enabled in the Management Cluster:
@@ -24,76 +27,19 @@ You can then select the application in the Management Cluster Workspace and enab
 
 <img src="/docs/dashboard.png" width="400">
 
-
-
 ## Configuration
 
-Assuming a standard installation of NKP Ultimate[https://github.com/markround/nkp-cluster-cleaner/issues/8], the application will work without any further configuration required. Further configuration can be carried out by setting the Application Configuration Override within the NKP interface:
+Assuming a standard installation of NKP Ultimate[https://github.com/markround/nkp-cluster-cleaner/issues/8], the application will work without any further configuration required. 
+
+Additional configuration can be carried out by setting the Application Configuration Override within the NKP interface:
 
 <img src="/docs/config.png" width="400">
 
-For a full reference of the Helm values, see the included [Chart documentation](/charts/nkp-cluster-cleaner/README.md). 
+For a full reference of the Helm values, see the included [Chart documentation](helm.md), or the full set of [Helm values](/charts/nkp-cluster-cleaner/README.md). 
 
 
 > [!TIP]
 > The default settings will require an admin account to log-in and view the dashboard. More granular RBAC will be added in a future release - see https://github.com/markround/nkp-cluster-cleaner/issues/4.
-
-### Default rules
-
-The default rules provided exclude the `default` namespace and any cluster with `-prod-` in the name. It will also require an `owner` label to be set on each cluster. 
-
-To change this, set the `app.config` key when deploying the application, e.g.
-
-```yaml
-app:
-  config: |
-    excluded_namespace_patterns:
-    - ^default$
-    - ^some-other-namespace$ 
-    protected_cluster_patterns:
-    - .*-prod-.*
-    - .*-production-.*
-    - ^critical-.*
-```
-
-### Cron Job
-The Helm chart will create a daily CronJob to handle the deletion of clusters. By default, this is set to run in "dry-run" mode, so will not actually delete anything without explicit configuration. See the [Chart documentation](/charts/nkp-cluster-cleaner/README.md) for values that can be set. For example, to enable the deletion and run every hour you would set the following overrides:
-
-```yaml
-cronjob:
-  # Actually delete clusters!
-  delete: true
-  # Run every hour. See https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#schedule-syntax
-  schedule: "@hourly"
-```
-
-You can view the status and logs of the enabled CronJobs in the Web UI:
-
-<img src="/docs/cron.png" width="400">
-
-### NKP Monitoring Integration
-Although the application has its own built-in dashboard and reporting capabilities, you may wish to integrate it with the standard NKP monitoring and metrics stack. If you would like to enable this feature, you can enable the ServiceMonitor which is configured with the appropriate labels for auto-discovery:
-
-```yaml
-monitoring:
-  serviceMonitor:
-    enabled: true
-```
-
-The `nkp_cluster_cleaner_*` metrics will then start to populate the Management Cluster's Prometheus instance. A simple Grafana dashboard is also included which you might like to use. 
-
-<img src="/docs/grafana.png" width="400">
-
-This is also configured with the appropriate labels and settings for discovery by the Management Cluster's Grafana. Enable this with the following settings:
-
-```yaml
-monitoring:
-  grafanaDashboard:
-    enabled: true
-```
-
-> [!IMPORTANT] 
-> The Grafana dashboard will be deployed to the Management Cluster Grafana (accessed through viewing the cluster details/dashboards page), and not the fleet-wide global Grafana instance (accessed through the Global workspace/Centralized Monitoring & Alerts).
 
 ## Upgrading
 

@@ -7,7 +7,7 @@
   <img src="/docs/analytics.png" width="180">
 </p>
    
-A simple yet comprehensive tool to automatically delete and report on Nutanix Kubernetes Platform (NKP) clusters that do not meet a specific criteria. Useful for cleaning up resources and managing costs in a lab/demo environment, similar to common "cloud cleaner" tools. Available as an [NKP Catalog Application](./docs/nkp.md), [Helm Chart](./charts/nkp-cluster-cleaner/README.md) and [Container Image](https://github.com/markround/nkp-cluster-cleaner/pkgs/container/nkp-cluster-cleaner).
+A simple yet comprehensive tool to automatically delete and report on Nutanix Kubernetes Platform (NKP) clusters that do not meet a specific criteria. Useful for cleaning up resources and managing costs in a lab/demo environment, similar to common "cloud cleaner" tools. Available as an [NKP Catalog Application](./docs/nkp.md), [Helm Chart](./docs/helm.md) and [Container Image](https://github.com/markround/nkp-cluster-cleaner/pkgs/container/nkp-cluster-cleaner).
 
 ![Platform](https://img.shields.io/badge/platform-Nutanix_NKP-blue)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/markround/nkp-cluster-cleaner/docker.yml)
@@ -18,13 +18,14 @@ A simple yet comprehensive tool to automatically delete and report on Nutanix Ku
 
 - 🚀 Simple "one-click" catalog installation and tight integration with NKP features
 - 📋 Flexible rulesets and custom criteria
+- 🔔 Notifications (Slack currently supported, more to come)
 - 📈 Trend analysis, compliance monitoring and historical data tracking
 - 📊 Built-in web dashboard and administration console
 - 🔥 Prometheus metrics, NKP monitoring integration and Grafana dashboard 
 - 🖥️ Also runs as a standalone console application
 
 > [!NOTE] 
-> This is a personal project and is in no way supported/endorsed by, or otherwise connected to Nutanix
+> This is a personal project and is not supported/endorsed by, or otherwise connected to Nutanix
 
 ## Installation
 See the documentation at [docs/nkp.md](./docs/nkp.md) for details on how to deploy the application as a NKP catalog application, running inside the NKP Management Cluster itself. This is the recommended way to run the application as it includes the scheduled tasks, web interface and analytics with no further configuration needed. 
@@ -44,7 +45,7 @@ You can however run the application from a Docker container or direct from the C
   - For example, the default [Helm Chart](./charts/nkp-cluster-cleaner/README.md) configuration defines a required `owner` label. Any cluster without an `owner` label will be deleted.
 
 > [!NOTE]
-> The default for both the CLI tool and the NKP Application is to run in "dry-run" mode, and will just show what _would_ be deleted. To actually delete the clusters you must pass in the `--delete` flag to the `delete-clusters` command, or explicitly enable the `cronjob.delete` value in the Helm chart / NKP application.
+> The default for both the CLI tool and the NKP Application is to run in "dry-run" mode, and will just show what _would_ be deleted. To actually delete the clusters you must pass in the `--delete` flag to the `delete-clusters` command, or explicitly enable the `deletion.delete` value in the Helm chart / NKP application.
 
 ### Protected clusters
 The management cluster is always excluded from deletion, and a configuration file can be provided that accepts a list of regex-based namespaces or cluster names that will be excluded. For example:
@@ -114,6 +115,7 @@ Commands:
   delete-clusters    Delete CAPI clusters that match deletion criteria.
   generate-config    Generate an example configuration file.
   list-clusters      List CAPI clusters that match deletion criteria.
+  notify             Send notifications for clusters approaching deletion.
   serve              Start the web server for the cluster cleaner UI.
 ```
 
@@ -121,13 +123,16 @@ Commands:
 
 - To pass in a custom configuration file, use the `--config /path/to/config.yaml` argument to any command. A sample configuration file can be created with `nkp-cluster-cleaner generate-config /path/to/config.yaml`.
 
-### Environment variables
+### Configuration
 
-You can pass configuration values in using environment variables as well as CLI flags. Each variable accepted is simply the flag name, converted to uppercase and with dash characters changed to underscores:
+As this tool is intended to be used as a container inside a Kubernetes deployment, you can pass configuration values using environment variables as well as the CLI flags documented with the `--help` flag. 
+
+Each variable accepted is simply the flag name, converted to uppercase and with dash characters changed to underscores:
 
 | CLI flag | Environment variable equivalent |
 | ---------|-------------------------------- |
 | `--config` | `CONFIG` | 
+| `--critical-threshold` | `CRITICAL_THRESHOLD` | 
 | `--debug` | `DEBUG` | 
 | `--delete` | `DELETE` | 
 | `--host` | `HOST` | 
@@ -136,11 +141,17 @@ You can pass configuration values in using environment variables as well as CLI 
 | `--namespace` | `NAMESPACE` | 
 | `--no-analytics` | `NO_ANALYTICS` | 
 | `--no-exclusions` | `NO_EXCLUSIONS` | 
+| `--notify-backend` | `NOTIFY_BACKEND` | 
 | `--port` | `PORT` | 
 | `--prefix` | `PREFIX` | 
 | `--redis-db` | `REDIS_DB` | 
 | `--redis-host` | `REDIS_HOST` | 
 | `--redis-port` | `REDIS_PORT` | 
+| `--slack-channel` | `SLACK_CHANNEL` | 
+| `--slack-icon-emoji` | `SLACK_ICON_EMOJI` | 
+| `--slack-token` | `SLACK_TOKEN` | 
+| `--slack-username` | `SLACK_USERNAME` | 
+| `--warning-threshold` | `WARNING_THRESHOLD` | 
 
 ### Web interface
 There is a bundled web interface that displays the cluster deletion status, protection rules, analytics and general configuration. Start the built-in Flask-based webserver with the `serve` command that takes the usual arguments to specify port and bind host etc:
@@ -166,10 +177,13 @@ Options:
   --help                Show this message and exit.
 ```
 
+### Notifications
+See [docs/notifications.md](docs/notifications.md)
+
 ### Analytics
 The NKP Cluster Cleaner includes an analytics dashboard that provides historical tracking, trends analysis, and reporting capabilities. It uses a Redis-based data collector that creates periodic snapshots of cluster state. 
 
-Data is collected by running `nkp-cluster-cleaner collect-analytics`. If you deploy the [NKP application](/docs/nkp.md) into your cluster, it will automatically configure a CronJob to collect data, along with a bundled [Valkey](https://valkey.io/) server. 
+Data is collected by running `nkp-cluster-cleaner collect-analytics`. If you deploy the [NKP application](/docs/nkp.md) or [Helm Chart](./docs/helm.md) into your cluster, it will automatically configure a CronJob to collect data, along with a bundled [Valkey](https://valkey.io/) server. 
 
 Historical data is stored with a configurable retention period. The default is to store data for 90 days, but you can change this by passing the `--keep-days` argument to the `collect-analytics` command. 
 
@@ -181,14 +195,10 @@ If you want to make use of an alternative Redis/Valkey service, you must provide
 |`--redis-port` | INTEGER  | Redis port (default: 6379)  |
 |`--redis-db`   | INTEGER  | Redis database number (default: 0) |
 
-#### Disabling Analytics
-
-You can pass the argument `--no-analytics` to the `serve` command, and it will disable the analytics components (including links in the Web UI) and will not attempt to connect to any Redis/Valkey instance.
-
 #### Prometheus Metrics
 Prometheus metrics for all collected analytics data is exposed under the `/metrics` endpoint. A ServiceMonitor can be created using the Helm chart for automatic discovery and incorporation of data into the Prometheus stack used by NKP. 
 
-A sample [Grafana dashboard](./charts/nkp-cluster-cleaner/grafana-dashboards/nkp-cluster-cleaner.json) is provided that can be integrated into the NKP Grafana stack. For more information, see the [Helm Chart](./charts/nkp-cluster-cleaner/README.md) and [NKP Application](./docs/nkp.md) documentation.
+A sample [Grafana dashboard](./charts/nkp-cluster-cleaner/grafana-dashboards/nkp-cluster-cleaner.json) is provided that can be integrated into the NKP Grafana stack. For more information, see the [Helm Chart](./docs/helm.md) documentation.
 
 ## Docker Usage
 ### Tags

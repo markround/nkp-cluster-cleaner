@@ -469,6 +469,92 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
             metrics_service = PrometheusMetricsService()
             metrics_output = metrics_service._generate_error_metrics(str(e))
             return metrics_output, 200, {'Content-Type': 'text/plain; charset=utf-8'}
+    
+    @app.route(url_prefix + '/notifications')
+    def notifications():
+        """Display currently active notifications."""
+        if app.config['NO_ANALYTICS']:
+            return render_template(
+                'notifications.html',
+                no_analytics=app.config['NO_ANALYTICS'],
+                error="Notifications feature requires Redis/analytics to be enabled.",
+                version=__version__,
+                refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                critical_count=0,
+                warning_count=0,
+                total_count=0
+            )
+
+        try:
+            from .notification_manager import NotificationManager
+            from .notification_history import NotificationHistory
+            
+            # Initialize managers
+            config_manager = ConfigManager(app.config['CONFIG_PATH']) if app.config['CONFIG_PATH'] else ConfigManager()
+            notification_manager = NotificationManager(app.config['KUBECONFIG_PATH'], config_manager)
+            notification_history = NotificationHistory(
+                app.config['REDIS_HOST'], 
+                app.config['REDIS_PORT'], 
+                app.config['REDIS_DB']
+            )
+            
+            # Default thresholds (these could be made configurable)
+            warning_threshold = 80
+            critical_threshold = 95
+            
+            # Get clusters requiring notifications
+            critical_clusters, warning_clusters = notification_manager.get_clusters_for_notification(
+                warning_threshold, critical_threshold
+            )
+            
+            # Format notification data
+            critical_notifications = []
+            for cluster_info, elapsed_percentage, expiry_time in critical_clusters:
+                notification_data = notification_manager.get_cluster_notification_data(
+                    cluster_info, elapsed_percentage, expiry_time
+                )
+                critical_notifications.append(notification_data)
+            
+            warning_notifications = []
+            for cluster_info, elapsed_percentage, expiry_time in warning_clusters:
+                notification_data = notification_manager.get_cluster_notification_data(
+                    cluster_info, elapsed_percentage, expiry_time
+                )
+                warning_notifications.append(notification_data)
+            
+            # Get notification statistics from Redis
+            notification_stats = {
+                'total_tracked': len(critical_clusters) + len(warning_clusters),
+                'active_keys': notification_history.get_active_notification_count()
+            }
+            
+            return render_template(
+                'notifications.html',
+                no_analytics=app.config['NO_ANALYTICS'],
+                critical_notifications=critical_notifications,
+                warning_notifications=warning_notifications,
+                critical_count=len(critical_notifications),
+                warning_count=len(warning_notifications),
+                total_count=len(critical_notifications) + len(warning_notifications),
+                warning_threshold=warning_threshold,
+                critical_threshold=critical_threshold,
+                notification_stats=notification_stats,
+                version=__version__,
+                refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                error=None
+            )
+            
+        except Exception as e:
+            return render_template(
+                'notifications.html',
+                no_analytics=app.config['NO_ANALYTICS'],
+                error=str(e),
+                version=__version__,
+                refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                critical_count=0,
+                warning_count=0,
+                total_count=0
+            )
     #
     # End of routes
     #
@@ -512,6 +598,7 @@ def run_server(host: str = '127.0.0.1', port: int = 8080, debug: bool = False,
     print(f"   • http://{host}:{port}{display_prefix}/rules - Deletion rules")
     if not no_analytics:
         print(f"   • http://{host}:{port}{display_prefix}/analytics - Analytics dashboard")
+        print(f"   • http://{host}:{port}{display_prefix}/notifications - Active notifications")
     print(f"   • http://{host}:{port}{display_prefix}/metrics - Prometheus metrics")    
     print(f"   • http://{host}:{port}{display_prefix}/scheduled-tasks - CronJob status")
     print(f"   • http://{host}:{port}{display_prefix}/health - Health check")

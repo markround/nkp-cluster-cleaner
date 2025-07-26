@@ -1,4 +1,4 @@
-{{- if and (eq .Values.analytics.valkey.enabled true) (eq .Values.analytics.enabled true) }}
+{{- if eq .Values.valkey.enabled true }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -27,7 +27,7 @@ spec:
           mountPath: /data
         env:
         - name: VALKEY_SAVE
-          value: "{{ $.Values.analytics.valkey.saveEnv }}"
+          value: "{{ $.Values.valkey.saveEnv }}"
         resources:
           requests:
             memory: "128Mi"
