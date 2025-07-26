@@ -15,6 +15,7 @@ FILES=(
   charts/nkp-cluster-cleaner/values.yaml
   charts/nkp-cluster-cleaner/templates/dashboard.yaml
   docs/nkp.md
+  docs/helm.md
   services/nkp-cluster-cleaner/$OLD_VERSION/helm.yaml
   services/nkp-cluster-cleaner/$OLD_VERSION/defaults/cm.yaml
   src/nkp_cluster_cleaner/__init__.py
