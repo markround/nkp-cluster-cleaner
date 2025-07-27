@@ -109,7 +109,8 @@ def _send_slack_expiry_notifications(critical_clusters: List[Tuple], warning_clu
 
 def execute_notify_command(kubeconfig: Optional[str], config: Optional[str], namespace: Optional[str], 
                           warning_threshold: int, critical_threshold: int, notify_backend: Optional[str] = None,
-                          redis_host: str = 'redis', redis_port: int = 6379, redis_db: int = 0, **kwargs):
+                          redis_host: str = 'redis', redis_port: int = 6379, redis_db: int = 0,
+                          redis_username: Optional[str] = None, redis_password: Optional[str] = None, **kwargs):
     """
     Execute the notify command with the given parameters.
     
@@ -123,6 +124,8 @@ def execute_notify_command(kubeconfig: Optional[str], config: Optional[str], nam
         redis_host: Redis host for notification history
         redis_port: Redis port
         redis_db: Redis database number
+        redis_username: Redis username for authentication
+        redis_password: Redis password for authentication
         **kwargs: Backend-specific parameters (e.g. slack_token, slack_channel for slack backend)
     """
     # Validate notification backend
@@ -151,7 +154,7 @@ def execute_notify_command(kubeconfig: Optional[str], config: Optional[str], nam
     notification_history = None
     if notify_backend:
         try:
-            notification_history = NotificationHistory(redis_host, redis_port, redis_db)
+            notification_history = NotificationHistory(redis_host, redis_port, redis_db, redis_username, redis_password)
             click.echo(f"{Fore.CYAN}Connected to notification history at {redis_host}:{redis_port} (db {redis_db}){Style.RESET_ALL}")
         except Exception as e:
             click.echo(f"{Fore.RED}Failed to connect to notification history: {e}{Style.RESET_ALL}")

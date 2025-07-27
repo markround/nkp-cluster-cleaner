@@ -16,7 +16,8 @@ def execute_delete_clusters_command(kubeconfig: Optional[str], config: Optional[
                                    namespace: Optional[str], delete: bool, 
                                    notify_backend: Optional[str] = None,
                                    redis_host: str = 'redis', redis_port: int = 6379, 
-                                   redis_db: int = 0, **kwargs):
+                                   redis_db: int = 0, redis_username: Optional[str] = None,
+                                   redis_password: Optional[str] = None, **kwargs):
     """
     Execute the delete-clusters command with the given parameters.
     
@@ -29,6 +30,8 @@ def execute_delete_clusters_command(kubeconfig: Optional[str], config: Optional[
         redis_host: Redis host for notification history
         redis_port: Redis port
         redis_db: Redis database number
+        redis_username: Redis username for authentication
+        redis_password: Redis password for authentication
         **kwargs: Backend-specific parameters (e.g. slack_token, slack_channel for slack backend)
     """
     # Default behavior is dry-run unless --delete is specified
@@ -72,7 +75,7 @@ def execute_delete_clusters_command(kubeconfig: Optional[str], config: Optional[
             click.echo(f"{Fore.CYAN}Notification backend: {notify_backend}{Style.RESET_ALL}")
             
             # Initialize notification history for tracking
-            notification_history = NotificationHistory(redis_host, redis_port, redis_db)
+            notification_history = NotificationHistory(redis_host, redis_port, redis_db, redis_username, redis_password)
             click.echo(f"{Fore.CYAN}Connected to notification history at {redis_host}:{redis_port} (db {redis_db}){Style.RESET_ALL}")
         except Exception as e:
             click.echo(f"{Fore.RED}Failed to initialize notification system: {e}{Style.RESET_ALL}")

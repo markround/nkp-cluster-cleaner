@@ -19,6 +19,7 @@ __version__ = nkp_cluster_cleaner.__version__
 def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str] = None, 
                url_prefix: Optional[str] = None, redis_host: str = 'redis', 
                redis_port: int = 6379, redis_db: int = 0, 
+               redis_username: Optional[str] = None, redis_password: Optional[str] = None,
                no_analytics: bool = False) -> Flask:
     """
     Create and configure the Flask application.
@@ -30,6 +31,8 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
         redis_host: Redis host for analytics data
         redis_port: Redis port
         redis_db: Redis database number
+        redis_username: Redis username for authentication
+        redis_password: Redis password for authentication
         no_analytics: Disable analytics and Redis connections
         
     Returns:
@@ -46,6 +49,8 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
     app.config['REDIS_HOST'] = redis_host
     app.config['REDIS_PORT'] = redis_port
     app.config['REDIS_DB'] = redis_db
+    app.config['REDIS_USERNAME'] = redis_username
+    app.config['REDIS_PASSWORD'] = redis_password
     app.config['NO_ANALYTICS'] = no_analytics
     
     # Normalize URL prefix
@@ -86,7 +91,9 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
             kubeconfig_path=app.config['KUBECONFIG_PATH'],
             redis_host=app.config['REDIS_HOST'],
             redis_port=app.config['REDIS_PORT'],
-            redis_db=app.config['REDIS_DB']
+            redis_db=app.config['REDIS_DB'],
+            redis_username=app.config['REDIS_USERNAME'],
+            redis_password=app.config['REDIS_PASSWORD']
         )
 
 
@@ -495,7 +502,9 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
             notification_history = NotificationHistory(
                 app.config['REDIS_HOST'], 
                 app.config['REDIS_PORT'], 
-                app.config['REDIS_DB']
+                app.config['REDIS_DB'],
+                app.config['REDIS_USERNAME'],
+                app.config['REDIS_PASSWORD']
             )
             
             # Default thresholds (these could be made configurable)
@@ -563,7 +572,9 @@ def create_app(kubeconfig_path: Optional[str] = None, config_path: Optional[str]
 def run_server(host: str = '127.0.0.1', port: int = 8080, debug: bool = False,
                kubeconfig_path: Optional[str] = None, config_path: Optional[str] = None,
                url_prefix: Optional[str] = None, redis_host: str = 'redis', 
-               redis_port: int = 6379, redis_db: int = 0, no_analytics: bool = False):
+               redis_port: int = 6379, redis_db: int = 0, 
+               redis_username: Optional[str] = None, redis_password: Optional[str] = None,
+               no_analytics: bool = False):
     """
     Run the Flask development server.
     
@@ -577,10 +588,13 @@ def run_server(host: str = '127.0.0.1', port: int = 8080, debug: bool = False,
         redis_host: Redis host for analytics data
         redis_port: Redis port
         redis_db: Redis database number
+        redis_username: Redis username for authentication
+        redis_password: Redis password for authentication
         no_analytics: Disable analytics and Redis connections
     """
-    app = create_app(kubeconfig_path, config_path, url_prefix, redis_host, redis_port, redis_db, no_analytics)
-    
+
+    app = create_app(kubeconfig_path, config_path, url_prefix, redis_host, redis_port, redis_db, redis_username, redis_password, no_analytics)
+
     # Normalize prefix for display
     display_prefix = url_prefix if url_prefix else ""
     

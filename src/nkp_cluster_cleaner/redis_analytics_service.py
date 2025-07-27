@@ -17,7 +17,8 @@ class RedisAnalyticsService:
     """Service for retrieving and processing analytics data from Redis."""
     
     def __init__(self, kubeconfig_path: Optional[str] = None, redis_host: str = 'redis', 
-                 redis_port: int = 6379, redis_db: int = 0):
+                 redis_port: int = 6379, redis_db: int = 0, 
+                 redis_username: Optional[str] = None, redis_password: Optional[str] = None):
         """
         Initialize the analytics service.
         
@@ -26,18 +27,27 @@ class RedisAnalyticsService:
             redis_host: Redis host
             redis_port: Redis port
             redis_db: Redis database number
+            redis_username: Redis username for authentication
+            redis_password: Redis password for authentication
         """
         # Redis connection (reuse RedisDataCollector connection settings)
-        self.redis_client = redis.Redis(
-            host=redis_host,
-            port=redis_port,
-            db=redis_db,
-            decode_responses=True,
-            socket_connect_timeout=5,
-            socket_timeout=5,
-            retry_on_timeout=True,
-            health_check_interval=30
-        )
+        redis_kwargs = {
+            'host': redis_host,
+            'port': redis_port,
+            'db': redis_db,
+            'decode_responses': True,
+            'socket_connect_timeout': 5,
+            'socket_timeout': 5,
+            'retry_on_timeout': True,
+            'health_check_interval': 30
+        }
+        
+        if redis_username:
+            redis_kwargs['username'] = redis_username
+        if redis_password:
+            redis_kwargs['password'] = redis_password
+            
+        self.redis_client = redis.Redis(**redis_kwargs)
         
         # Test connection
         try:

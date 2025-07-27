@@ -3,13 +3,15 @@ Notification History module for storing notification history in Redis to avoid d
 """
 
 import redis
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from colorama import Fore, Style
+
 
 class NotificationHistory:
     """Manages notification history using Redis to prevent duplicate alerts."""
     
-    def __init__(self, redis_host: str = 'redis', redis_port: int = 6379, redis_db: int = 0):
+    def __init__(self, redis_host: str = 'redis', redis_port: int = 6379, redis_db: int = 0,
+                 redis_username: Optional[str] = None, redis_password: Optional[str] = None):
         """
         Initialize notification history manager.
         
@@ -17,16 +19,25 @@ class NotificationHistory:
             redis_host: Redis host
             redis_port: Redis port  
             redis_db: Redis database number
+            redis_username: Redis username for authentication
+            redis_password: Redis password for authentication
         """
-        self.redis_client = redis.Redis(
-            host=redis_host,
-            port=redis_port,
-            db=redis_db,
-            decode_responses=True,
-            socket_connect_timeout=5,
-            socket_timeout=5,
-            retry_on_timeout=True
-        )
+        redis_kwargs = {
+            'host': redis_host,
+            'port': redis_port,
+            'db': redis_db,
+            'decode_responses': True,
+            'socket_connect_timeout': 5,
+            'socket_timeout': 5,
+            'retry_on_timeout': True
+        }
+        
+        if redis_username:
+            redis_kwargs['username'] = redis_username
+        if redis_password:
+            redis_kwargs['password'] = redis_password
+            
+        self.redis_client = redis.Redis(**redis_kwargs)
         
         # Test connection
         try:
