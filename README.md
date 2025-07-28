@@ -7,7 +7,7 @@
   <img src="/docs/analytics.png" width="180">
 </p>
    
-A simple yet comprehensive tool to automatically delete and report on Nutanix Kubernetes Platform (NKP) clusters that do not meet a specific criteria. Useful for cleaning up resources and managing costs in a lab/demo environment, similar to common "cloud cleaner" tools. Available as an [NKP Catalog Application](./docs/nkp.md), [Helm Chart](./docs/helm.md) and [Container Image](https://github.com/markround/nkp-cluster-cleaner/pkgs/container/nkp-cluster-cleaner).
+A simple yet comprehensive tool to automatically delete and report on Nutanix Kubernetes Platform (NKP) clusters that do not meet a specific criteria. Useful for cleaning up resources and managing costs in a lab/demo environment, similar to common "cloud cleaner" tools. Available as a [NKP Catalog Application](./docs/nkp.md), [Helm Chart](./docs/helm.md) and [Container Image](https://github.com/markround/nkp-cluster-cleaner/pkgs/container/nkp-cluster-cleaner).
 
 ![Platform](https://img.shields.io/badge/platform-Nutanix_NKP-blue)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/markround/nkp-cluster-cleaner/docker.yml)
