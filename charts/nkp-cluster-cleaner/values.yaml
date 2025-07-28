@@ -113,7 +113,17 @@ redis:
   port: 6379
   # -- Redis database number
   db: 0
+  authentication:
+    # -- Use Redis authentication
+    enabled: false
+    # -- Secret name that contains the Redis credentials
+    secretName: "redis-secret"
+    # -- Secret key that contains the Redis username
+    secretPasswordKey: "username"
+    # -- Secret key that contains the Redis password
+    secretUsernameKey: "password"
 
+    
 valkey:
   # -- Deploy a Valkey Redis-compatible service for storing historical data and notifications
   enabled: true
@@ -121,3 +131,7 @@ valkey:
   image: ghcr.io/valkey-io/valkey:8-alpine
   # -- Valkey SAVE_ENV value to specify how often to ensure data is flushed to disk
   saveEnv: "900 1"
+  # -- Secret name that contains the default connection password
+  secretName: nkp-cluster-cleaner-valkey-secret
+  # -- Secret key that contains the default connection password
+  secretPasswordKey: valkey-password

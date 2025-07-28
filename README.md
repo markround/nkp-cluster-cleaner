@@ -127,31 +127,13 @@ Commands:
 
 As this tool is intended to be used as a container inside a Kubernetes deployment, you can pass configuration values using environment variables as well as the CLI flags documented with the `--help` flag. 
 
-Each variable accepted is simply the flag name, converted to uppercase and with dash characters changed to underscores:
+Each variable accepted is simply the flag name, converted to uppercase and with dash characters changed to underscores. For example: 
 
-| CLI flag | Environment variable equivalent |
-| ---------|-------------------------------- |
-| `--config` | `CONFIG` | 
-| `--critical-threshold` | `CRITICAL_THRESHOLD` | 
-| `--debug` | `DEBUG` | 
-| `--delete` | `DELETE` | 
-| `--host` | `HOST` | 
-| `--keep-days` | `KEEP_DAYS` | 
-| `--kubeconfig` | `KUBECONFIG` | 
-| `--namespace` | `NAMESPACE` | 
-| `--no-analytics` | `NO_ANALYTICS` | 
-| `--no-exclusions` | `NO_EXCLUSIONS` | 
-| `--notify-backend` | `NOTIFY_BACKEND` | 
-| `--port` | `PORT` | 
-| `--prefix` | `PREFIX` | 
-| `--redis-db` | `REDIS_DB` | 
-| `--redis-host` | `REDIS_HOST` | 
-| `--redis-port` | `REDIS_PORT` | 
-| `--slack-channel` | `SLACK_CHANNEL` | 
-| `--slack-icon-emoji` | `SLACK_ICON_EMOJI` | 
-| `--slack-token` | `SLACK_TOKEN` | 
-| `--slack-username` | `SLACK_USERNAME` | 
-| `--warning-threshold` | `WARNING_THRESHOLD` | 
+| CLI flag example | Environment variable equivalent |
+| -----------------|-------------------------------- |
+| `--config`       | `CONFIG`                        | 
+| `--critical-threshold` | `CRITICAL_THRESHOLD`      | 
+| `--slack-icon-emoji` | `SLACK_ICON_EMOJI`          | 
 
 ### Web interface
 There is a bundled web interface that displays the cluster deletion status, protection rules, analytics and general configuration. Start the built-in Flask-based webserver with the `serve` command that takes the usual arguments to specify port and bind host etc:
@@ -162,19 +144,21 @@ Usage: nkp-cluster-cleaner serve [OPTIONS]
   Start the web server for the cluster cleaner UI.
 
 Options:
-  --config PATH         Path to configuration file for protection rules
-  --kubeconfig PATH     Path to kubeconfig file (default: ~/.kube/config or
-                        $KUBECONFIG)
-  --host TEXT           Host to bind to (default: 127.0.0.1)
-  --port INTEGER        Port to bind to (default: 8080)
-  --debug               Enable debug mode
-  --prefix TEXT         URL prefix for all routes (e.g., /foo for
-                        /foo/clusters)
-  --redis-host TEXT     Redis host for analytics data (default: redis)
-  --redis-port INTEGER  Redis port (default: 6379)
-  --redis-db INTEGER    Redis database number (default: 0)
-  --no-analytics        Disable analytics and do not connect to Redis
-  --help                Show this message and exit.
+  --config PATH          Path to configuration file for protection rules
+  --kubeconfig PATH      Path to kubeconfig file (default: ~/.kube/config or
+                         $KUBECONFIG)
+  --host TEXT            Host to bind to (default: 127.0.0.1)
+  --port INTEGER         Port to bind to (default: 8080)
+  --debug                Enable debug mode
+  --prefix TEXT          URL prefix for all routes (e.g., /foo for
+                         /foo/clusters)
+  --redis-password TEXT  Redis password for authentication
+  --redis-username TEXT  Redis username for authentication
+  --redis-db INTEGER     Redis database number (default: 0)
+  --redis-port INTEGER   Redis port (default: 6379)
+  --redis-host TEXT      Redis host (default: redis)
+  --no-analytics         Disable analytics and do not connect to Redis
+  --help                 Show this message and exit.
 ```
 
 ### Notifications
@@ -187,13 +171,16 @@ Data is collected by running `nkp-cluster-cleaner collect-analytics`. If you dep
 
 Historical data is stored with a configurable retention period. The default is to store data for 90 days, but you can change this by passing the `--keep-days` argument to the `collect-analytics` command. 
 
-If you want to make use of an alternative Redis/Valkey service, you must provide connection details when running the `serve` or `collect-analytics` commands. They both accept the following arguments:
+### Redis
+This tool makes use of a Redis datastore for analytics data, and for tracking [notifications](./docs/notifications.md). If you deploy from the Helm chart or NKP application, this is automatically deployed and configured for you. If you want to make use of an alternative Redis/Valkey service or are not using the Helm chart, you can provide connection details when running various commands:
 
 | Argument | Type | Description |
 |----------|------|-------------|
 |`--redis-host` | TEXT     | Redis host (default: redis) |
 |`--redis-port` | INTEGER  | Redis port (default: 6379)  |
 |`--redis-db`   | INTEGER  | Redis database number (default: 0) |
+|`--redis-password`| TEXT | Redis password for authentication |
+|`--redis-username`| TEXT | Redis username for authentication |
 
 #### Prometheus Metrics
 Prometheus metrics for all collected analytics data is exposed under the `/metrics` endpoint. A ServiceMonitor can be created using the Helm chart for automatic discovery and incorporation of data into the Prometheus stack used by NKP. 
@@ -223,7 +210,7 @@ docker run --rm \
 ```
 
 
-## Installation / Development
+## Manual Installation / Development
 
 ```bash
 pip install -r requirements.txt

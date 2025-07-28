@@ -64,6 +64,16 @@ def redis_options(f):
         type=int,
         help='Redis database number (default: 0)'
     )(f)
+    f = click.option(
+        '--redis-username',
+        envvar='REDIS_USERNAME',
+        help='Redis username for authentication'
+    )(f)
+    f = click.option(
+        '--redis-password',
+        envvar='REDIS_PASSWORD',
+        help='Redis password for authentication'
+    )(f)
     return f
 
 def slack_options(f):
@@ -144,7 +154,7 @@ def list_clusters(kubeconfig, config, namespace, no_exclusions):
 @slack_options
 @redis_options
 def delete_clusters(kubeconfig, config, namespace, delete, notify_backend,
-                   redis_host, redis_port, redis_db, **kwargs):
+                   redis_host, redis_port, redis_db, redis_username, redis_password, **kwargs):
     """Delete CAPI clusters that match deletion criteria."""
     # Filter out None values from kwargs to only pass relevant backend parameters
     backend_params = {k: v for k, v in kwargs.items() if v is not None}
@@ -158,6 +168,8 @@ def delete_clusters(kubeconfig, config, namespace, delete, notify_backend,
         redis_host=redis_host,
         redis_port=redis_port,
         redis_db=redis_db,
+        redis_username=redis_username,
+        redis_password=redis_password,
         **backend_params
     )
 
@@ -185,7 +197,7 @@ def delete_clusters(kubeconfig, config, namespace, delete, notify_backend,
 @slack_options
 @redis_options
 def notify(kubeconfig, config, namespace, warning_threshold, critical_threshold, 
-          notify_backend, redis_host, redis_port, redis_db, **kwargs):
+          notify_backend, redis_host, redis_port, redis_db, redis_username, redis_password, **kwargs):
     """Send notifications for clusters approaching deletion."""
     # Filter out None values from kwargs to only pass relevant backend parameters
     backend_params = {k: v for k, v in kwargs.items() if v is not None}
@@ -200,6 +212,8 @@ def notify(kubeconfig, config, namespace, warning_threshold, critical_threshold,
         redis_host=redis_host,
         redis_port=redis_port,
         redis_db=redis_db,
+        redis_username=redis_username,
+        redis_password=redis_password,
         **backend_params
     )
 
@@ -250,7 +264,7 @@ def generate_config(output_file):
     is_flag=True,
     help='Disable analytics and do not connect to Redis'
 )
-def serve(kubeconfig, config, host, port, debug, prefix, redis_host, redis_port, redis_db, no_analytics):
+def serve(kubeconfig, config, host, port, debug, prefix, redis_host, redis_port, redis_db, redis_username, redis_password, no_analytics):
     """Start the web server for the cluster cleaner UI."""
     try:
         from .web_server import run_server
@@ -264,6 +278,8 @@ def serve(kubeconfig, config, host, port, debug, prefix, redis_host, redis_port,
             redis_host=redis_host,
             redis_port=redis_port,
             redis_db=redis_db,
+            redis_username=redis_username,
+            redis_password=redis_password,
             no_analytics=no_analytics
         )
     except KeyboardInterrupt:
@@ -291,7 +307,7 @@ def serve(kubeconfig, config, host, port, debug, prefix, redis_host, redis_port,
     help='Enable debug output during collection'
 )
 @redis_options
-def collect_analytics(kubeconfig, config, keep_days, debug, redis_host, redis_port, redis_db):
+def collect_analytics(kubeconfig, config, keep_days, debug, redis_host, redis_port, redis_db, redis_username, redis_password):
     """Collect analytics snapshot for historical tracking and reporting."""
     try:
         # Initialize configuration and data collector
@@ -302,6 +318,8 @@ def collect_analytics(kubeconfig, config, keep_days, debug, redis_host, redis_po
             redis_host=redis_host,
             redis_port=redis_port,
             redis_db=redis_db,
+            redis_username=redis_username,
+            redis_password=redis_password,
             debug=debug
         )
         
