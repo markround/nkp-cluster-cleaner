@@ -56,16 +56,6 @@ nkp-cluster-cleaner notify \
   --critical-threshold 90
 ```
 
-### Redis Configuration
-
-The notification system requires Redis for tracking sent notifications. You can configure the Redis connection with the following parameters:
-
-| CLI flag | Environment variable | Default | Description |
-|----------|---------------------|---------|-------------|
-| `--redis-host` | `REDIS_HOST` | `redis` | Redis hostname |
-| `--redis-port` | `REDIS_PORT` | `6379` | Redis port |
-| `--redis-db` | `REDIS_DB` | `0` | Redis database number |
-
 ## Notification Backends
 
 ### Slack
