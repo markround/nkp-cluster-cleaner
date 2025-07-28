@@ -144,19 +144,21 @@ Usage: nkp-cluster-cleaner serve [OPTIONS]
   Start the web server for the cluster cleaner UI.
 
 Options:
-  --config PATH         Path to configuration file for protection rules
-  --kubeconfig PATH     Path to kubeconfig file (default: ~/.kube/config or
-                        $KUBECONFIG)
-  --host TEXT           Host to bind to (default: 127.0.0.1)
-  --port INTEGER        Port to bind to (default: 8080)
-  --debug               Enable debug mode
-  --prefix TEXT         URL prefix for all routes (e.g., /foo for
-                        /foo/clusters)
-  --redis-host TEXT     Redis host for analytics data (default: redis)
-  --redis-port INTEGER  Redis port (default: 6379)
-  --redis-db INTEGER    Redis database number (default: 0)
-  --no-analytics        Disable analytics and do not connect to Redis
-  --help                Show this message and exit.
+  --config PATH          Path to configuration file for protection rules
+  --kubeconfig PATH      Path to kubeconfig file (default: ~/.kube/config or
+                         $KUBECONFIG)
+  --host TEXT            Host to bind to (default: 127.0.0.1)
+  --port INTEGER         Port to bind to (default: 8080)
+  --debug                Enable debug mode
+  --prefix TEXT          URL prefix for all routes (e.g., /foo for
+                         /foo/clusters)
+  --redis-password TEXT  Redis password for authentication
+  --redis-username TEXT  Redis username for authentication
+  --redis-db INTEGER     Redis database number (default: 0)
+  --redis-port INTEGER   Redis port (default: 6379)
+  --redis-host TEXT      Redis host (default: redis)
+  --no-analytics         Disable analytics and do not connect to Redis
+  --help                 Show this message and exit.
 ```
 
 ### Notifications
@@ -170,7 +172,7 @@ Data is collected by running `nkp-cluster-cleaner collect-analytics`. If you dep
 Historical data is stored with a configurable retention period. The default is to store data for 90 days, but you can change this by passing the `--keep-days` argument to the `collect-analytics` command. 
 
 ### Redis
-This tool makes use of a Redis datastore for analytics data, and for tracking [notifications](./docs/notifications.md). If you deploy from the Helm chart or NKP application, this is automatically deployed and configured for you. If you want to make use of an alternative Redis/Valkey service, you can provide connection details when running various commands:
+This tool makes use of a Redis datastore for analytics data, and for tracking [notifications](./docs/notifications.md). If you deploy from the Helm chart or NKP application, this is automatically deployed and configured for you. If you want to make use of an alternative Redis/Valkey service or are not using the Helm chart, you can provide connection details when running various commands:
 
 | Argument | Type | Description |
 |----------|------|-------------|

@@ -115,7 +115,7 @@ You can view the status and logs of the enabled CronJobs in the Web UI:
 <img src="/docs/cron.png" width="400">
 
 ### Redis/Valkey
-The application uses a Redis-compatible database to store analytics data and track notifications to avoid duplicate alerts. The default settings will deploy a Valkey (Redis-compatible fork) StatefulSet for you (with a randomly-generated password), but if you have an alternative Redis-compatible service you wish to use, you can set the following values:
+The application uses a Redis-compatible database to store analytics data and track notifications to avoid duplicate alerts. The default settings will deploy a Valkey (Redis-compatible fork) StatefulSet for you with a randomly-generated password. If you would like to use an alternative Redis-compatible service, you can set the following values:
 
 ```yaml
 # Disable the bundled Valkey
