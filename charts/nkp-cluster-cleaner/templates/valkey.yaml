@@ -28,6 +28,15 @@ spec:
         env:
         - name: VALKEY_SAVE
           value: "{{ $.Values.valkey.saveEnv }}"
+        - name: "VALKEY_PASSWORD"
+          valueFrom:
+            secretKeyRef:
+              name: "{{ $.Values.valkey.secretName }}"
+              key: "{{ $.Values.valkey.secretPasswordKey }}"
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - /usr/local/bin/docker-entrypoint.sh --requirepass $VALKEY_PASSWORD
         resources:
           requests:
             memory: "128Mi"

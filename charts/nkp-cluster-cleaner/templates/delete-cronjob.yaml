@@ -38,7 +38,24 @@ spec:
               value: "{{ $.Values.redis.port }}"
             - name: "REDIS_DB"
               value: "{{ $.Values.redis.db }}"
-
+{{- if eq .Values.valkey.enabled true }}
+            - name: "REDIS_PASSWORD"
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ $.Values.valkey.secretName }}"
+                  key: "{{ $.Values.valkey.secretPasswordKey }}"
+{{- else if eq .Values.redis.authentication.enabled true }}
+            - name: "REDIS_USERNAME"
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ $.Values.redis.authentication.secretName }}"
+                  key: "{{ $.Values.redis.authentication.secretUsernameKey }}"
+            - name: "REDIS_PASSWORD"
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ $.Values.redis.authentication.secretName }}"
+                  key: "{{ $.Values.redis.authentication.secretPasswordKey }}"
+{{- end }}
             - name: "NOTIFY_BACKEND"
               value: "{{ $.Values.notifications.backend }}"
 {{- if eq .Values.notifications.backend "slack" }}
