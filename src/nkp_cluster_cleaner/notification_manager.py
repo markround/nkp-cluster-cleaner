@@ -194,7 +194,7 @@ class NotificationManager:
         return {
             "cluster_name": cluster_info.get("capi_cluster_name", "unknown"),
             "namespace": cluster_info.get("capi_cluster_namespace", "unknown"),
-            "owner": cluster_info.get("owner", "unknown"),
+            "owner": cluster_info.get("labels", {}).get("owner", "unknown"),
             "expires": expiry_time.strftime("%Y-%m-%d %H:%M:%S"),
             "elapsed_percentage": elapsed_percentage,
             "time_remaining": self.format_time_remaining(expiry_time)
