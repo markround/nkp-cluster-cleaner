@@ -5,7 +5,7 @@ CronJob Manager module for tracking scheduled cluster tasks.
 from kubernetes import client
 from kubernetes.client.rest import ApiException
 from datetime import datetime, timezone
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional
 from colorama import Fore, Style
 
 
@@ -56,12 +56,6 @@ class CronJobManager:
             
             cronjob_list = []
             for cj in cronjobs.items:
-                # Calculate next scheduled time
-                next_schedule = None
-                if cj.status and cj.status.last_schedule_time:
-                    # This is a simplified calculation - actual cron parsing would be more complex
-                    next_schedule = "Calculated from cron expression"
-                
                 cronjob_info = {
                     "name": cj.metadata.name,
                     "namespace": cj.metadata.namespace,

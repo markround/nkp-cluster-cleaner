@@ -114,7 +114,7 @@ class RedisDataCollector:
             if cleaned_count > 0:
                 self._debug_print(f"Cleaned up {cleaned_count} old snapshots")
             
-            print(f"Analytics snapshot stored successfully in Redis:")
+            print("Analytics snapshot stored successfully in Redis:")
             print(f"  - Total clusters: {len(all_clusters)}")
             print(f"  - For deletion: {len(clusters_to_delete)}")
             print(f"  - Protected: {len(excluded_clusters)}")

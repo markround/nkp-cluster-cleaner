@@ -10,7 +10,6 @@ import json
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from collections import defaultdict, Counter
-from .redis_data_collector import RedisDataCollector
 
 
 class RedisAnalyticsService:

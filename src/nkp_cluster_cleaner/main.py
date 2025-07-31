@@ -5,8 +5,6 @@ Main entry point for the NKP Cluster Cleaner tool.
 
 import click
 from colorama import init, Fore, Style
-from tabulate import tabulate
-from .cluster_manager import ClusterManager
 from .config import ConfigManager
 from .redis_data_collector import RedisDataCollector
 # These commands were making this file too long and hard to read

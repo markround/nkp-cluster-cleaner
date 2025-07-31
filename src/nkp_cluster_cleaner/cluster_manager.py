@@ -4,7 +4,6 @@ Cluster Manager module for interacting with CAPI clusters.
 
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
-import yaml
 import re
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Tuple
@@ -195,7 +194,7 @@ class ClusterManager:
         # that although the display name may change, the object name should stay consistent in future
         # releases
         if kc_name == "host-cluster":
-            return False, f"Cluster is a management cluster"
+            return False, "Cluster is a management cluster"
         
         # Check if KommanderCluster is protected by configuration
         if self.config_manager.is_cluster_protected(kc_name, kc_namespace):
@@ -206,7 +205,7 @@ class ClusterManager:
         
         # Check if expires label exists
         if "expires" not in labels:
-            return True, f"Missing 'expires' label"
+            return True, "Missing 'expires' label"
         
         # Validate extra labels
         extra_label_errors = self.config_manager.validate_extra_labels(labels)
@@ -220,7 +219,7 @@ class ClusterManager:
             # Get creation timestamp from metadata
             creation_timestamp = kommander_cluster.get("metadata", {}).get("creationTimestamp")
             if not creation_timestamp:
-                return True, f"Missing creationTimestamp in KommanderCluster metadata"
+                return True, "Missing creationTimestamp in KommanderCluster metadata"
             
             expiry_time = self._parse_expires_label(expires_value, creation_timestamp)
             current_time = datetime.now()
@@ -308,7 +307,7 @@ class ClusterManager:
         match = re.match(pattern, expires_value.lower())
         
         if not match:
-            raise ValueError(f"Invalid format. Expected format: <number><unit> where unit is d/w/h/y (e.g., '1d', '2w', '48h', '1y')")
+            raise ValueError("Invalid format. Expected format: <number><unit> where unit is d/w/h/y (e.g., '1d', '2w', '48h', '1y')")
         
         number, unit = match.groups()
         number = int(number)

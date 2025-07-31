@@ -3,7 +3,6 @@ Web server module for the NKP Cluster Cleaner web UI.
 """
 
 import os
-import re
 from datetime import datetime
 from flask import Flask, render_template, jsonify, request
 from typing import Optional
@@ -598,7 +597,7 @@ def run_server(host: str = '127.0.0.1', port: int = 8080, debug: bool = False,
     # Normalize prefix for display
     display_prefix = url_prefix if url_prefix else ""
     
-    print(f"🚀 Starting NKP Cluster Cleaner web server...")
+    print("🚀 Starting NKP Cluster Cleaner web server...")
     print(f"📡 Server URL: http://{host}:{port}{display_prefix}")
     print(f"🔧 Debug mode: {'Enabled' if debug else 'Disabled'}")
     print(f"📋 Configuration: kubeconfig={kubeconfig_path or 'default'}, config={config_path or 'none'}")
@@ -606,7 +605,7 @@ def run_server(host: str = '127.0.0.1', port: int = 8080, debug: bool = False,
         print(f"📊 Analytics storage: Redis at {redis_host}:{redis_port} (db {redis_db})")
     if url_prefix:
         print(f"🔗 URL prefix: {url_prefix}")
-    print(f"🔗 Available endpoints:")
+    print("🔗 Available endpoints:")
     print(f"   • http://{host}:{port}{display_prefix}/ - Dashboard")
     print(f"   • http://{host}:{port}{display_prefix}/clusters - Cluster listing")
     print(f"   • http://{host}:{port}{display_prefix}/rules - Deletion rules")
@@ -616,6 +615,6 @@ def run_server(host: str = '127.0.0.1', port: int = 8080, debug: bool = False,
     print(f"   • http://{host}:{port}{display_prefix}/metrics - Prometheus metrics")    
     print(f"   • http://{host}:{port}{display_prefix}/scheduled-tasks - CronJob status")
     print(f"   • http://{host}:{port}{display_prefix}/health - Health check")
-    print(f"🛑 Press Ctrl+C to stop the server")
+    print("🛑 Press Ctrl+C to stop the server")
     
     app.run(host=host, port=port, debug=debug)

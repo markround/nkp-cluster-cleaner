@@ -4,10 +4,8 @@ Notification Manager module for handling cluster expiration notifications.
 
 import requests
 import json
-import redis
 from datetime import datetime
 from typing import List, Dict, Optional, Tuple
-from colorama import Fore, Style
 from .cluster_manager import ClusterManager
 from .config import ConfigManager
 
@@ -312,7 +310,7 @@ class NotificationManager:
             threshold_text = f"These clusters have exceeded {threshold}% of their lifetime:"
         else:
             title = f"INFO: {len(clusters)} clusters notification"
-            threshold_text = f"These clusters require attention:"
+            threshold_text = "These clusters require attention:"
         
         # Build cluster details
         cluster_details = []
