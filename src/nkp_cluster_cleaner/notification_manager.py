@@ -80,7 +80,7 @@ class NotificationManager:
                 keyword in reason_lower
                 for keyword in [
                     "missing required label",
-                    "missing expires label",
+                    "missing 'expires' label",
                     "does not match pattern",
                     "invalid expires format",
                 ]
