@@ -11,5 +11,5 @@ data:
   dashboardLink: "{{ $.Values.ingress.prefix }}"
   docsLink: "https://github.com/markround/nkp-cluster-cleaner"
   name: NKP Cluster Cleaner
-  version: 0.12.2
+  version: 0.12.3
 {{- end }}

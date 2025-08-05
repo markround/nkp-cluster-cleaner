@@ -32,7 +32,7 @@ cd nkp-cluster-cleaner
 helm install -n kommander nkp-cluster-cleaner ./charts/nkp-cluster-cleaner
 
 # Or install from a specific tag
-git checkout 0.12.2
+git checkout 0.12.3
 helm install -n kommander nkp-cluster-cleaner ./charts/nkp-cluster-cleaner
 ```
 
@@ -43,7 +43,7 @@ helm install -n kommander nkp-cluster-cleaner ./charts/nkp-cluster-cleaner
 To install a specific version from the Helm repository:
 
 ```bash
-helm install -n kommander nkp-cluster-cleaner mdr/nkp-cluster-cleaner --version 0.12.2
+helm install -n kommander nkp-cluster-cleaner mdr/nkp-cluster-cleaner --version 0.12.3
 ```
 
 
@@ -57,7 +57,7 @@ helm upgrade -n kommander nkp-cluster-cleaner mdr/nkp-cluster-cleaner
 ### To Specific Version
 To upgrade to a specific version:
 ```bash
-helm upgrade -n kommander nkp-cluster-cleaner mdr/nkp-cluster-cleaner --version 0.12.2
+helm upgrade -n kommander nkp-cluster-cleaner mdr/nkp-cluster-cleaner --version 0.12.3
 ```
 
 ### Upgrade Considerations
