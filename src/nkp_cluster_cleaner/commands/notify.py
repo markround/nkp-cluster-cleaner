@@ -139,6 +139,60 @@ def _send_slack_expiry_notifications(
         raise click.Abort()
 
 
+def _cleanup_stale_notifications(
+    notification_manager: NotificationManager,
+    notification_history: NotificationHistory,
+    warning_threshold: int,
+    critical_threshold: int,
+    namespace: Optional[str] = None,
+) -> int:
+    """
+    Clean up notifications for clusters that are currently in compliance.
+
+    Args:
+        notification_manager: NotificationManager instance
+        notification_history: NotificationHistory instance
+        warning_threshold: Warning threshold percentage
+        critical_threshold: Critical threshold percentage
+        namespace: Namespace filter
+
+    Returns:
+        Number of clusters with notifications cleaned up
+    """
+    # Get all clusters that currently require notifications
+    current_critical, current_warning = (
+        notification_manager.get_clusters_for_notification(
+            warning_threshold, critical_threshold, namespace
+        )
+    )
+
+    # Create set of cluster keys that currently need any notifications
+    clusters_needing_notifications = set()
+
+    for cluster_info, _, _ in current_critical + current_warning:
+        cluster_name = cluster_info.get("capi_cluster_name", "unknown")
+        cluster_namespace = cluster_info.get("capi_cluster_namespace", "unknown")
+        key = f"{cluster_namespace}:{cluster_name}"
+        clusters_needing_notifications.add(key)
+
+    # Get all clusters with notification history
+    all_notified_clusters = notification_history.get_all_notified_clusters()
+
+    cleaned_count = 0
+
+    for cluster_info in all_notified_clusters:
+        cluster_name = cluster_info["cluster_name"]
+        cluster_namespace = cluster_info["namespace"]
+        key = f"{cluster_namespace}:{cluster_name}"
+
+        # If cluster doesn't need any notifications, clear all its notification history
+        if key not in clusters_needing_notifications:
+            notification_history.clear_cluster_history(cluster_name, cluster_namespace)
+            cleaned_count += 1
+
+    return cleaned_count
+
+
 def execute_notify_command(
     kubeconfig: Optional[str],
     config: Optional[str],
@@ -224,6 +278,30 @@ def execute_notify_command(
         # Initialize configuration and notification manager
         config_manager = ConfigManager(config) if config else ConfigManager()
         notification_manager = NotificationManager(kubeconfig, config_manager)
+
+        # Clean up stale notifications first
+        # This can happen if e.g. a cluster was missing tags, a notification got sent, and the user then
+        # later added tags. This ensures they will still get notifications when the cluster does expire.
+        if notification_history:
+            click.echo(
+                f"{Fore.BLUE}Cleaning up stale notifications...{Style.RESET_ALL}"
+            )
+            cleaned_count = _cleanup_stale_notifications(
+                notification_manager,
+                notification_history,
+                warning_threshold,
+                critical_threshold,
+                namespace,
+            )
+
+            if cleaned_count > 0:
+                click.echo(
+                    f"{Fore.GREEN}Cleaned up notifications for {cleaned_count} compliant clusters{Style.RESET_ALL}"
+                )
+            else:
+                click.echo(
+                    f"{Fore.GREEN}No compliant clusters with stale notifications found{Style.RESET_ALL}"
+                )
 
         # Get clusters requiring notifications
         critical_clusters, warning_clusters = (
