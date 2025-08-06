@@ -609,25 +609,26 @@ def create_app(
     def api_delete_notification():
         """API endpoint to delete a notification from Redis."""
         data = request.get_json()
-        
-        if not data or 'cluster_name' not in data or 'namespace' not in data:
-            return jsonify({
-                "status": "error", 
-                "error": "cluster_name and namespace are required"
-            }), 400
 
-        cluster_name = data['cluster_name']
-        namespace = data['namespace']
+        if not data or "cluster_name" not in data or "namespace" not in data:
+            return jsonify(
+                {"status": "error", "error": "cluster_name and namespace are required"}
+            ), 400
+
+        cluster_name = data["cluster_name"]
+        namespace = data["namespace"]
 
         if app.config["NO_ANALYTICS"]:
-            return jsonify({
-                "status": "error", 
-                "error": "Notifications feature requires Redis/analytics to be enabled."
-            }), 400
+            return jsonify(
+                {
+                    "status": "error",
+                    "error": "Notifications feature requires Redis/analytics to be enabled.",
+                }
+            ), 400
 
         try:
             from .notification_history import NotificationHistory
-            
+
             notification_history = NotificationHistory(
                 app.config["REDIS_HOST"],
                 app.config["REDIS_PORT"],
@@ -635,25 +636,28 @@ def create_app(
                 app.config["REDIS_USERNAME"],
                 app.config["REDIS_PASSWORD"],
             )
-            
-            success = notification_history.clear_cluster_history(cluster_name, namespace)
-            
+
+            success = notification_history.clear_cluster_history(
+                cluster_name, namespace
+            )
+
             if success:
-                return jsonify({
-                    "status": "success",
-                    "message": f"Notification history cleared for {cluster_name} in {namespace}"
-                })
+                return jsonify(
+                    {
+                        "status": "success",
+                        "message": f"Notification history cleared for {cluster_name} in {namespace}",
+                    }
+                )
             else:
-                return jsonify({
-                    "status": "error",
-                    "error": "Notification history not found or already deleted"
-                })
-                
+                return jsonify(
+                    {
+                        "status": "error",
+                        "error": "Notification history not found or already deleted",
+                    }
+                )
+
         except Exception as e:
-            return jsonify({
-                "status": "error",
-                "error": str(e)
-            }), 500
+            return jsonify({"status": "error", "error": str(e)}), 500
 
     #
     # End of routes
