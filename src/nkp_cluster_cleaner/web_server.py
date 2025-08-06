@@ -573,6 +573,9 @@ def create_app(
                 "active_keys": notification_history.get_active_notification_count(),
             }
 
+            # Fetch all notifications from Redis for use in the UI
+            active_notifications = notification_history.get_all_notified_clusters()
+
             return render_template(
                 "notifications.html",
                 no_analytics=app.config["NO_ANALYTICS"],
@@ -584,6 +587,7 @@ def create_app(
                 warning_threshold=warning_threshold,
                 critical_threshold=critical_threshold,
                 notification_stats=notification_stats,
+                active_notifications=active_notifications,
                 version=__version__,
                 refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 error=None,
@@ -600,6 +604,60 @@ def create_app(
                 warning_count=0,
                 total_count=0,
             )
+
+    @app.route(url_prefix + "/api/delete-notification", methods=["POST"])
+    def api_delete_notification():
+        """API endpoint to delete a notification from Redis."""
+        data = request.get_json()
+
+        if not data or "cluster_name" not in data or "namespace" not in data:
+            return jsonify(
+                {"status": "error", "error": "cluster_name and namespace are required"}
+            ), 400
+
+        cluster_name = data["cluster_name"]
+        namespace = data["namespace"]
+
+        if app.config["NO_ANALYTICS"]:
+            return jsonify(
+                {
+                    "status": "error",
+                    "error": "Notifications feature requires Redis/analytics to be enabled.",
+                }
+            ), 400
+
+        try:
+            from .notification_history import NotificationHistory
+
+            notification_history = NotificationHistory(
+                app.config["REDIS_HOST"],
+                app.config["REDIS_PORT"],
+                app.config["REDIS_DB"],
+                app.config["REDIS_USERNAME"],
+                app.config["REDIS_PASSWORD"],
+            )
+
+            success = notification_history.clear_cluster_history(
+                cluster_name, namespace
+            )
+
+            if success:
+                return jsonify(
+                    {
+                        "status": "success",
+                        "message": f"Notification history cleared for {cluster_name} in {namespace}",
+                    }
+                )
+            else:
+                return jsonify(
+                    {
+                        "status": "error",
+                        "error": "Notification history not found or already deleted",
+                    }
+                )
+
+        except Exception as e:
+            return jsonify({"status": "error", "error": str(e)}), 500
 
     #
     # End of routes
