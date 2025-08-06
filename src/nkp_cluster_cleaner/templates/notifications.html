@@ -206,6 +206,21 @@
         font-weight: 600;
         color: #1a202c;
     }
+
+    .btn-small {
+    padding: 4px 8px;
+    font-size: 0.8em;
+    }
+
+    .btn-danger {
+        background: #e53e3e;
+        border-color: #e53e3e;
+    }
+
+    .btn-danger:hover {
+        background: #c53030;
+        border-color: #c53030;
+    }
 </style>
 {% endblock %}
 
@@ -328,6 +343,91 @@
             </div>
         </div>
         {% endif %}
+
+        <!-- Active Notifications from Redis -->
+        <div class="notification-card">
+            <h3>🗄️ Active Notification History</h3>
+            {% if active_notifications %}
+                <p>Showing <strong>{{ active_notifications|length }}</strong> clusters with notification history stored in Redis:</p>
+                <table class="notification-table">
+                    <thead>
+                        <tr>
+                            <th>Cluster Name</th>
+                            <th>Namespace</th>
+                            <th>Severities Sent</th>
+                            <th>TTL (seconds)</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for notification in active_notifications %}
+                        <tr>
+                            <td><strong>{{ notification.cluster_name }}</strong></td>
+                            <td>{{ notification.namespace }}</td>
+                            <td>
+                                {% for severity in notification.severities %}
+                                    <span class="severity-badge severity-{{ severity }}">{{ severity.title() }}</span>
+                                {% endfor %}
+                            </td>
+                            <td>
+                                {% if notification.ttl_seconds > 0 %}
+                                    {{ notification.ttl_seconds }}
+                                {% else %}
+                                    No expiry
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button class="btn btn-small btn-danger" 
+                                        onclick="deleteNotification('{{ notification.cluster_name }}', '{{ notification.namespace }}')">
+                                    Delete
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="empty-state">
+                    <div class="icon">📭</div>
+                    <h3>No Active Notifications</h3>
+                    <p>No notification history is currently stored in Redis.</p>
+                </div>
+            {% endif %}
+        </div>
+
     {% endif %}
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function deleteNotification(clusterName, namespace) {
+      if (!confirm(`Are you sure you want to delete notification history for cluster "${clusterName}" in namespace "${namespace}"?`)) {
+          return;
+      }
+      
+      fetch('{{ url_with_prefix("/api/delete-notification") }}', {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+              cluster_name: clusterName,
+              namespace: namespace
+          })
+      })
+      .then(response => response.json())
+      .then(data => {
+          if (data.status === 'success') {
+              // Reload the page to show updated data
+              location.reload();
+          } else {
+              alert('Error: ' + data.error);
+          }
+      })
+      .catch(error => {
+          alert('Error deleting notification: ' + error.message);
+      });
+  }
+</script>
 {% endblock %}
