@@ -230,7 +230,7 @@
         <div class="error-state">
             <h3>❌ Error Loading Analytics</h3>
             <p><strong>Error:</strong> {{ error }}</p>
-            {% if not no_analytics %}
+            {% if not no_redis %}
               <p>This could be because:</p>
               <ul style="text-align: left; display: inline-block;">
                   <li>No analytics data has been collected yet</li>
