@@ -25,7 +25,7 @@ def create_app(
     redis_db: int = 0,
     redis_username: Optional[str] = None,
     redis_password: Optional[str] = None,
-    no_analytics: bool = False,
+    no_redis: bool = False,
 ) -> Flask:
     """
     Create and configure the Flask application.
@@ -39,7 +39,7 @@ def create_app(
         redis_db: Redis database number
         redis_username: Redis username for authentication
         redis_password: Redis password for authentication
-        no_analytics: Disable analytics and Redis connections
+        no_redis: Disable analytics and Redis connections
 
     Returns:
         Flask application instance
@@ -57,7 +57,7 @@ def create_app(
     app.config["REDIS_DB"] = redis_db
     app.config["REDIS_USERNAME"] = redis_username
     app.config["REDIS_PASSWORD"] = redis_password
-    app.config["NO_ANALYTICS"] = no_analytics
+    app.config["NO_REDIS"] = no_redis
 
     # Normalize URL prefix
     if url_prefix:
@@ -124,7 +124,7 @@ def create_app(
 
         return render_template(
             "index.html",
-            no_analytics=app.config["NO_ANALYTICS"],
+            no_redis=app.config["NO_REDIS"],
             kubeconfig_status=kubeconfig_status,
             config_status=config_status,
             version=__version__,
@@ -149,7 +149,7 @@ def create_app(
                 "timestamp": datetime.now().isoformat(),
             }
 
-            if not app.config["NO_ANALYTICS"]:
+            if not app.config["NO_REDIS"]:
                 health_data["redis"] = (
                     f"{app.config['REDIS_HOST']}:{app.config['REDIS_PORT']}"
                 )
@@ -199,7 +199,7 @@ def create_app(
 
             return render_template(
                 "clusters.html",
-                no_analytics=app.config["NO_ANALYTICS"],
+                no_redis=app.config["NO_REDIS"],
                 clusters_to_delete=clusters_to_delete,
                 excluded_clusters=excluded_clusters,
                 kubeconfig_status=kubeconfig_status,
@@ -213,7 +213,7 @@ def create_app(
             # Render error state
             return render_template(
                 "clusters.html",
-                no_analytics=app.config["NO_ANALYTICS"],
+                no_redis=app.config["NO_REDIS"],
                 clusters_to_delete=[],
                 excluded_clusters=[],
                 kubeconfig_status=app.config["KUBECONFIG_PATH"] or "default",
@@ -228,10 +228,10 @@ def create_app(
     def analytics():
         """Analytics dashboard page."""
 
-        if app.config["NO_ANALYTICS"]:
+        if app.config["NO_REDIS"]:
             return render_template(
                 "analytics.html",
-                no_analytics=app.config["NO_ANALYTICS"],
+                no_redis=app.config["NO_REDIS"],
                 error="Analytics features have been disabled.",
                 version=__version__,
                 refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -252,7 +252,7 @@ def create_app(
 
             return render_template(
                 "analytics.html",
-                no_analytics=app.config["NO_ANALYTICS"],
+                no_redis=app.config["NO_REDIS"],
                 cluster_trends_7d=cluster_trends_7d,
                 cluster_trends_30d=cluster_trends_30d,
                 deletion_activity=deletion_activity,
@@ -268,7 +268,7 @@ def create_app(
         except Exception as e:
             return render_template(
                 "analytics.html",
-                no_analytics=app.config["NO_ANALYTICS"],
+                no_redis=app.config["NO_REDIS"],
                 error=str(e),
                 version=__version__,
                 refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -302,7 +302,7 @@ def create_app(
 
             return render_template(
                 "rules.html",
-                no_analytics=app.config["NO_ANALYTICS"],
+                no_redis=app.config["NO_REDIS"],
                 # Summary statistics
                 rule_count=rule_count,
                 protected_cluster_count=protected_cluster_count,
@@ -321,7 +321,7 @@ def create_app(
             # Render with error state
             return render_template(
                 "rules.html",
-                no_analytics=app.config["NO_ANALYTICS"],
+                no_redis=app.config["NO_REDIS"],
                 rule_count=4,
                 protected_cluster_count=0,
                 excluded_namespace_count=0,
@@ -350,7 +350,7 @@ def create_app(
 
             return render_template(
                 "scheduled_tasks.html",
-                no_analytics=app.config["NO_ANALYTICS"],
+                no_redis=app.config["NO_REDIS"],
                 summary=summary,
                 namespace=namespace,
                 refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -361,7 +361,7 @@ def create_app(
             # Render error state
             return render_template(
                 "scheduled_tasks.html",
-                no_analytics=app.config["NO_ANALYTICS"],
+                no_redis=app.config["NO_REDIS"],
                 summary={
                     "total_cronjobs": 0,
                     "active_cronjobs": 0,
@@ -488,7 +488,7 @@ def create_app(
     def metrics():
         """Prometheus metrics endpoint."""
         try:
-            if app.config["NO_ANALYTICS"]:
+            if app.config["NO_REDIS"]:
                 # Create metrics service without analytics
                 metrics_service = PrometheusMetricsService()
             else:
@@ -508,10 +508,10 @@ def create_app(
     @app.route(url_prefix + "/notifications")
     def notifications():
         """Display currently active notifications."""
-        if app.config["NO_ANALYTICS"]:
+        if app.config["NO_REDIS"]:
             return render_template(
                 "notifications.html",
-                no_analytics=app.config["NO_ANALYTICS"],
+                no_redis=app.config["NO_REDIS"],
                 error="Notifications feature requires Redis/analytics to be enabled.",
                 version=__version__,
                 refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -578,7 +578,7 @@ def create_app(
 
             return render_template(
                 "notifications.html",
-                no_analytics=app.config["NO_ANALYTICS"],
+                no_redis=app.config["NO_REDIS"],
                 critical_notifications=critical_notifications,
                 warning_notifications=warning_notifications,
                 critical_count=len(critical_notifications),
@@ -596,7 +596,7 @@ def create_app(
         except Exception as e:
             return render_template(
                 "notifications.html",
-                no_analytics=app.config["NO_ANALYTICS"],
+                no_redis=app.config["NO_REDIS"],
                 error=str(e),
                 version=__version__,
                 refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -618,7 +618,7 @@ def create_app(
         cluster_name = data["cluster_name"]
         namespace = data["namespace"]
 
-        if app.config["NO_ANALYTICS"]:
+        if app.config["NO_REDIS"]:
             return jsonify(
                 {
                     "status": "error",
@@ -677,7 +677,7 @@ def run_server(
     redis_db: int = 0,
     redis_username: Optional[str] = None,
     redis_password: Optional[str] = None,
-    no_analytics: bool = False,
+    no_redis: bool = False,
 ):
     """
     Run the Flask development server.
@@ -694,7 +694,7 @@ def run_server(
         redis_db: Redis database number
         redis_username: Redis username for authentication
         redis_password: Redis password for authentication
-        no_analytics: Disable analytics and Redis connections
+        no_redis: Disable analytics and Redis connections
     """
 
     app = create_app(
@@ -706,7 +706,7 @@ def run_server(
         redis_db,
         redis_username,
         redis_password,
-        no_analytics,
+        no_redis,
     )
 
     # Normalize prefix for display
@@ -718,7 +718,7 @@ def run_server(
     print(
         f"📋 Configuration: kubeconfig={kubeconfig_path or 'default'}, config={config_path or 'none'}"
     )
-    if not no_analytics:
+    if not no_redis:
         print(
             f"📊 Analytics storage: Redis at {redis_host}:{redis_port} (db {redis_db})"
         )
@@ -728,7 +728,7 @@ def run_server(
     print(f"   • http://{host}:{port}{display_prefix}/ - Dashboard")
     print(f"   • http://{host}:{port}{display_prefix}/clusters - Cluster listing")
     print(f"   • http://{host}:{port}{display_prefix}/rules - Deletion rules")
-    if not no_analytics:
+    if not no_redis:
         print(
             f"   • http://{host}:{port}{display_prefix}/analytics - Analytics dashboard"
         )

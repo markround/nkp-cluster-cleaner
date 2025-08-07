@@ -45,6 +45,7 @@ A simple tool to automatically delete Nutanix NKP clusters that do not meet a sp
 | notifications.slack.channel | string | `"alerts"` | Slack channel to use for notifications |
 | notifications.slack.username | string | `"NKP Cluster Cleaner"` | Username to display in alerts |
 | notifications.slack.iconEmoji | string | `":broom:"` | Emjoi icon to use |
+| redis.enabled | bool | `true` | Make use of Redis for persistence, required for notification history and analytics features |
 | redis.hostname | string | `"nkp-cluster-cleaner-valkey"` | Hostname of the Redis/Valkey instance used by analytics and notifications |
 | redis.port | int | `6379` | Port of the Redis/Valkey instance |
 | redis.db | int | `0` | Redis database number |

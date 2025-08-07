@@ -157,7 +157,8 @@ Options:
   --redis-db INTEGER     Redis database number (default: 0)
   --redis-port INTEGER   Redis port (default: 6379)
   --redis-host TEXT      Redis host (default: redis)
-  --no-analytics         Disable analytics and do not connect to Redis
+  --no-redis             Do not connect to Redis and disable notification
+                         history/analytics
   --help                 Show this message and exit.
 ```
 

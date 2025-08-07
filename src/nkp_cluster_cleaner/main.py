@@ -286,10 +286,10 @@ def generate_config(output_file):
 )
 @redis_options
 @click.option(
-    "--no-analytics",
-    envvar="NO_ANALYTICS",
+    "--no-redis",
+    envvar="NO_REDIS",
     is_flag=True,
-    help="Disable analytics and do not connect to Redis",
+    help="Do not connect to Redis and disable notification history/analytics",
 )
 def serve(
     kubeconfig,
@@ -303,7 +303,7 @@ def serve(
     redis_db,
     redis_username,
     redis_password,
-    no_analytics,
+    no_redis,
 ):
     """Start the web server for the cluster cleaner UI."""
     try:
@@ -321,7 +321,7 @@ def serve(
             redis_db=redis_db,
             redis_username=redis_username,
             redis_password=redis_password,
-            no_analytics=no_analytics,
+            no_redis=no_redis,
         )
     except KeyboardInterrupt:
         click.echo(f"\n{Fore.YELLOW}Server stopped by user.{Style.RESET_ALL}")
