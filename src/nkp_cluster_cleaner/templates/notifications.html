@@ -94,12 +94,12 @@
     }
     
     .notification-table th {
-        background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+        background: linear-gradient(#1a202c 0%, #404e66 100%);
         color: white;
         padding: 15px 12px;
         text-align: left;
         font-weight: 600;
-        border-right: 1px solid #414753;
+        border-right: 1px solid #404e66;
         border-bottom: 1px solid #2d3748;
     }
     
@@ -379,7 +379,7 @@
                             <td>
                                 <button class="btn btn-small btn-danger" 
                                         onclick="deleteNotification('{{ notification.cluster_name }}', '{{ notification.namespace }}')">
-                                    Delete
+                                    Clear History
                                 </button>
                             </td>
                         </tr>
