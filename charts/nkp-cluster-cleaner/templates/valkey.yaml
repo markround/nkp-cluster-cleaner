@@ -1,4 +1,4 @@
-{{- if eq .Values.valkey.enabled true }}
+{{- if and (eq .Values.valkey.enabled true) (eq .Values.redis.enabled true) }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:

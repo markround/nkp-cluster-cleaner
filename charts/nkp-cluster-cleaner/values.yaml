@@ -107,6 +107,8 @@ notifications:
     iconEmoji: ":broom:"
 
 redis:
+  # -- Make use of Redis for persistence, required for notification history and analytics features
+  enabled: true
   # -- Hostname of the Redis/Valkey instance used by analytics and notifications
   hostname: nkp-cluster-cleaner-valkey
   # -- Port of the Redis/Valkey instance

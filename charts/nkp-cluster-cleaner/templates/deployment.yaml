@@ -31,7 +31,7 @@ spec:
           value: "/config/app/config.yaml"
         - name: "PREFIX"
           value: "{{ $.Values.ingress.prefix }}"
-{{- if or (eq .Values.analytics.enabled true) (eq .Values.notifications.enabled true) }}
+{{- if eq .Values.redis.enabled true }}
         - name: "REDIS_HOST"
           value: "{{ $.Values.redis.hostname }}"
         - name: "REDIS_PORT"
@@ -57,7 +57,7 @@ spec:
               key: "{{ $.Values.redis.authentication.secretPasswordKey }}"
 {{- end }}
 {{- else }}
-        - name: "NO_ANALYTICS"
+        - name: "NO_REDIS"
           value: "true"
 {{- end }}
         ports:
