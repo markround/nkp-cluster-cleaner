@@ -1,6 +1,6 @@
 deployment:
   # -- Container image to use
-  image: ghcr.io/markround/nkp-cluster-cleaner:0.13.0
+  image: ghcr.io/markround/nkp-cluster-cleaner:0.13.2
   # -- Number of replicas to deploy
   replicas: 1
 
