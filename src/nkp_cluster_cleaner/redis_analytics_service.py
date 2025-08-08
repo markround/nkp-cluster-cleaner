@@ -125,21 +125,24 @@ class RedisAnalyticsService:
                 },
             }
 
-        # Group by date and aggregate
-        daily_data = defaultdict(
-            lambda: {"for_deletion": 0, "protected": 0, "total": 0, "count": 0}
-        )
+        # Group by date and keep only the latest snapshot per day
+        daily_data = {}
 
         for snapshot in historical_data:
             date = snapshot["timestamp"][:10]  # Extract YYYY-MM-DD
+            snapshot_time = snapshot["timestamp"]
             counts = snapshot["cluster_counts"]
 
-            daily_data[date]["for_deletion"] += counts["for_deletion"]
-            daily_data[date]["protected"] += counts["protected"]
-            daily_data[date]["total"] += counts["total"]
-            daily_data[date]["count"] += 1
+            # Keep only the latest snapshot for each date
+            if date not in daily_data or snapshot_time > daily_data[date]["timestamp"]:
+                daily_data[date] = {
+                    "for_deletion": counts["for_deletion"],
+                    "protected": counts["protected"],
+                    "total": counts["total"],
+                    "timestamp": snapshot_time,
+                }
 
-        # Calculate daily averages and prepare chart data
+        # Prepare chart data using latest values per day
         dates = []
         deletion_counts = []
         protected_counts = []
@@ -147,13 +150,10 @@ class RedisAnalyticsService:
 
         for date in sorted(daily_data.keys()):
             data = daily_data[date]
-            # Average across multiple snapshots per day
-            count = data["count"]
-
             dates.append(date)
-            deletion_counts.append(data["for_deletion"] // count)
-            protected_counts.append(data["protected"] // count)
-            total_counts.append(data["total"] // count)
+            deletion_counts.append(data["for_deletion"])
+            protected_counts.append(data["protected"])
+            total_counts.append(data["total"])
 
         # Calculate summary statistics
         current_for_deletion = deletion_counts[-1] if deletion_counts else 0
