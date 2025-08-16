@@ -191,16 +191,6 @@ def execute_delete_clusters_command(
                         }
                     )
 
-                    # Clear notification history for the deleted cluster
-                    if notification_history:
-                        try:
-                            notification_history.clear_cluster_history(
-                                capi_cluster_name, capi_cluster_namespace
-                            )
-                        except Exception as e:
-                            click.echo(
-                                f"{Fore.YELLOW}Warning: Could not clear notification history for {capi_cluster_name}: {e}{Style.RESET_ALL}"
-                            )
                 else:
                     failed_count += 1
 
