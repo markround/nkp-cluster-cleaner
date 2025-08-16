@@ -9,7 +9,6 @@ from typing import Optional
 from ..cluster_manager import ClusterManager
 from ..config import ConfigManager
 from ..notification_manager import NotificationManager
-from ..notification_history import NotificationHistory
 
 
 def execute_delete_clusters_command(
@@ -89,7 +88,6 @@ def execute_delete_clusters_command(
 
     # Initialize notification components if backend is specified
     notification_manager = None
-    notification_history = None
 
     if notify_backend:
         try:
@@ -99,13 +97,6 @@ def execute_delete_clusters_command(
                 f"{Fore.CYAN}Notification backend: {notify_backend}{Style.RESET_ALL}"
             )
 
-            # Initialize notification history for tracking
-            notification_history = NotificationHistory(
-                redis_host, redis_port, redis_db, redis_username, redis_password
-            )
-            click.echo(
-                f"{Fore.CYAN}Connected to notification history at {redis_host}:{redis_port} (db {redis_db}){Style.RESET_ALL}"
-            )
         except Exception as e:
             click.echo(
                 f"{Fore.RED}Failed to initialize notification system: {e}{Style.RESET_ALL}"
@@ -191,16 +182,6 @@ def execute_delete_clusters_command(
                         }
                     )
 
-                    # Clear notification history for the deleted cluster
-                    if notification_history:
-                        try:
-                            notification_history.clear_cluster_history(
-                                capi_cluster_name, capi_cluster_namespace
-                            )
-                        except Exception as e:
-                            click.echo(
-                                f"{Fore.YELLOW}Warning: Could not clear notification history for {capi_cluster_name}: {e}{Style.RESET_ALL}"
-                            )
                 else:
                     failed_count += 1
 
