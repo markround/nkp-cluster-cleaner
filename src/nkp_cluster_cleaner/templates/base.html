@@ -378,28 +378,28 @@
                 <div class="nav-section">
                     <div class="nav-section-title">Navigation</div>
                     <a href="{{ url_with_prefix('/') }}" class="nav-item" id="nav-home">
-                        <span class="nav-item-icon">🏠</span>
+                        <span class="nav-item-icon" title="Dashboard">🖥️</span>
                         <span class="nav-item-text">Dashboard</span>
                     </a>
                     <a href="{{ url_with_prefix('/clusters') }}" class="nav-item" id="nav-clusters">
-                        <span class="nav-item-icon">📋</span>
+                        <span class="nav-item-icon" title="Cluster Status">📋</span>
                         <span class="nav-item-text">Cluster Status</span>
                     </a>
                     <a href="{{ url_with_prefix('/rules') }}" class="nav-item" id="nav-rules">
-                        <span class="nav-item-icon">📖</span>
+                        <span class="nav-item-icon" title="Deletion Rules">📖</span>
                         <span class="nav-item-text">Deletion Rules</span>
                     </a>
                     <a href="{{ url_with_prefix('/scheduled-tasks') }}" class="nav-item" id="nav-scheduled-tasks">
-                      <span class="nav-item-icon">⏰</span>
+                      <span class="nav-item-icon" title="Scheduled Tasks">⏰</span>
                       <span class="nav-item-text">Scheduled Tasks</span>
                     </a>
                     {% if not no_redis %}
                       <a href="{{ url_with_prefix('/analytics') }}" class="nav-item" id="nav-analytics">
-                        <span class="nav-item-icon">📊</span>
+                        <span class="nav-item-icon" title="Analytics">📊</span>
                         <span class="nav-item-text">Analytics</span>
                       </a>
                       <a href="{{ url_with_prefix('/notifications') }}" class="nav-item" id="nav-notifications">
-                        <span class="nav-item-icon">🔔</span>
+                        <span class="nav-item-icon" title="Notifications">🔔</span>
                         <span class="nav-item-text">Notifications</span>
                       </a>
                     {% endif %}
@@ -408,7 +408,7 @@
                 <div class="nav-section">
                     <div class="nav-section-title">System</div>
                     <a href="{{ url_with_prefix('/health') }}" class="nav-item" id="nav-health">
-                        <span class="nav-item-icon">❤️</span>
+                        <span class="nav-item-icon" title="Health Check">❤️</span>
                         <span class="nav-item-text">Health Check</span>
                     </a>
                 </div>
@@ -416,7 +416,7 @@
                 <div class="nav-section">
                     <div class="nav-section-title">Other</div>
                     <a href="https://github.com/markround/nkp-cluster-cleaner" class="nav-item" id="nav-github">
-                        <span class="nav-item-icon">🏠</span>
+                        <span class="nav-item-icon" title="Project Homepage">🏠</span>
                         <span class="nav-item-text">Project Homepage</span>
                     </a>
                 </div>
