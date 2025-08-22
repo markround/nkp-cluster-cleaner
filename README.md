@@ -193,7 +193,7 @@ A sample [Grafana dashboard](./charts/nkp-cluster-cleaner/grafana-dashboards/nkp
 - The container image can be pulled from GitHub Container Registry: `ghcr.io/markround/nkp-cluster-cleaner:<TAG>`
 - Available tags are:
   - Branch (e.g. `main`, `feature/xxx`, etc.)
-  - Release tag (e.g. `0.13.5`) 
+  - Release tag (e.g. `0.13.6`) 
   - Latest released version (e.g. `latest`)
 - Full list on the [packages page](https://github.com/markround/nkp-cluster-cleaner/pkgs/container/nkp-cluster-cleaner)
 
