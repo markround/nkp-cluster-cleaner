@@ -35,7 +35,7 @@ Additional configuration can be carried out by setting the Application Configura
 
 <img src="/docs/config.png" width="400">
 
-For a full reference of the Helm values, see the included [Chart documentation](helm.md), or the full set of [Helm values](/charts/nkp-cluster-cleaner/README.md). 
+For a full reference of the Helm values, see the included [Chart documentation](helm.md#configuration), or the full set of [Helm values](/charts/nkp-cluster-cleaner/README.md). 
 
 
 > [!TIP]
