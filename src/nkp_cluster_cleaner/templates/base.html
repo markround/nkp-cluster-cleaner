@@ -39,6 +39,11 @@
             box-shadow: 2px 0 10px rgba(0,0,0,0.1);
             position: relative;
             z-index: 1000;
+            transition: width 0.3s ease;
+        }
+        
+        .sidebar.collapsed {
+            width: 50px;
         }
         
         .sidebar-header {
@@ -52,6 +57,12 @@
             font-size: 18px;
             font-weight: 600;
             color: #ffffff;
+            transition: opacity 0.3s ease;
+        }
+        
+        .sidebar.collapsed .logo {
+            opacity: 0;
+            pointer-events: none;
         }
         
         .logo-icon {
@@ -78,6 +89,12 @@
             text-transform: uppercase;
             color: #a0aec0;
             letter-spacing: 0.5px;
+            transition: opacity 0.3s ease;
+        }
+        
+        .sidebar.collapsed .nav-section-title {
+            opacity: 0;
+            pointer-events: none;
         }
         
         .nav-item {
@@ -88,6 +105,23 @@
             transition: all 0.2s ease;
             border-left: 3px solid transparent;
             position: relative;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+        
+        .sidebar.collapsed .nav-item {
+            padding: 12px;
+            text-align: center;
+            border-left: none;
+        }
+        
+        .nav-item-text {
+            transition: opacity 0.3s ease;
+        }
+        
+        .sidebar.collapsed .nav-item-text {
+            opacity: 0;
+            pointer-events: none;
         }
         
         .nav-item:hover {
@@ -107,6 +141,11 @@
             width: 20px;
             margin-right: 12px;
             font-size: 16px;
+            transition: margin 0.3s ease;
+        }
+        
+        .sidebar.collapsed .nav-item-icon {
+            margin-right: 0;
         }
         
         .sidebar-footer {
@@ -114,6 +153,37 @@
             border-top: 1px solid #4a5568;
             font-size: 12px;
             color: #a0aec0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .sidebar.collapsed .sidebar-footer {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .sidebar-toggle {
+            position: absolute;
+            bottom: 53px;
+            right: -15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            transition: all 0.2s ease;
+            z-index: 1001;
+        }
+        
+        .sidebar-toggle:hover {
+            background: #5a67d8;
+            transform: scale(1.1);
         }
         
         /* Main Content Area */
@@ -291,6 +361,9 @@
     <div class="app-container">
         <!-- Sidebar -->
         <div class="sidebar">
+            <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle Sidebar">
+                <span id="toggle-icon">◀</span>
+            </button>
             <div class="sidebar-header">
                 <div class="logo">
                     <span class="logo-icon">🚀</span>
@@ -306,28 +379,28 @@
                     <div class="nav-section-title">Navigation</div>
                     <a href="{{ url_with_prefix('/') }}" class="nav-item" id="nav-home">
                         <span class="nav-item-icon">🏠</span>
-                        Dashboard
+                        <span class="nav-item-text">Dashboard</span>
                     </a>
                     <a href="{{ url_with_prefix('/clusters') }}" class="nav-item" id="nav-clusters">
                         <span class="nav-item-icon">📋</span>
-                        Cluster Status
+                        <span class="nav-item-text">Cluster Status</span>
                     </a>
                     <a href="{{ url_with_prefix('/rules') }}" class="nav-item" id="nav-rules">
                         <span class="nav-item-icon">📖</span>
-                        Deletion Rules
+                        <span class="nav-item-text">Deletion Rules</span>
                     </a>
-                    <a href="{{ url_with_prefix('/scheduled-tasks') }}" class="nav-item id="nav-scheduled-tasks">
+                    <a href="{{ url_with_prefix('/scheduled-tasks') }}" class="nav-item" id="nav-scheduled-tasks">
                       <span class="nav-item-icon">⏰</span>
-                      Scheduled Tasks
+                      <span class="nav-item-text">Scheduled Tasks</span>
                     </a>
                     {% if not no_redis %}
                       <a href="{{ url_with_prefix('/analytics') }}" class="nav-item" id="nav-analytics">
                         <span class="nav-item-icon">📊</span>
-                        Analytics
+                        <span class="nav-item-text">Analytics</span>
                       </a>
                       <a href="{{ url_with_prefix('/notifications') }}" class="nav-item" id="nav-notifications">
                         <span class="nav-item-icon">🔔</span>
-                        Notifications
+                        <span class="nav-item-text">Notifications</span>
                       </a>
                     {% endif %}
                 </div>
@@ -336,15 +409,15 @@
                     <div class="nav-section-title">System</div>
                     <a href="{{ url_with_prefix('/health') }}" class="nav-item" id="nav-health">
                         <span class="nav-item-icon">❤️</span>
-                        Health Check
+                        <span class="nav-item-text">Health Check</span>
                     </a>
                 </div>
 
                 <div class="nav-section">
                     <div class="nav-section-title">Other</div>
-                    <a href="https://github.com/markround/nkp-cluster-cleaner" class="nav-item" id="nav-health">
+                    <a href="https://github.com/markround/nkp-cluster-cleaner" class="nav-item" id="nav-github">
                         <span class="nav-item-icon">🏠</span>
-                        Project Homepage
+                        <span class="nav-item-text">Project Homepage</span>
                     </a>
                 </div>
 
@@ -370,8 +443,36 @@
     </div>
     
     <script>
-        // Highlight active nav item based on current path
+        // Sidebar collapse functionality
+        function toggleSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const toggleIcon = document.getElementById('toggle-icon');
+            
+            sidebar.classList.toggle('collapsed');
+            
+            // Update toggle icon
+            if (sidebar.classList.contains('collapsed')) {
+                toggleIcon.textContent = '▶';
+            } else {
+                toggleIcon.textContent = '◀';
+            }
+            
+            // Save state to localStorage
+            localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+        }
+        
+        // Restore sidebar state on page load
         document.addEventListener('DOMContentLoaded', function() {
+            const sidebar = document.querySelector('.sidebar');
+            const toggleIcon = document.getElementById('toggle-icon');
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            
+            if (isCollapsed) {
+                sidebar.classList.add('collapsed');
+                toggleIcon.textContent = '▶';
+            }
+            
+            // Highlight active nav item based on current path
             const currentPath = window.location.pathname;
             const navItems = document.querySelectorAll('.nav-item');
             let activeItemFound = false;
