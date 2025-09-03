@@ -328,9 +328,15 @@
                             <td>{{ cronjob.active_jobs }}</td>
                             <td><span class="time-info">{{ cronjob.creation_timestamp.strftime('%Y-%m-%d') }}</span></td>
                             <td>
-                                <button class="trigger-btn" onclick="triggerCronJob('{{ cronjob.name }}', '{{ cronjob.namespace }}')">
-                                    Trigger Now
-                                </button>
+                                {% if 'delete' in cronjob.name %}
+                                    <button class="trigger-btn" onclick="showDeleteConfirmation('{{ cronjob.name }}', '{{ cronjob.namespace }}')">
+                                        Trigger Now
+                                    </button>
+                                {% else %}
+                                    <button class="trigger-btn" onclick="triggerCronJob('{{ cronjob.name }}', '{{ cronjob.namespace }}')">
+                                        Trigger Now
+                                    </button>
+                                {% endif %}
                             </td>
                         </tr>
                         {% endfor %}
@@ -430,6 +436,24 @@
     <!-- Message display area -->
     <div id="messageArea"></div>
 
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteConfirmModal" class="logs-modal">
+        <div class="logs-content" style="max-width: 500px;">
+            <div class="logs-header">
+                <h3>⚠️ Confirm Deletion Job</h3>
+            </div>
+            <div style="padding: 20px 0;">
+                <p><strong>You are about to trigger a cluster deletion job!</strong></p>
+                <p>This action may <strong style="color: #d32f2f;">permanently delete clusters</strong> that match the deletion criteria.</p>
+                <p><br />Are you sure you want to proceed?</p>
+                <div style="text-align: center; margin-top: 20px;">
+                    <button onclick="closeDeleteConfirmModal()" style="background: #48bb78; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500; margin-right: 10px;">Cancel</button>
+                    <button id="confirmDeleteBtn" class="trigger-btn" style="background: #e53e3e;">Yes, Trigger Delete Job</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Logs Modal -->
     <div id="logsModal" class="logs-modal">
         <div class="logs-content">
@@ -446,6 +470,23 @@
 
 {% block extra_js %}
 <script>
+    function showDeleteConfirmation(cronjobName, namespace) {
+        const modal = document.getElementById('deleteConfirmModal');
+        const confirmBtn = document.getElementById('confirmDeleteBtn');
+        
+        modal.style.display = 'block';
+        
+        // Set up the confirm button click handler
+        confirmBtn.onclick = function() {
+            closeDeleteConfirmModal();
+            triggerCronJob(cronjobName, namespace);
+        };
+    }
+    
+    function closeDeleteConfirmModal() {
+        document.getElementById('deleteConfirmModal').style.display = 'none';
+    }
+
     function triggerCronJob(cronjobName, namespace) {
         const messageArea = document.getElementById('messageArea');
         
@@ -548,18 +589,37 @@
     
     // Close modal when clicking outside of it
     window.onclick = function(event) {
-        const modal = document.getElementById('logsModal');
-        if (event.target === modal) {
-            modal.style.display = 'none';
+        const logsModal = document.getElementById('logsModal');
+        const deleteModal = document.getElementById('deleteConfirmModal');
+        
+        if (event.target === logsModal) {
+            logsModal.style.display = 'none';
+        }
+        if (event.target === deleteModal) {
+            deleteModal.style.display = 'none';
         }
     }
     
     // Log when data was loaded
     console.log("Scheduled tasks data loaded at: {{ refresh_time }}");
     
-    // Auto-refresh page every 30 seconds
-    setTimeout(() => {
-        window.location.reload();
-    }, 30000);
+    // Auto-refresh page every 30 seconds, but only if no modal is open
+    function scheduleRefresh() {
+        setTimeout(() => {
+            const deleteModal = document.getElementById('deleteConfirmModal');
+            const logsModal = document.getElementById('logsModal');
+            
+            // Only refresh if no modals are open
+            if (deleteModal.style.display !== 'block' && logsModal.style.display !== 'block') {
+                window.location.reload();
+            } else {
+                // If modal is open, check again in 5 seconds
+                scheduleRefresh();
+            }
+        }, 30000);
+    }
+    
+    // Start the refresh cycle
+    scheduleRefresh();
 </script>
 {% endblock %}
