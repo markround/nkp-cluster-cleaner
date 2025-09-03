@@ -399,6 +399,201 @@ class CronJobManager:
         else:
             return "Unknown"
 
+    def trigger_cronjob(self, cronjob_name: str, namespace: str = "kommander") -> Dict:
+        """
+        Trigger a CronJob manually by creating a Job from its JobTemplate.
+
+        Args:
+            cronjob_name: Name of the CronJob to trigger
+            namespace: Namespace of the CronJob
+
+        Returns:
+            Dictionary with trigger result
+        """
+        try:
+            # Get the CronJob to validate it exists and extract the job template
+            cronjob = self.batch_v1.read_namespaced_cron_job(
+                name=cronjob_name, namespace=namespace
+            )
+
+            # Validate this is one of our CronJobs
+            labels = cronjob.metadata.labels or {}
+            if labels.get("app") != "nkp-cluster-cleaner":
+                return {
+                    "success": False,
+                    "error": f"CronJob {cronjob_name} is not managed by nkp-cluster-cleaner",
+                }
+
+            # Generate a unique job name based on the cronjob name and timestamp
+            job_name = f"{cronjob_name}-manual-{int(datetime.now().timestamp())}"
+
+            # Create Job spec from CronJob template
+            # We need to manually construct the job spec to avoid invalid fields
+            template_spec = cronjob.spec.job_template.spec
+
+            job_spec = {
+                "apiVersion": "batch/v1",
+                "kind": "Job",
+                "metadata": {
+                    "name": job_name,
+                    "namespace": namespace,
+                    "labels": {
+                        "app": "nkp-cluster-cleaner",
+                        "cronjob": cronjob_name,
+                        "trigger": "manual",
+                    },
+                    "annotations": {
+                        "triggered-by": "web-ui",
+                        "triggered-at": datetime.now(timezone.utc).isoformat(),
+                    },
+                },
+                "spec": {
+                    "template": {
+                        "metadata": {
+                            # Only include user-defined metadata, not system fields
+                            **(
+                                {"labels": template_spec.template.metadata.labels}
+                                if template_spec.template.metadata
+                                and template_spec.template.metadata.labels
+                                else {}
+                            ),
+                            **(
+                                {
+                                    "annotations": template_spec.template.metadata.annotations
+                                }
+                                if template_spec.template.metadata
+                                and template_spec.template.metadata.annotations
+                                else {}
+                            ),
+                        },
+                        "spec": {
+                            "restartPolicy": template_spec.template.spec.restart_policy
+                            or "Never",
+                            "containers": [
+                                {
+                                    "name": container.name,
+                                    "image": container.image,
+                                    "command": container.command,
+                                    "args": container.args,
+                                    "env": [
+                                        {
+                                            "name": env.name,
+                                            **(
+                                                {"value": env.value}
+                                                if env.value
+                                                else {}
+                                            ),
+                                            **(
+                                                {
+                                                    "valueFrom": {
+                                                        **(
+                                                            {
+                                                                "secretKeyRef": {
+                                                                    "name": env.value_from.secret_key_ref.name,
+                                                                    "key": env.value_from.secret_key_ref.key,
+                                                                }
+                                                            }
+                                                            if env.value_from.secret_key_ref
+                                                            else {}
+                                                        ),
+                                                        **(
+                                                            {
+                                                                "configMapKeyRef": {
+                                                                    "name": env.value_from.config_map_key_ref.name,
+                                                                    "key": env.value_from.config_map_key_ref.key,
+                                                                }
+                                                            }
+                                                            if env.value_from.config_map_key_ref
+                                                            else {}
+                                                        ),
+                                                    }
+                                                }
+                                                if env.value_from
+                                                else {}
+                                            ),
+                                        }
+                                        for env in (container.env or [])
+                                    ]
+                                    if container.env
+                                    else [],
+                                    "volumeMounts": [
+                                        {
+                                            "name": vm.name,
+                                            "mountPath": vm.mount_path,
+                                            "readOnly": vm.read_only,
+                                        }
+                                        for vm in (container.volume_mounts or [])
+                                    ]
+                                    if container.volume_mounts
+                                    else [],
+                                }
+                                for container in template_spec.template.spec.containers
+                            ],
+                            "volumes": [
+                                {
+                                    "name": vol.name,
+                                    **(
+                                        {
+                                            "secret": {
+                                                "secretName": vol.secret.secret_name,
+                                                "defaultMode": vol.secret.default_mode,
+                                            }
+                                        }
+                                        if vol.secret
+                                        else {}
+                                    ),
+                                    **(
+                                        {
+                                            "configMap": {
+                                                "name": vol.config_map.name,
+                                                "defaultMode": vol.config_map.default_mode,
+                                            }
+                                        }
+                                        if vol.config_map
+                                        else {}
+                                    ),
+                                }
+                                for vol in (template_spec.template.spec.volumes or [])
+                            ]
+                            if template_spec.template.spec.volumes
+                            else [],
+                        },
+                    },
+                    **(
+                        {"backoffLimit": template_spec.backoff_limit}
+                        if template_spec.backoff_limit is not None
+                        else {}
+                    ),
+                    **(
+                        {"activeDeadlineSeconds": template_spec.active_deadline_seconds}
+                        if template_spec.active_deadline_seconds is not None
+                        else {}
+                    ),
+                },
+            }
+
+            # Create the Job
+            job = self.batch_v1.create_namespaced_job(
+                namespace=namespace, body=job_spec
+            )
+
+            return {
+                "success": True,
+                "job_name": job.metadata.name,
+                "cronjob_name": cronjob_name,
+                "namespace": namespace,
+                "message": f"Successfully triggered {cronjob_name}",
+            }
+
+        except ApiException as e:
+            error_msg = f"Failed to trigger CronJob {cronjob_name}: {e}"
+            print(f"{Fore.RED}{error_msg}{Style.RESET_ALL}")
+            return {"success": False, "error": error_msg}
+        except Exception as e:
+            error_msg = f"Unexpected error triggering CronJob {cronjob_name}: {e}"
+            print(f"{Fore.RED}{error_msg}{Style.RESET_ALL}")
+            return {"success": False, "error": error_msg}
+
     def get_all_scheduled_tasks_summary(self, namespace: str = "kommander") -> Dict:
         """
         Get a  summary of all scheduled tasks.
