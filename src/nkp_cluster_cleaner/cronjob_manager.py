@@ -425,156 +425,34 @@ class CronJobManager:
                 }
 
             # Generate a unique job name based on the cronjob name and timestamp
-            job_name = f"{cronjob_name}-manual-{int(datetime.now().timestamp())}"
+            date_str = datetime.now().strftime("%Y%m%d%H%M%S")
+            job_name = f"{cronjob_name}-manual-{date_str}"[:63]
 
-            # Create Job spec from CronJob template
-            # We need to manually construct the job spec to avoid invalid fields
-            template_spec = cronjob.spec.job_template.spec
+            # Use the CronJob's job template directly and add owner reference
+            import copy
+            from kubernetes.client import V1OwnerReference
 
-            job_spec = {
-                "apiVersion": "batch/v1",
-                "kind": "Job",
-                "metadata": {
-                    "name": job_name,
-                    "namespace": namespace,
-                    "labels": {
-                        "app": "nkp-cluster-cleaner",
-                        "cronjob": cronjob_name,
-                        "trigger": "manual",
-                    },
-                    "annotations": {
-                        "triggered-by": "web-ui",
-                        "triggered-at": datetime.now(timezone.utc).isoformat(),
-                    },
-                },
-                "spec": {
-                    "template": {
-                        "metadata": {
-                            # Only include user-defined metadata, not system fields
-                            **(
-                                {"labels": template_spec.template.metadata.labels}
-                                if template_spec.template.metadata
-                                and template_spec.template.metadata.labels
-                                else {}
-                            ),
-                            **(
-                                {
-                                    "annotations": template_spec.template.metadata.annotations
-                                }
-                                if template_spec.template.metadata
-                                and template_spec.template.metadata.annotations
-                                else {}
-                            ),
-                        },
-                        "spec": {
-                            "restartPolicy": template_spec.template.spec.restart_policy
-                            or "Never",
-                            "containers": [
-                                {
-                                    "name": container.name,
-                                    "image": container.image,
-                                    "command": container.command,
-                                    "args": container.args,
-                                    "env": [
-                                        {
-                                            "name": env.name,
-                                            **(
-                                                {"value": env.value}
-                                                if env.value
-                                                else {}
-                                            ),
-                                            **(
-                                                {
-                                                    "valueFrom": {
-                                                        **(
-                                                            {
-                                                                "secretKeyRef": {
-                                                                    "name": env.value_from.secret_key_ref.name,
-                                                                    "key": env.value_from.secret_key_ref.key,
-                                                                }
-                                                            }
-                                                            if env.value_from.secret_key_ref
-                                                            else {}
-                                                        ),
-                                                        **(
-                                                            {
-                                                                "configMapKeyRef": {
-                                                                    "name": env.value_from.config_map_key_ref.name,
-                                                                    "key": env.value_from.config_map_key_ref.key,
-                                                                }
-                                                            }
-                                                            if env.value_from.config_map_key_ref
-                                                            else {}
-                                                        ),
-                                                    }
-                                                }
-                                                if env.value_from
-                                                else {}
-                                            ),
-                                        }
-                                        for env in (container.env or [])
-                                    ]
-                                    if container.env
-                                    else [],
-                                    "volumeMounts": [
-                                        {
-                                            "name": vm.name,
-                                            "mountPath": vm.mount_path,
-                                            "readOnly": vm.read_only,
-                                        }
-                                        for vm in (container.volume_mounts or [])
-                                    ]
-                                    if container.volume_mounts
-                                    else [],
-                                }
-                                for container in template_spec.template.spec.containers
-                            ],
-                            "volumes": [
-                                {
-                                    "name": vol.name,
-                                    **(
-                                        {
-                                            "secret": {
-                                                "secretName": vol.secret.secret_name,
-                                                "defaultMode": vol.secret.default_mode,
-                                            }
-                                        }
-                                        if vol.secret
-                                        else {}
-                                    ),
-                                    **(
-                                        {
-                                            "configMap": {
-                                                "name": vol.config_map.name,
-                                                "defaultMode": vol.config_map.default_mode,
-                                            }
-                                        }
-                                        if vol.config_map
-                                        else {}
-                                    ),
-                                }
-                                for vol in (template_spec.template.spec.volumes or [])
-                            ]
-                            if template_spec.template.spec.volumes
-                            else [],
-                        },
-                    },
-                    **(
-                        {"backoffLimit": template_spec.backoff_limit}
-                        if template_spec.backoff_limit is not None
-                        else {}
-                    ),
-                    **(
-                        {"activeDeadlineSeconds": template_spec.active_deadline_seconds}
-                        if template_spec.active_deadline_seconds is not None
-                        else {}
-                    ),
-                },
-            }
+            job_template = copy.deepcopy(cronjob.spec.job_template)
+            job_template.metadata.name = job_name
+            job_template.metadata.namespace = namespace
 
-            # Create the Job
+            # Add owner reference to link back to the CronJob
+            owner_ref = V1OwnerReference(
+                api_version="batch/v1",
+                kind="CronJob",
+                name=cronjob_name,
+                uid=cronjob.metadata.uid,
+            )
+            job_template.metadata.owner_references = [owner_ref]
+
+            # Add manual trigger tracking
+            if not job_template.metadata.labels:
+                job_template.metadata.labels = {}
+            job_template.metadata.labels["trigger"] = "manual"
+
+            # Create the Job using the template
             job = self.batch_v1.create_namespaced_job(
-                namespace=namespace, body=job_spec
+                namespace=namespace, body=job_template
             )
 
             return {
