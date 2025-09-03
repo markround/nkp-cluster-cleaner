@@ -659,6 +659,52 @@ def create_app(
         except Exception as e:
             return jsonify({"status": "error", "error": str(e)}), 500
 
+    @app.route(url_prefix + "/api/trigger-cronjob", methods=["POST"])
+    def api_trigger_cronjob():
+        """API endpoint to manually trigger a cronjob."""
+        data = request.get_json()
+
+        if not data or "cronjob_name" not in data:
+            return jsonify(
+                {"status": "error", "error": "cronjob_name is required"}
+            ), 400
+
+        cronjob_name = data["cronjob_name"]
+        namespace = data.get("namespace", "kommander")
+
+        try:
+            cronjob_manager = get_cronjob_manager()
+            result = cronjob_manager.trigger_cronjob(cronjob_name, namespace)
+
+            if result["success"]:
+                return jsonify(
+                    {
+                        "status": "success",
+                        "message": result["message"],
+                        "job_name": result["job_name"],
+                        "cronjob_name": result["cronjob_name"],
+                        "namespace": result["namespace"],
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                )
+            else:
+                return jsonify(
+                    {
+                        "status": "error",
+                        "error": result["error"],
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                ), 400
+
+        except Exception as e:
+            return jsonify(
+                {
+                    "status": "error",
+                    "error": f"Unexpected error: {str(e)}",
+                    "timestamp": datetime.now().isoformat(),
+                }
+            ), 500
+
     #
     # End of routes
     #

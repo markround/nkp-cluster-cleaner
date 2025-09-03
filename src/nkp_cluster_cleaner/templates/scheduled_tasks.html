@@ -179,6 +179,41 @@
         background: #a0aec0;
         cursor: not-allowed;
     }
+    .trigger-btn {
+        background: #48bb78;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.8em;
+        margin-left: 5px;
+    }
+    .trigger-btn:hover {
+        background: #38a169;
+    }
+    .trigger-btn:disabled {
+        background: #a0aec0;
+        cursor: not-allowed;
+    }
+    .success-message {
+        background-color: #d4edda;
+        border: 1px solid #c3e6cb;
+        border-left: 4px solid #28a745;
+        padding: 15px;
+        border-radius: 8px;
+        margin: 20px 0;
+        color: #155724;
+    }
+    .error-message {
+        background-color: #ffe6e6;
+        border: 1px solid #ffcdd2;
+        border-left: 4px solid #f44336;
+        padding: 15px;
+        border-radius: 8px;
+        margin: 20px 0;
+        color: #d32f2f;
+    }
     .refresh-info {
         background-color: #f0f8ff;
         padding: 15px;
@@ -268,6 +303,7 @@
                             <th>Last Run</th>
                             <th>Active Jobs</th>
                             <th>Created</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -291,6 +327,17 @@
                             </td>
                             <td>{{ cronjob.active_jobs }}</td>
                             <td><span class="time-info">{{ cronjob.creation_timestamp.strftime('%Y-%m-%d') }}</span></td>
+                            <td>
+                                {% if 'delete' in cronjob.name %}
+                                    <button class="trigger-btn" onclick="showDeleteConfirmation('{{ cronjob.name }}', '{{ cronjob.namespace }}')">
+                                        Trigger Now
+                                    </button>
+                                {% else %}
+                                    <button class="trigger-btn" onclick="triggerCronJob('{{ cronjob.name }}', '{{ cronjob.namespace }}')">
+                                        Trigger Now
+                                    </button>
+                                {% endif %}
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -386,6 +433,27 @@
         </div>
     {% endif %}
 
+    <!-- Message display area -->
+    <div id="messageArea"></div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteConfirmModal" class="logs-modal">
+        <div class="logs-content" style="max-width: 500px;">
+            <div class="logs-header">
+                <h3>⚠️ Confirm Deletion Job</h3>
+            </div>
+            <div style="padding: 20px 0;">
+                <p><strong>You are about to trigger a cluster deletion job!</strong></p>
+                <p>This action may <strong style="color: #d32f2f;">permanently delete clusters</strong> that match the deletion criteria.</p>
+                <p><br />Are you sure you want to proceed?</p>
+                <div style="text-align: center; margin-top: 20px;">
+                    <button onclick="closeDeleteConfirmModal()" style="background: #48bb78; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500; margin-right: 10px;">Cancel</button>
+                    <button id="confirmDeleteBtn" class="trigger-btn" style="background: #e53e3e;">Yes, Trigger Delete Job</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Logs Modal -->
     <div id="logsModal" class="logs-modal">
         <div class="logs-content">
@@ -402,6 +470,82 @@
 
 {% block extra_js %}
 <script>
+    function showDeleteConfirmation(cronjobName, namespace) {
+        const modal = document.getElementById('deleteConfirmModal');
+        const confirmBtn = document.getElementById('confirmDeleteBtn');
+        
+        modal.style.display = 'block';
+        
+        // Set up the confirm button click handler
+        confirmBtn.onclick = function() {
+            closeDeleteConfirmModal();
+            triggerCronJob(cronjobName, namespace);
+        };
+    }
+    
+    function closeDeleteConfirmModal() {
+        document.getElementById('deleteConfirmModal').style.display = 'none';
+    }
+
+    function triggerCronJob(cronjobName, namespace) {
+        const messageArea = document.getElementById('messageArea');
+        
+        // Show loading message
+        messageArea.innerHTML = `<div class="refresh-info">⏳ Triggering ${cronjobName}...</div>`;
+        
+        // Disable all trigger buttons temporarily
+        const triggerButtons = document.querySelectorAll('.trigger-btn');
+        triggerButtons.forEach(btn => btn.disabled = true);
+        
+        fetch('{{ url_with_prefix('/api/trigger-cronjob') }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                cronjob_name: cronjobName,
+                namespace: namespace
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                messageArea.innerHTML = `
+                    <div class="success-message">
+                        <strong>✅ Success!</strong><br>
+                        ${data.message}<br>
+                        Job Name: <strong>${data.job_name}</strong><br>
+                        <small>Triggered at: ${new Date(data.timestamp).toLocaleString()}</small>
+                    </div>
+                `;
+                // Auto-refresh page after 3 seconds to show the new job
+                setTimeout(() => {
+                    window.location.reload();
+                }, 3000);
+            } else {
+                messageArea.innerHTML = `
+                    <div class="error-message">
+                        <strong>❌ Error!</strong><br>
+                        ${data.error}<br>
+                        <small>Time: ${new Date(data.timestamp).toLocaleString()}</small>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            messageArea.innerHTML = `
+                <div class="error-message">
+                    <strong>❌ Network Error!</strong><br>
+                    ${error.message}
+                </div>
+            `;
+        })
+        .finally(() => {
+            // Re-enable all trigger buttons
+            triggerButtons.forEach(btn => btn.disabled = false);
+        });
+    }
+
     function viewJobLogs(jobName, namespace) {
         const modal = document.getElementById('logsModal');
         const title = document.getElementById('logsTitle');
@@ -445,13 +589,37 @@
     
     // Close modal when clicking outside of it
     window.onclick = function(event) {
-        const modal = document.getElementById('logsModal');
-        if (event.target === modal) {
-            modal.style.display = 'none';
+        const logsModal = document.getElementById('logsModal');
+        const deleteModal = document.getElementById('deleteConfirmModal');
+        
+        if (event.target === logsModal) {
+            logsModal.style.display = 'none';
+        }
+        if (event.target === deleteModal) {
+            deleteModal.style.display = 'none';
         }
     }
     
     // Log when data was loaded
     console.log("Scheduled tasks data loaded at: {{ refresh_time }}");
+    
+    // Auto-refresh page every 30 seconds, but only if no modal is open
+    function scheduleRefresh() {
+        setTimeout(() => {
+            const deleteModal = document.getElementById('deleteConfirmModal');
+            const logsModal = document.getElementById('logsModal');
+            
+            // Only refresh if no modals are open
+            if (deleteModal.style.display !== 'block' && logsModal.style.display !== 'block') {
+                window.location.reload();
+            } else {
+                // If modal is open, check again in 5 seconds
+                scheduleRefresh();
+            }
+        }, 30000);
+    }
+    
+    // Start the refresh cycle
+    scheduleRefresh();
 </script>
 {% endblock %}

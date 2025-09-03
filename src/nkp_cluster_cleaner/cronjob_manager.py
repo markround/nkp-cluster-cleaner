@@ -399,6 +399,79 @@ class CronJobManager:
         else:
             return "Unknown"
 
+    def trigger_cronjob(self, cronjob_name: str, namespace: str = "kommander") -> Dict:
+        """
+        Trigger a CronJob manually by creating a Job from its JobTemplate.
+
+        Args:
+            cronjob_name: Name of the CronJob to trigger
+            namespace: Namespace of the CronJob
+
+        Returns:
+            Dictionary with trigger result
+        """
+        try:
+            # Get the CronJob to validate it exists and extract the job template
+            cronjob = self.batch_v1.read_namespaced_cron_job(
+                name=cronjob_name, namespace=namespace
+            )
+
+            # Validate this is one of our CronJobs
+            labels = cronjob.metadata.labels or {}
+            if labels.get("app") != "nkp-cluster-cleaner":
+                return {
+                    "success": False,
+                    "error": f"CronJob {cronjob_name} is not managed by nkp-cluster-cleaner",
+                }
+
+            # Generate a unique job name based on the cronjob name and timestamp
+            date_str = datetime.now().strftime("%Y%m%d%H%M%S")
+            job_name = f"{cronjob_name}-manual-{date_str}"[:63]
+
+            # Use the CronJob's job template directly and add owner reference
+            import copy
+            from kubernetes.client import V1OwnerReference
+
+            job_template = copy.deepcopy(cronjob.spec.job_template)
+            job_template.metadata.name = job_name
+            job_template.metadata.namespace = namespace
+
+            # Add owner reference to link back to the CronJob
+            owner_ref = V1OwnerReference(
+                api_version="batch/v1",
+                kind="CronJob",
+                name=cronjob_name,
+                uid=cronjob.metadata.uid,
+            )
+            job_template.metadata.owner_references = [owner_ref]
+
+            # Add manual trigger tracking
+            if not job_template.metadata.labels:
+                job_template.metadata.labels = {}
+            job_template.metadata.labels["trigger"] = "manual"
+
+            # Create the Job using the template
+            job = self.batch_v1.create_namespaced_job(
+                namespace=namespace, body=job_template
+            )
+
+            return {
+                "success": True,
+                "job_name": job.metadata.name,
+                "cronjob_name": cronjob_name,
+                "namespace": namespace,
+                "message": f"Successfully triggered {cronjob_name}",
+            }
+
+        except ApiException as e:
+            error_msg = f"Failed to trigger CronJob {cronjob_name}: {e}"
+            print(f"{Fore.RED}{error_msg}{Style.RESET_ALL}")
+            return {"success": False, "error": error_msg}
+        except Exception as e:
+            error_msg = f"Unexpected error triggering CronJob {cronjob_name}: {e}"
+            print(f"{Fore.RED}{error_msg}{Style.RESET_ALL}")
+            return {"success": False, "error": error_msg}
+
     def get_all_scheduled_tasks_summary(self, namespace: str = "kommander") -> Dict:
         """
         Get a  summary of all scheduled tasks.
