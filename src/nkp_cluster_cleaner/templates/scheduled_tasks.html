@@ -556,5 +556,10 @@
     
     // Log when data was loaded
     console.log("Scheduled tasks data loaded at: {{ refresh_time }}");
+    
+    // Auto-refresh page every 30 seconds
+    setTimeout(() => {
+        window.location.reload();
+    }, 30000);
 </script>
 {% endblock %}
