@@ -1,0 +1,32 @@
+name: Catalog Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'applications/**'
+      - '.github/workflows/catalog.yml'
+  push:
+    branches:
+      - main
+      - 'feature/*'
+    paths:
+      - 'applications/**'
+
+jobs:
+  validate-catalog:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate catalog repository
+        run: |
+          docker run --rm \
+            --entrypoint /opt/nkp/nkp \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            mesosphere/nkp-distributor-linux:v2.16.0 \
+            validate catalog-repository
