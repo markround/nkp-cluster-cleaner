@@ -1,4 +1,4 @@
-name: Catalog Validation
+name: Catalog Packaging
 
 on:
   pull_request:
