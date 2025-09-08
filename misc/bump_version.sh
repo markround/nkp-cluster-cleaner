@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-if [ $# -ne 2 ]; then
+if [ $# -ne 1 ]; then
     echo "Usage: $0 <new_version>"
     echo "Example: $0 0.9.1"
     exit 1
 fi
 
 OLD_VERSION="$(cat src/nkp_cluster_cleaner/__init__.py | grep __version__ | cut -d\" -f2)"
-NEW_VERSION="$2"
+NEW_VERSION="$1"
 
 FILES=(
   README.md
@@ -19,6 +19,7 @@ FILES=(
   services/nkp-cluster-cleaner/$OLD_VERSION/helm.yaml
   services/nkp-cluster-cleaner/$OLD_VERSION/defaults/cm.yaml
   src/nkp_cluster_cleaner/__init__.py
+  applications/nkp-cluster-cleaner/$OLD_VERSION/helmrelease/helmrelease.yaml
 )
 
 
@@ -39,6 +40,7 @@ for file in "${FILES[@]}"; do
     fi
 done
 
+mv applications/nkp-cluster-cleaner/$OLD_VERSION applications/nkp-cluster-cleaner/$NEW_VERSION
 mv services/nkp-cluster-cleaner/$OLD_VERSION services/nkp-cluster-cleaner/$NEW_VERSION
 
 git add .
