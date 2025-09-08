@@ -154,7 +154,7 @@ jobs:
           
           # Push the chart to GHCR as OCI artifact
           CHART_FILE="nkp-cluster-cleaner-${{ steps.extract_version.outputs.version }}.tgz"
-          OCI_REGISTRY="ghcr.io/$nkp-cluster-cleaner/helm"
+          OCI_REGISTRY="ghcr.io/${{ github.repository_owner }}/helm"
           
           echo "Pushing OCI chart to $OCI_REGISTRY:${{ steps.extract_version.outputs.version }}"
           
@@ -168,9 +168,9 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Chart:** nkp-cluster-cleaner" >> $GITHUB_STEP_SUMMARY
           echo "**Version:** ${{ steps.extract_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Registry:** ghcr.io/$nkp-cluster-cleaner/helm" >> $GITHUB_STEP_SUMMARY
+          echo "**Registry:** ghcr.io/${{ github.repository_owner }}/helm" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Installation Commands:" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "helm install nkp-cluster-cleaner oci://ghcr.io/$nkp-cluster-cleaner/helm --version ${{ steps.extract_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "helm install nkp-cluster-cleaner oci://ghcr.io/${{ github.repository_owner }}/helm --version ${{ steps.extract_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
