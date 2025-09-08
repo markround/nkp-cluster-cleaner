@@ -1,23 +1,15 @@
 name: Catalog Packaging
 
 on:
-  pull_request:
-    branches:
-      - main
-    paths:
-      - 'applications/**'
-      - '.github/workflows/catalog.yml'
-  push:
-    branches:
-      - main
-      - 'feature/*'
-    paths:
-      - 'applications/**'
-      - '.github/workflows/catalog.yml'
+  workflow_run:
+    workflows: ["Publish Helm Chart"]
+    types:
+      - completed
 
 jobs:
   validate-catalog:
     runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
     
     steps:
       - name: Checkout repository
