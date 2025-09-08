@@ -14,6 +14,14 @@ The Helm Chart used by the application will also install a CronJob to handle the
 
 ## Installation
 
+### NKP > 2.16
+
+```bash
+# TODO
+```
+
+### NKP < 2.16
+
 To install the custom catalog, run the following command:
 
 ```bash
