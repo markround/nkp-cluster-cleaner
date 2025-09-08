@@ -51,6 +51,9 @@ jobs:
   push-catalog-bundle:
     runs-on: ubuntu-latest
     needs: create-catalog-bundle
+    permissions:
+      contents: read
+      packages: write
     
     steps:
       - name: Checkout repository
