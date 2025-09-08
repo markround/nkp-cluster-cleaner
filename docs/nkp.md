@@ -14,6 +14,17 @@ The Helm Chart used by the application will also install a CronJob to handle the
 
 ## Installation
 
+### NKP > 2.16
+
+```bash
+nkp create catalog-application \
+  --url oci://registry.lab.markround.com/library/nkp-cluster-cleaner/nkp-cluster-cleaner \
+  --tag 0.13.9 \
+  --workspace kommander-workspace
+```
+
+### NKP < 2.16
+
 To install the custom catalog, run the following command:
 
 ```bash

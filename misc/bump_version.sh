@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 if [ $# -ne 2 ]; then
-    echo "Usage: $0 <old_version> <new_version>"
-    echo "Example: $0 0.9.0 0.9.1"
+    echo "Usage: $0 <new_version>"
+    echo "Example: $0 0.9.1"
     exit 1
 fi
 
-OLD_VERSION="$1"
+OLD_VERSION="$(cat src/nkp_cluster_cleaner/__init__.py | grep __version__ | cut -d\" -f2)"
 NEW_VERSION="$2"
 
 FILES=(

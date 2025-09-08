@@ -31,3 +31,20 @@ jobs:
             -w /workspace \
             mesosphere/nkp-distributor-linux:v2.16.0 \
             validate catalog-repository
+
+  create-catalog-bundle:
+    runs-on: ubuntu-latest
+    needs: validate-catalog
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create catalog bundle
+        run: |
+          docker run --rm \
+            --entrypoint /opt/nkp/nkp \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            mesosphere/nkp-distributor-linux:v2.16.0 \
+            create catalog-bundle --output-file nkp-cluster-cleaner.tar
