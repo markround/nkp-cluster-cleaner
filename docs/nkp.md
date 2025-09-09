@@ -36,7 +36,12 @@ nkp create catalog nkp-cluster-cleaner \
     --url https://github.com/markround/nkp-cluster-cleaner
 ```
 
-You can then select the application in the Management Cluster Workspace and enable it. After it has been deployed, the dashboard can be accessed in the usual way, e.g. by browsing to the Management Cluster and selecting the Application Dashboards tab:
+You can then select the application in the Management Cluster Workspace and enable it. 
+
+> [!NOTE]
+> In NKP 2.16, the application may be available in other workspaces. Only enable the application in the Management Cluster Workspace - It will **not** work in any other workspace, and can only run on the Management Cluster. 
+
+After it has been deployed, the dashboard can be accessed in the usual way, e.g. by browsing to the Management Cluster and selecting the Applications tab (or "Application Dashboards" in older releases):
 
 <img src="/docs/dashboard.png" width="400">
 
