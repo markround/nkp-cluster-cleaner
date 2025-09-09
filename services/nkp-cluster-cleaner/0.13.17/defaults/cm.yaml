@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: nkp-cluster-cleaner-0.13.16-mdr-defaults
+  name: nkp-cluster-cleaner-0.13.17-mdr-defaults
   namespace: kommander
 data:
   values.yaml: |
