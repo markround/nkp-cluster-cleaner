@@ -36,8 +36,17 @@ git checkout 0.13.17
 helm install -n kommander nkp-cluster-cleaner ./charts/nkp-cluster-cleaner
 ```
 
+### From OCI registry
+
+You can also install from an OCI-based registry:
+
+```bash
+helm -n kommander nkp-cluster-cleaner oci://ghcr.io/markround/helm/nkp-cluster-cleaner --version 0.13.17
+```
+
 > [!NOTE]
-> This is the approach used when installing as a [NKP application](nkp.md). The repository is checked out at a specific tag, and the bundled chart is used without needing to connect to an external Helm repository.
+> Prior to Helm v3.8.0, OCI support is experimental and must be enabled. For more information, see [https://helm.sh/docs/topics/registries/](https://helm.sh/docs/topics/registries/)
+
 
 ### Version-Specific Installation
 To install a specific version from the Helm repository:

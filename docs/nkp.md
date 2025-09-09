@@ -14,7 +14,9 @@ The Helm Chart used by the application will also install a CronJob to handle the
 
 ## Installation
 
-### NKP > 2.16
+### NKP 2.16 or later
+
+The application is available as a OCI catalog-application bundle, introduced in NKP v2.16. If you are running 2.16 or later you can run:
 
 ```bash
 nkp create catalog-application nkp-cluster-cleaner \
@@ -23,9 +25,9 @@ nkp create catalog-application nkp-cluster-cleaner \
   --url oci://ghcr.io/markround/catalog/nkp-cluster-cleaner
 ```
 
-### NKP < 2.16
+### NKP 2.15 or earlier
 
-To install the custom catalog, run the following command:
+To install the custom catalog on NKP v2.15 and earlier, run the following command:
 
 ```bash
 nkp create catalog nkp-cluster-cleaner \
@@ -56,6 +58,16 @@ For a full reference of the Helm values, see the included [Chart documentation](
 
 If you have an old version of the application installed, you can upgrade to the current version by first updating the catalog repository to point to the latest release:
 
+### NKP 2.16 or later
+```bash
+kubectl patch \
+  --type merge \
+  -n kommander \
+  ocirepository catalog-nkp-cluster-cleaner \
+  --patch '{"spec": {"ref":{"tag":"0.13.17"}}}'
+```
+
+### NKP 2.15 or earlier
 ```bash
 kubectl patch \
   --type merge \
@@ -64,7 +76,9 @@ kubectl patch \
   --patch '{"spec": {"ref":{"tag":"0.13.17"}}}'
 ```
 
-And then updating your AppDeployment to the latest release:
+### All Versions
+
+You can then update your AppDeployment to the latest release to complete the upgrade:
 
 ```bash
 kubectl patch \
