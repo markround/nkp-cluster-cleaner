@@ -16,7 +16,7 @@ The Helm Chart used by the application will also install a CronJob to handle the
 
 ### NKP 2.16 or later
 
-The application is available as a OCI catalog-application bundle, introduced in NKP v2.16. If you are running 2.16 or later you can run:
+The application is available as an OCI catalog-application bundle, introduced in NKP v2.16. If you are running 2.16 or later you can run:
 
 ```bash
 nkp create catalog-application nkp-cluster-cleaner \
