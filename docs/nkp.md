@@ -17,7 +17,10 @@ The Helm Chart used by the application will also install a CronJob to handle the
 ### NKP > 2.16
 
 ```bash
-# TODO
+nkp create catalog-application nkp-cluster-cleaner \
+  --workspace kommander-workspace \
+  --tag 0.13.15 \
+  --url oci://ghcr.io/markround/catalog/nkp-cluster-cleaner
 ```
 
 ### NKP < 2.16

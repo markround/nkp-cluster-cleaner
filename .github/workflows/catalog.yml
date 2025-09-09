@@ -24,7 +24,7 @@ jobs:
             mesosphere/nkp-distributor-linux:v2.16.0 \
             validate catalog-repository
 
-  # Note the use of /mdr as the volume path, this is because the
+  # Note the use of /catalog as the volume path, this is because the
   # nkp create catalog commands use the current working directory as
   # a project name.
   create-catalog-bundle:
@@ -39,8 +39,8 @@ jobs:
         run: |
           docker run --rm \
             --entrypoint /opt/nkp/nkp \
-            -v ${{ github.workspace }}:/mdr \
-            -w /mdr \
+            -v ${{ github.workspace }}:/catalog \
+            -w /catalog \
             mesosphere/nkp-distributor-linux:v2.16.0 \
             create catalog-bundle --output-file nkp-cluster-cleaner.tar
 
@@ -71,10 +71,10 @@ jobs:
         run: |
           docker run --rm \
             --entrypoint /opt/nkp/nkp \
-            -v ${{ github.workspace }}:/mdr \
-            -w /mdr \
+            -v ${{ github.workspace }}:/catalog \
+            -w /catalog \
             mesosphere/nkp-distributor-linux:v2.16.0 \
             push bundle --bundle nkp-cluster-cleaner.tar \
-              --to-registry ghcr.io/markround/catalog \
+              --to-registry ghcr.io/markround \
               --to-registry-username ${{ github.actor }} \
               --to-registry-password ${{ secrets.GITHUB_TOKEN }}
