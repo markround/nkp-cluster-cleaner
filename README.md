@@ -34,7 +34,7 @@ You can however run the application from a Docker container or direct from the C
 
 ## Strategy
 - Any cluster without an `expires` label will be deleted.
-- Any cluster that is older than the value specified in the `expires` label will be deleted. 
+- Any cluster that is older than the value specified in the `expires` label will be deleted.
   - This label takes values of the format `n<unit>` , where unit is one of:
     - `h` - Hours
     - `d` - Days
@@ -46,6 +46,19 @@ You can however run the application from a Docker container or direct from the C
 
 > [!NOTE]
 > The default for both the CLI tool and the NKP Application is to run in "dry-run" mode, and will just show what _would_ be deleted. To actually delete the clusters you must pass in the `--delete` flag to the `delete-clusters` command, or explicitly enable the `deletion.delete` value in the Helm chart / NKP application.
+
+### Grace Period
+Newly created clusters can be given a grace period during which they will not be deleted or generate notifications, even if they are missing required labels or have already expired. This gives cluster creators time to properly label their clusters after creation.
+
+- **CLI**: Use the `--grace` flag with commands like `list-clusters`, `delete-clusters`, `notify`, and `serve`
+  ```bash
+  nkp-cluster-cleaner list-clusters --grace 2h
+  nkp-cluster-cleaner delete-clusters --grace 4h --delete
+  ```
+- **Helm Chart**: The default grace period is **2 hours** and can be customized via `app.gracePeriod` in values.yaml
+- **Environment Variable**: Set `GRACE=2h` when running in containers
+
+The grace period uses the same time format as the `expires` label (`1h`, `4h`, `1d`, `2w`, etc.). Clusters within the grace period will appear in the "excluded clusters" list with the reason "Cluster is within grace period".
 
 ### Protected clusters
 The management cluster is always excluded from deletion, and a configuration file can be provided that accepts a list of regex-based namespaces or cluster names that will be excluded. For example:
@@ -131,9 +144,10 @@ Each variable accepted is simply the flag name, converted to uppercase and with 
 
 | CLI flag example | Environment variable equivalent |
 | -----------------|-------------------------------- |
-| `--config`       | `CONFIG`                        | 
-| `--critical-threshold` | `CRITICAL_THRESHOLD`      | 
-| `--slack-icon-emoji` | `SLACK_ICON_EMOJI`          | 
+| `--config`       | `CONFIG`                        |
+| `--grace`        | `GRACE`                         |
+| `--critical-threshold` | `CRITICAL_THRESHOLD`      |
+| `--slack-icon-emoji` | `SLACK_ICON_EMOJI`          |
 
 ### Web interface
 There is a bundled web interface that displays the cluster deletion status, protection rules, analytics and general configuration. Start the built-in Flask-based webserver with the `serve` command that takes the usual arguments to specify port and bind host etc:
