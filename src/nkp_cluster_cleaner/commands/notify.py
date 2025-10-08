@@ -199,6 +199,7 @@ def execute_notify_command(
     namespace: Optional[str],
     warning_threshold: int,
     critical_threshold: int,
+    grace: Optional[str] = None,
     notify_backend: Optional[str] = None,
     redis_host: str = "redis",
     redis_port: int = 6379,
@@ -216,6 +217,7 @@ def execute_notify_command(
         namespace: Namespace to limit operation to
         warning_threshold: Warning threshold percentage
         critical_threshold: Critical threshold percentage
+        grace: Grace period for newly created clusters
         notify_backend: Notification backend to use (slack, etc.)
         redis_host: Redis host for notification history
         redis_port: Redis port
@@ -274,10 +276,15 @@ def execute_notify_command(
             )
             raise click.Abort()
 
+    if grace:
+        click.echo(
+            f"{Fore.CYAN}Grace period: {grace} (clusters younger than this will not receive notifications){Style.RESET_ALL}"
+        )
+
     try:
         # Initialize configuration and notification manager
         config_manager = ConfigManager(config) if config else ConfigManager()
-        notification_manager = NotificationManager(kubeconfig, config_manager)
+        notification_manager = NotificationManager(kubeconfig, config_manager, grace_period=grace)
 
         # Clean up stale notifications first
         # This can happen if e.g. a cluster was missing tags, a notification got sent, and the user then
