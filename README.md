@@ -105,7 +105,7 @@ Newly created clusters can be given a grace period during which they will not be
 
   ```bash
   nkp-cluster-cleaner list-clusters --grace 2h
-  nkp-cluster-cleaner delete-clusters --grace 4h --delete
+  GRACE=4h nkp-cluster-cleaner delete-clusters
   ```
 
 The grace period uses the same time format as the `expires` label (`1h`, `4h`, `1d`, `2w`, etc.). Clusters within the grace period will appear in the "excluded clusters" list with the reason "Cluster is within grace period".
