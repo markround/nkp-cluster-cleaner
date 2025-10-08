@@ -249,9 +249,18 @@ class ClusterManager:
                         remaining_time = grace_end_time - current_time
                         days_remaining = remaining_time.days
                         hours_remaining = remaining_time.seconds // 3600
-                        if days_remaining > 0:
+
+                        # Format time remaining string
+                        if days_remaining > 1:
                             time_remaining = f"{days_remaining}d"
+                        elif days_remaining == 1:
+                            # Show "1d Xh" for better precision when exactly 1 day
+                            if hours_remaining > 0:
+                                time_remaining = f"1d {hours_remaining}h"
+                            else:
+                                time_remaining = "1d"
                         else:
+                            # Less than a day - just show hours
                             time_remaining = f"{hours_remaining}h"
                         return False, f"Cluster is within grace period (grace period ends in ~{time_remaining})"
                 except ValueError as e:
