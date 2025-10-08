@@ -101,7 +101,7 @@ These can also be viewed in the Web UI, along with the other matching rules and 
 ### Grace Period
 Newly created clusters can be given a grace period during which they will not be deleted or generate notifications, even if they are missing required labels or have already expired. This gives cluster creators time to properly label their clusters after creation.
 
-- **CLI**: Use the `--grace` flag with commands like `list-clusters`, `delete-clusters`, `notify`, and `serve`. For example:
+- **CLI**: Use the `--grace` flag or `GRACE` environment variable with commands like `list-clusters`, `delete-clusters`, `notify`, and `serve`. For example:
 
   ```bash
   nkp-cluster-cleaner list-clusters --grace 2h
