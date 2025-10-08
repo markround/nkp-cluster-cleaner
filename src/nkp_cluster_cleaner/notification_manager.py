@@ -31,7 +31,9 @@ class NotificationManager:
         """
         self.kubeconfig_path = kubeconfig_path
         self.config_manager = config_manager or ConfigManager()
-        self.cluster_manager = ClusterManager(kubeconfig_path, config_manager, grace_period=grace_period)
+        self.cluster_manager = ClusterManager(
+            kubeconfig_path, config_manager, grace_period=grace_period
+        )
 
     def get_clusters_for_notification(
         self,

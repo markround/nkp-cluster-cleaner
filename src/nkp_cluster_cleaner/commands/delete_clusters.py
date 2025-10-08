@@ -99,7 +99,9 @@ def execute_delete_clusters_command(
     if notify_backend:
         try:
             config_manager = ConfigManager(config) if config else ConfigManager()
-            notification_manager = NotificationManager(kubeconfig, config_manager, grace_period=grace)
+            notification_manager = NotificationManager(
+                kubeconfig, config_manager, grace_period=grace
+            )
             click.echo(
                 f"{Fore.CYAN}Notification backend: {notify_backend}{Style.RESET_ALL}"
             )

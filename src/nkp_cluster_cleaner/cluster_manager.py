@@ -235,7 +235,9 @@ class ClusterManager:
             if creation_timestamp:
                 try:
                     # Calculate grace period end time
-                    grace_end_time = self._parse_time_period(self.grace_period, creation_timestamp)
+                    grace_end_time = self._parse_time_period(
+                        self.grace_period, creation_timestamp
+                    )
                     current_time = datetime.now()
 
                     # If cluster is still within grace period, exclude it
@@ -256,7 +258,10 @@ class ClusterManager:
                         else:
                             # Less than a day - just show hours
                             time_remaining = f"{hours_remaining}h"
-                        return False, f"Cluster is within grace period (grace period ends in ~{time_remaining})"
+                        return (
+                            False,
+                            f"Cluster is within grace period (grace period ends in ~{time_remaining})",
+                        )
                 except ValueError as e:
                     print(
                         f"{Fore.YELLOW}Warning: Could not parse grace period or creation timestamp for {kc_name}: {e}{Style.RESET_ALL}"
@@ -361,9 +366,7 @@ class ClusterManager:
                 )
                 return False
 
-    def _parse_time_period(
-        self, time_period: str, creation_timestamp: str
-    ) -> datetime:
+    def _parse_time_period(self, time_period: str, creation_timestamp: str) -> datetime:
         """
         Parse time period value and calculate target time based on creation timestamp.
 

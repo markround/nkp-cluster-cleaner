@@ -95,7 +95,7 @@ def create_app(
         return ClusterManager(
             app.config["KUBECONFIG_PATH"],
             config_manager,
-            grace_period=app.config["GRACE_PERIOD"]
+            grace_period=app.config["GRACE_PERIOD"],
         )
 
     def get_cronjob_manager():
@@ -545,7 +545,7 @@ def create_app(
             notification_manager = NotificationManager(
                 app.config["KUBECONFIG_PATH"],
                 config_manager,
-                grace_period=app.config["GRACE_PERIOD"]
+                grace_period=app.config["GRACE_PERIOD"],
             )
             notification_history = NotificationHistory(
                 app.config["REDIS_HOST"],
@@ -783,7 +783,9 @@ def run_server(
         f"📋 Configuration: kubeconfig={kubeconfig_path or 'default'}, config={config_path or 'none'}"
     )
     if grace_period:
-        print(f"⏰ Grace period: {grace_period} (clusters younger than this will be excluded)")
+        print(
+            f"⏰ Grace period: {grace_period} (clusters younger than this will be excluded)"
+        )
     if not no_redis:
         print(
             f"📊 Analytics storage: Redis at {redis_host}:{redis_port} (db {redis_db})"

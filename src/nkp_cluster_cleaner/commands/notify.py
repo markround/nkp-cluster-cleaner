@@ -284,7 +284,9 @@ def execute_notify_command(
     try:
         # Initialize configuration and notification manager
         config_manager = ConfigManager(config) if config else ConfigManager()
-        notification_manager = NotificationManager(kubeconfig, config_manager, grace_period=grace)
+        notification_manager = NotificationManager(
+            kubeconfig, config_manager, grace_period=grace
+        )
 
         # Clean up stale notifications first
         # This can happen if e.g. a cluster was missing tags, a notification got sent, and the user then
