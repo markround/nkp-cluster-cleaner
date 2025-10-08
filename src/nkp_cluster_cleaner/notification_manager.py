@@ -19,6 +19,7 @@ class NotificationManager:
         self,
         kubeconfig_path: Optional[str] = None,
         config_manager: Optional[ConfigManager] = None,
+        grace_period: Optional[str] = None,
     ):
         """
         Initialize the notification manager.
@@ -26,10 +27,13 @@ class NotificationManager:
         Args:
             kubeconfig_path: Path to kubeconfig file. If None, uses default locations.
             config_manager: Configuration manager instance
+            grace_period: Grace period for newly created clusters (e.g., "1d", "4h", "2w", "1y")
         """
         self.kubeconfig_path = kubeconfig_path
         self.config_manager = config_manager or ConfigManager()
-        self.cluster_manager = ClusterManager(kubeconfig_path, config_manager)
+        self.cluster_manager = ClusterManager(
+            kubeconfig_path, config_manager, grace_period=grace_period
+        )
 
     def get_clusters_for_notification(
         self,
@@ -99,7 +103,7 @@ class NotificationManager:
 
                     if creation_timestamp:
                         try:
-                            expiry_time = self.cluster_manager._parse_expires_label(
+                            expiry_time = self.cluster_manager._parse_time_period(
                                 expires_value, creation_timestamp
                             )
                             # Expired clusters are 100% elapsed
@@ -138,7 +142,7 @@ class NotificationManager:
 
             try:
                 # Parse the expires label and calculate elapsed percentage
-                expiry_time = self.cluster_manager._parse_expires_label(
+                expiry_time = self.cluster_manager._parse_time_period(
                     expires_value, creation_timestamp
                 )
 

@@ -135,13 +135,19 @@ def cli():
     is_flag=True,
     help="Skip showing excluded clusters (only show clusters for deletion)",
 )
-def list_clusters(kubeconfig, config, namespace, no_exclusions):
+@click.option(
+    "--grace",
+    envvar="GRACE",
+    help="Grace period for newly created clusters (e.g., 1d, 4h, 2w, 1y). Clusters younger than this will not be considered for deletion.",
+)
+def list_clusters(kubeconfig, config, namespace, no_exclusions, grace):
     """List CAPI clusters that match deletion criteria."""
     execute_list_clusters_command(
         kubeconfig=kubeconfig,
         config=config,
         namespace=namespace,
         no_exclusions=no_exclusions,
+        grace=grace,
     )
 
 
@@ -157,6 +163,11 @@ def list_clusters(kubeconfig, config, namespace, no_exclusions):
     is_flag=True,
     help="Actually delete clusters (default: dry-run mode)",
 )
+@click.option(
+    "--grace",
+    envvar="GRACE",
+    help="Grace period for newly created clusters (e.g., 1d, 4h, 2w, 1y). Clusters younger than this will not be deleted.",
+)
 @notification_backend_option
 @slack_options
 @redis_options
@@ -165,6 +176,7 @@ def delete_clusters(
     config,
     namespace,
     delete,
+    grace,
     notify_backend,
     redis_host,
     redis_port,
@@ -182,6 +194,7 @@ def delete_clusters(
         config=config,
         namespace=namespace,
         delete=delete,
+        grace=grace,
         notify_backend=notify_backend,
         redis_host=redis_host,
         redis_port=redis_port,
@@ -212,6 +225,11 @@ def delete_clusters(
     type=int,
     help="Critical threshold percentage (0-100) of time elapsed (default: 95)",
 )
+@click.option(
+    "--grace",
+    envvar="GRACE",
+    help="Grace period for newly created clusters (e.g., 1d, 4h, 2w, 1y). Clusters younger than this will not receive notifications.",
+)
 @notification_backend_option
 @slack_options
 @redis_options
@@ -221,6 +239,7 @@ def notify(
     namespace,
     warning_threshold,
     critical_threshold,
+    grace,
     notify_backend,
     redis_host,
     redis_port,
@@ -239,6 +258,7 @@ def notify(
         namespace=namespace,
         warning_threshold=warning_threshold,
         critical_threshold=critical_threshold,
+        grace=grace,
         notify_backend=notify_backend,
         redis_host=redis_host,
         redis_port=redis_port,
@@ -284,6 +304,11 @@ def generate_config(output_file):
     default="",
     help="URL prefix for all routes (e.g., /foo for /foo/clusters)",
 )
+@click.option(
+    "--grace",
+    envvar="GRACE",
+    help="Grace period for newly created clusters (e.g., 1d, 4h, 2w, 1y). Clusters younger than this will be excluded from the web UI.",
+)
 @redis_options
 @click.option(
     "--no-redis",
@@ -298,6 +323,7 @@ def serve(
     port,
     debug,
     prefix,
+    grace,
     redis_host,
     redis_port,
     redis_db,
@@ -316,6 +342,7 @@ def serve(
             kubeconfig_path=kubeconfig,
             config_path=config,
             url_prefix=prefix,
+            grace_period=grace,
             redis_host=redis_host,
             redis_port=redis_port,
             redis_db=redis_db,

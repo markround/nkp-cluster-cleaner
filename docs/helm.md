@@ -107,6 +107,29 @@ app:
 
 You can modify this to suit your requirements. See the main [README.md](../README.md) for details on creating your own [protection rules](../README.md#protected-clusters) or adding [required labels](../README.md#extra-labels).
 
+#### Grace Period
+
+By default, newly created clusters have a **2 hour grace period** during which they will not be deleted or generate notifications, even if they are missing required labels or have already expired. This gives cluster creators time to properly label their clusters after creation.
+
+The grace period can be customized or disabled:
+
+```yaml
+app:
+  # Set a custom grace period (examples: 1h, 4h, 1d, 2w)
+  gracePeriod: "4h"
+
+  # Or disable the grace period entirely
+  gracePeriod: ""
+```
+
+The grace period applies to:
+- **Deletion checks**: Clusters within the grace period will not be deleted
+- **Notifications**: No warning or critical notifications will be sent for clusters within the grace period
+- **Web UI**: Clusters within the grace period appear in the "excluded clusters" list with the reason "Cluster is within grace period"
+
+> [!NOTE]
+> The grace period is calculated from the cluster's `creationTimestamp`. Clusters that have proper labels are not affected by the grace period - they will still be protected based on their expiration date.
+
 ### Deletion Cron Job
 The Helm chart will create a daily CronJob to handle the deletion of clusters. By default, this is set to run daily at midnight in "dry-run" mode, so will not actually delete anything without explicit configuration. To enable the deletion, set the following value:
 

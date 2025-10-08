@@ -18,6 +18,7 @@ class ClusterManager:
         self,
         kubeconfig_path: Optional[str] = None,
         config_manager: Optional[ConfigManager] = None,
+        grace_period: Optional[str] = None,
     ):
         """
         Initialize the cluster manager.
@@ -25,9 +26,11 @@ class ClusterManager:
         Args:
             kubeconfig_path: Path to kubeconfig file. If None, uses default locations.
             config_manager: Configuration manager instance
+            grace_period: Grace period for newly created clusters (e.g., "1d", "4h", "2w", "1y")
         """
         self.kubeconfig_path = kubeconfig_path
         self.config_manager = config_manager or ConfigManager()
+        self.grace_period = grace_period
         self._load_config()
 
     def _load_config(self):
@@ -224,6 +227,46 @@ class ClusterManager:
         if self.config_manager.is_cluster_protected(kc_name, kc_namespace):
             return False, f"KommanderCluster {kc_name} is protected by configuration"
 
+        # Check grace period - if cluster is younger than grace period, exclude it
+        if self.grace_period:
+            creation_timestamp = kommander_cluster.get("metadata", {}).get(
+                "creationTimestamp"
+            )
+            if creation_timestamp:
+                try:
+                    # Calculate grace period end time
+                    grace_end_time = self._parse_time_period(
+                        self.grace_period, creation_timestamp
+                    )
+                    current_time = datetime.now()
+
+                    # If cluster is still within grace period, exclude it
+                    if current_time < grace_end_time:
+                        remaining_time = grace_end_time - current_time
+                        days_remaining = remaining_time.days
+                        hours_remaining = remaining_time.seconds // 3600
+
+                        # Format time remaining string
+                        if days_remaining > 1:
+                            time_remaining = f"{days_remaining}d"
+                        elif days_remaining == 1:
+                            # Show "1d Xh" for better precision when exactly 1 day
+                            if hours_remaining > 0:
+                                time_remaining = f"1d {hours_remaining}h"
+                            else:
+                                time_remaining = "1d"
+                        else:
+                            # Less than a day - just show hours
+                            time_remaining = f"{hours_remaining}h"
+                        return (
+                            False,
+                            f"Cluster is within grace period (grace period ends in ~{time_remaining})",
+                        )
+                except ValueError as e:
+                    print(
+                        f"{Fore.YELLOW}Warning: Could not parse grace period or creation timestamp for {kc_name}: {e}{Style.RESET_ALL}"
+                    )
+
         # Get labels from KommanderCluster
         labels = self.get_cluster_labels(kommander_cluster)
 
@@ -247,7 +290,7 @@ class ClusterManager:
             if not creation_timestamp:
                 return True, "Missing creationTimestamp in KommanderCluster metadata"
 
-            expiry_time = self._parse_expires_label(expires_value, creation_timestamp)
+            expiry_time = self._parse_time_period(expires_value, creation_timestamp)
             current_time = datetime.now()
 
             if current_time >= expiry_time:
@@ -323,28 +366,26 @@ class ClusterManager:
                 )
                 return False
 
-    def _parse_expires_label(
-        self, expires_value: str, creation_timestamp: str
-    ) -> datetime:
+    def _parse_time_period(self, time_period: str, creation_timestamp: str) -> datetime:
         """
-        Parse expires label value and calculate actual expiry time based on creation timestamp.
+        Parse time period value and calculate target time based on creation timestamp.
 
         Args:
-            expires_value: String like "1d", "2w", "48h", "1y", etc.
+            time_period: String like "1d", "2w", "48h", "1y", etc.
             creation_timestamp: ISO format timestamp like "2025-06-23T07:04:37Z"
 
         Returns:
-            datetime object representing when the cluster expires
+            datetime object representing the target time (creation + time_period)
 
         Raises:
             ValueError: If format is invalid
         """
         # Remove whitespace
-        expires_value = expires_value.strip()
+        time_period = time_period.strip()
 
         # Parse number and unit
         pattern = r"^(\d+)([dhwy])$"
-        match = re.match(pattern, expires_value.lower())
+        match = re.match(pattern, time_period.lower())
 
         if not match:
             raise ValueError(
@@ -378,7 +419,7 @@ class ClusterManager:
                 f"Invalid creation timestamp format: {creation_timestamp} ({e})"
             )
 
-        # Return creation time plus the delta (when it expires)
+        # Return creation time plus the delta
         return creation_time + delta
 
     def delete_cluster(

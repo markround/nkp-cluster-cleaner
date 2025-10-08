@@ -15,6 +15,7 @@ def execute_list_clusters_command(
     config: Optional[str],
     namespace: Optional[str],
     no_exclusions: bool,
+    grace: Optional[str] = None,
 ):
     """
     Execute the list-clusters command with the given parameters.
@@ -24,6 +25,7 @@ def execute_list_clusters_command(
         config: Path to configuration file
         namespace: Namespace to limit operation to
         no_exclusions: Skip showing excluded clusters
+        grace: Grace period for newly created clusters
     """
     if namespace:
         click.echo(
@@ -34,10 +36,15 @@ def execute_list_clusters_command(
             f"{Fore.BLUE}Listing CAPI clusters for deletion across all namespaces...{Style.RESET_ALL}"
         )
 
+    if grace:
+        click.echo(
+            f"{Fore.CYAN}Grace period: {grace} (clusters younger than this will be excluded){Style.RESET_ALL}"
+        )
+
     try:
         # Initialize configuration and cluster manager
         config_manager = ConfigManager(config) if config else ConfigManager()
-        cluster_manager = ClusterManager(kubeconfig, config_manager)
+        cluster_manager = ClusterManager(kubeconfig, config_manager, grace_period=grace)
 
         # Get all clusters and categorize them
         clusters_to_delete, excluded_clusters = (

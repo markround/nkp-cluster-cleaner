@@ -16,6 +16,7 @@ def execute_delete_clusters_command(
     config: Optional[str],
     namespace: Optional[str],
     delete: bool,
+    grace: Optional[str] = None,
     notify_backend: Optional[str] = None,
     redis_host: str = "redis",
     redis_port: int = 6379,
@@ -32,6 +33,7 @@ def execute_delete_clusters_command(
         config: Path to configuration file
         namespace: Namespace to limit operation to
         delete: Whether to actually delete clusters (False = dry-run)
+        grace: Grace period for newly created clusters
         notify_backend: Notification backend to use (slack, etc.)
         redis_host: Redis host for notification history
         redis_port: Redis port
@@ -86,13 +88,20 @@ def execute_delete_clusters_command(
                 f"{Fore.RED}Deleting CAPI clusters across all namespaces...{Style.RESET_ALL}"
             )
 
+    if grace:
+        click.echo(
+            f"{Fore.CYAN}Grace period: {grace} (clusters younger than this will not be deleted){Style.RESET_ALL}"
+        )
+
     # Initialize notification components if backend is specified
     notification_manager = None
 
     if notify_backend:
         try:
             config_manager = ConfigManager(config) if config else ConfigManager()
-            notification_manager = NotificationManager(kubeconfig, config_manager)
+            notification_manager = NotificationManager(
+                kubeconfig, config_manager, grace_period=grace
+            )
             click.echo(
                 f"{Fore.CYAN}Notification backend: {notify_backend}{Style.RESET_ALL}"
             )
@@ -106,7 +115,7 @@ def execute_delete_clusters_command(
     try:
         # Initialize configuration and cluster manager
         config_manager = ConfigManager(config) if config else ConfigManager()
-        cluster_manager = ClusterManager(kubeconfig, config_manager)
+        cluster_manager = ClusterManager(kubeconfig, config_manager, grace_period=grace)
 
         # Get clusters that match deletion criteria
         clusters_to_delete, excluded_clusters = (

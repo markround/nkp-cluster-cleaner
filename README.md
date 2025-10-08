@@ -34,7 +34,7 @@ You can however run the application from a Docker container or direct from the C
 
 ## Strategy
 - Any cluster without an `expires` label will be deleted.
-- Any cluster that is older than the value specified in the `expires` label will be deleted. 
+- Any cluster that is older than the value specified in the `expires` label will be deleted.
   - This label takes values of the format `n<unit>` , where unit is one of:
     - `h` - Hours
     - `d` - Days
@@ -98,6 +98,18 @@ extra_labels:
 
 These can also be viewed in the Web UI, along with the other matching rules and list of clusters scheduled for deletion.
 
+### Grace Period
+Newly created clusters can be given a grace period during which they will not be deleted or generate notifications, even if they are missing required labels or have already expired. This gives cluster creators time to properly label their clusters after creation.
+
+- **CLI**: Use the `--grace` flag with commands like `list-clusters`, `delete-clusters`, `notify`, and `serve`. For example:
+
+  ```bash
+  nkp-cluster-cleaner list-clusters --grace 2h
+  GRACE=4h nkp-cluster-cleaner delete-clusters
+  ```
+
+The grace period uses the same time format as the `expires` label (`1h`, `4h`, `1d`, `2w`, etc.). Clusters within the grace period will appear in the "excluded clusters" list with the reason "Cluster is within grace period".
+
 ## General Usage
 Although the preferred method of deployment and configuration is as an NKP application, you can still run the tool from the CLI or container image:
 
@@ -131,9 +143,9 @@ Each variable accepted is simply the flag name, converted to uppercase and with 
 
 | CLI flag example | Environment variable equivalent |
 | -----------------|-------------------------------- |
-| `--config`       | `CONFIG`                        | 
-| `--critical-threshold` | `CRITICAL_THRESHOLD`      | 
-| `--slack-icon-emoji` | `SLACK_ICON_EMOJI`          | 
+| `--config`       | `CONFIG`                        |
+| `--critical-threshold` | `CRITICAL_THRESHOLD`      |
+| `--slack-icon-emoji` | `SLACK_ICON_EMOJI`          |
 
 ### Web interface
 There is a bundled web interface that displays the cluster deletion status, protection rules, analytics and general configuration. Start the built-in Flask-based webserver with the `serve` command that takes the usual arguments to specify port and bind host etc:
@@ -152,6 +164,9 @@ Options:
   --debug                Enable debug mode
   --prefix TEXT          URL prefix for all routes (e.g., /foo for
                          /foo/clusters)
+  --grace TEXT           Grace period for newly created clusters (e.g., 1d,
+                         4h, 2w, 1y). Clusters younger than this will be
+                         excluded from the web UI.
   --redis-password TEXT  Redis password for authentication
   --redis-username TEXT  Redis username for authentication
   --redis-db INTEGER     Redis database number (default: 0)

@@ -20,6 +20,7 @@ def create_app(
     kubeconfig_path: Optional[str] = None,
     config_path: Optional[str] = None,
     url_prefix: Optional[str] = None,
+    grace_period: Optional[str] = None,
     redis_host: str = "redis",
     redis_port: int = 6379,
     redis_db: int = 0,
@@ -34,6 +35,7 @@ def create_app(
         kubeconfig_path: Path to kubeconfig file
         config_path: Path to configuration file
         url_prefix: URL prefix for all routes (e.g., '/foo')
+        grace_period: Grace period for newly created clusters (e.g., "1d", "4h", "2w", "1y")
         redis_host: Redis host for analytics data
         redis_port: Redis port
         redis_db: Redis database number
@@ -52,6 +54,7 @@ def create_app(
     # Store configuration in app context
     app.config["KUBECONFIG_PATH"] = kubeconfig_path
     app.config["CONFIG_PATH"] = config_path
+    app.config["GRACE_PERIOD"] = grace_period
     app.config["REDIS_HOST"] = redis_host
     app.config["REDIS_PORT"] = redis_port
     app.config["REDIS_DB"] = redis_db
@@ -89,7 +92,11 @@ def create_app(
             if app.config["CONFIG_PATH"]
             else ConfigManager()
         )
-        return ClusterManager(app.config["KUBECONFIG_PATH"], config_manager)
+        return ClusterManager(
+            app.config["KUBECONFIG_PATH"],
+            config_manager,
+            grace_period=app.config["GRACE_PERIOD"],
+        )
 
     def get_cronjob_manager():
         """Helper to create cronjob manager with current config."""
@@ -127,6 +134,7 @@ def create_app(
             no_redis=app.config["NO_REDIS"],
             kubeconfig_status=kubeconfig_status,
             config_status=config_status,
+            grace_period=app.config["GRACE_PERIOD"],
             version=__version__,
             nkp_version=nkp_version,
         )
@@ -205,6 +213,7 @@ def create_app(
                 kubeconfig_status=kubeconfig_status,
                 config_status=config_status,
                 namespace_filter=namespace_filter,
+                grace_period=app.config["GRACE_PERIOD"],
                 version=__version__,
                 refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 error=None,
@@ -219,6 +228,7 @@ def create_app(
                 kubeconfig_status=app.config["KUBECONFIG_PATH"] or "default",
                 config_status=app.config["CONFIG_PATH"] or "none",
                 namespace_filter=namespace_filter,
+                grace_period=app.config["GRACE_PERIOD"],
                 version=__version__,
                 refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 error=str(e),
@@ -314,6 +324,7 @@ def create_app(
                 excluded_namespace_patterns=excluded_namespace_patterns,
                 extra_labels=extra_labels,
                 kubeconfig_path=kubeconfig_path,
+                grace_period=app.config["GRACE_PERIOD"],
                 version=__version__,
                 config_path=config_path,
             )
@@ -331,6 +342,7 @@ def create_app(
                 excluded_namespace_patterns=[],
                 extra_labels=[],
                 kubeconfig_path=app.config["KUBECONFIG_PATH"],
+                grace_period=app.config["GRACE_PERIOD"],
                 config_path=app.config["CONFIG_PATH"],
                 version=__version__,
                 error=str(e),
@@ -531,7 +543,9 @@ def create_app(
                 else ConfigManager()
             )
             notification_manager = NotificationManager(
-                app.config["KUBECONFIG_PATH"], config_manager
+                app.config["KUBECONFIG_PATH"],
+                config_manager,
+                grace_period=app.config["GRACE_PERIOD"],
             )
             notification_history = NotificationHistory(
                 app.config["REDIS_HOST"],
@@ -588,6 +602,7 @@ def create_app(
                 critical_threshold=critical_threshold,
                 notification_stats=notification_stats,
                 active_notifications=active_notifications,
+                grace_period=app.config["GRACE_PERIOD"],
                 version=__version__,
                 refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 error=None,
@@ -718,6 +733,7 @@ def run_server(
     kubeconfig_path: Optional[str] = None,
     config_path: Optional[str] = None,
     url_prefix: Optional[str] = None,
+    grace_period: Optional[str] = None,
     redis_host: str = "redis",
     redis_port: int = 6379,
     redis_db: int = 0,
@@ -735,6 +751,7 @@ def run_server(
         kubeconfig_path: Path to kubeconfig file
         config_path: Path to configuration file
         url_prefix: URL prefix for all routes
+        grace_period: Grace period for newly created clusters (e.g., "1d", "4h", "2w", "1y")
         redis_host: Redis host for analytics data
         redis_port: Redis port
         redis_db: Redis database number
@@ -747,6 +764,7 @@ def run_server(
         kubeconfig_path,
         config_path,
         url_prefix,
+        grace_period,
         redis_host,
         redis_port,
         redis_db,
@@ -764,6 +782,10 @@ def run_server(
     print(
         f"📋 Configuration: kubeconfig={kubeconfig_path or 'default'}, config={config_path or 'none'}"
     )
+    if grace_period:
+        print(
+            f"⏰ Grace period: {grace_period} (clusters younger than this will be excluded)"
+        )
     if not no_redis:
         print(
             f"📊 Analytics storage: Redis at {redis_host}:{redis_port} (db {redis_db})"
