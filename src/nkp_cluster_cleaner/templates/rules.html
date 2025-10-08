@@ -248,6 +248,27 @@
             <div class="rule-description">Clusters with valid expires labels that have not yet reached expiration</div>
             <div class="rule-example">current_time &lt; (creation + expires_duration)</div>
         </div>
+
+        <!-- Grace Period -->
+        <div class="rule-item">
+            <div class="rule-type">Grace Period
+                <span class="config-status {{ 'status-active' if grace_period else 'status-default' }}">
+                    {{ grace_period if grace_period else 'Not configured' }}
+                </span>
+            </div>
+            <div class="rule-description">
+                {% if grace_period %}
+                    Clusters younger than {{ grace_period }} are excluded from deletion and notifications
+                {% else %}
+                    No grace period configured - all clusters are evaluated immediately upon creation
+                {% endif %}
+            </div>
+            {% if grace_period %}
+                <div class="rule-example">current_time &lt; (creation + grace_period)</div>
+            {% else %}
+                <div class="rule-example">No grace period active</div>
+            {% endif %}
+        </div>
     </div>
 
     <!-- Core Deletion Rules -->

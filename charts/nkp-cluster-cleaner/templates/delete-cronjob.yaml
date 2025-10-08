@@ -29,8 +29,12 @@ spec:
 {{- end }}
             - name: "KUBECONFIG"
               value: "/config/kube/kubeconfig"
-            - name: "CONFIG" 
+            - name: "CONFIG"
               value: "/config/app/config.yaml"
+{{- if .Values.app.gracePeriod }}
+            - name: "GRACE"
+              value: "{{ $.Values.app.gracePeriod }}"
+{{- end }}
 {{- if eq .Values.notifications.enabled true }}
             - name: "REDIS_HOST"
               value: "{{ $.Values.redis.hostname }}"

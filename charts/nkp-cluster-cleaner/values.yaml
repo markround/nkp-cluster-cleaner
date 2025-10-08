@@ -40,6 +40,8 @@ deletion:
 app:
   # -- Secret containing a valid kubeconfig for the management cluster
   kubeconfigSecretRef: kommander-self-attach-kubeconfig
+  # -- Grace period for newly created clusters (e.g., 1d, 4h, 2w, 1y). Clusters younger than this will not be deleted or notified about.
+  gracePeriod: "2h"
   # -- Default set of exclusion rules
   config: |
     excluded_namespace_patterns:
