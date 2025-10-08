@@ -101,7 +101,7 @@ class NotificationManager:
 
                     if creation_timestamp:
                         try:
-                            expiry_time = self.cluster_manager._parse_expires_label(
+                            expiry_time = self.cluster_manager._parse_time_period(
                                 expires_value, creation_timestamp
                             )
                             # Expired clusters are 100% elapsed
@@ -140,7 +140,7 @@ class NotificationManager:
 
             try:
                 # Parse the expires label and calculate elapsed percentage
-                expiry_time = self.cluster_manager._parse_expires_label(
+                expiry_time = self.cluster_manager._parse_time_period(
                     expires_value, creation_timestamp
                 )
 
