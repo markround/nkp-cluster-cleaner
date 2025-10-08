@@ -134,6 +134,7 @@ def create_app(
             no_redis=app.config["NO_REDIS"],
             kubeconfig_status=kubeconfig_status,
             config_status=config_status,
+            grace_period=app.config["GRACE_PERIOD"],
             version=__version__,
             nkp_version=nkp_version,
         )
@@ -212,6 +213,7 @@ def create_app(
                 kubeconfig_status=kubeconfig_status,
                 config_status=config_status,
                 namespace_filter=namespace_filter,
+                grace_period=app.config["GRACE_PERIOD"],
                 version=__version__,
                 refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 error=None,
@@ -226,6 +228,7 @@ def create_app(
                 kubeconfig_status=app.config["KUBECONFIG_PATH"] or "default",
                 config_status=app.config["CONFIG_PATH"] or "none",
                 namespace_filter=namespace_filter,
+                grace_period=app.config["GRACE_PERIOD"],
                 version=__version__,
                 refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 error=str(e),
@@ -321,6 +324,7 @@ def create_app(
                 excluded_namespace_patterns=excluded_namespace_patterns,
                 extra_labels=extra_labels,
                 kubeconfig_path=kubeconfig_path,
+                grace_period=app.config["GRACE_PERIOD"],
                 version=__version__,
                 config_path=config_path,
             )
@@ -338,6 +342,7 @@ def create_app(
                 excluded_namespace_patterns=[],
                 extra_labels=[],
                 kubeconfig_path=app.config["KUBECONFIG_PATH"],
+                grace_period=app.config["GRACE_PERIOD"],
                 config_path=app.config["CONFIG_PATH"],
                 version=__version__,
                 error=str(e),
@@ -538,7 +543,9 @@ def create_app(
                 else ConfigManager()
             )
             notification_manager = NotificationManager(
-                app.config["KUBECONFIG_PATH"], config_manager
+                app.config["KUBECONFIG_PATH"],
+                config_manager,
+                grace_period=app.config["GRACE_PERIOD"]
             )
             notification_history = NotificationHistory(
                 app.config["REDIS_HOST"],
@@ -595,6 +602,7 @@ def create_app(
                 critical_threshold=critical_threshold,
                 notification_stats=notification_stats,
                 active_notifications=active_notifications,
+                grace_period=app.config["GRACE_PERIOD"],
                 version=__version__,
                 refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 error=None,
