@@ -304,6 +304,11 @@ def generate_config(output_file):
     default="",
     help="URL prefix for all routes (e.g., /foo for /foo/clusters)",
 )
+@click.option(
+    "--grace",
+    envvar="GRACE",
+    help="Grace period for newly created clusters (e.g., 1d, 4h, 2w, 1y). Clusters younger than this will be excluded from the web UI.",
+)
 @redis_options
 @click.option(
     "--no-redis",
@@ -318,6 +323,7 @@ def serve(
     port,
     debug,
     prefix,
+    grace,
     redis_host,
     redis_port,
     redis_db,
@@ -336,6 +342,7 @@ def serve(
             kubeconfig_path=kubeconfig,
             config_path=config,
             url_prefix=prefix,
+            grace_period=grace,
             redis_host=redis_host,
             redis_port=redis_port,
             redis_db=redis_db,
