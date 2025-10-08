@@ -47,19 +47,6 @@ You can however run the application from a Docker container or direct from the C
 > [!NOTE]
 > The default for both the CLI tool and the NKP Application is to run in "dry-run" mode, and will just show what _would_ be deleted. To actually delete the clusters you must pass in the `--delete` flag to the `delete-clusters` command, or explicitly enable the `deletion.delete` value in the Helm chart / NKP application.
 
-### Grace Period
-Newly created clusters can be given a grace period during which they will not be deleted or generate notifications, even if they are missing required labels or have already expired. This gives cluster creators time to properly label their clusters after creation.
-
-- **CLI**: Use the `--grace` flag with commands like `list-clusters`, `delete-clusters`, `notify`, and `serve`
-  ```bash
-  nkp-cluster-cleaner list-clusters --grace 2h
-  nkp-cluster-cleaner delete-clusters --grace 4h --delete
-  ```
-- **Helm Chart**: The default grace period is **2 hours** and can be customized via `app.gracePeriod` in values.yaml
-- **Environment Variable**: Set `GRACE=2h` when running in containers
-
-The grace period uses the same time format as the `expires` label (`1h`, `4h`, `1d`, `2w`, etc.). Clusters within the grace period will appear in the "excluded clusters" list with the reason "Cluster is within grace period".
-
 ### Protected clusters
 The management cluster is always excluded from deletion, and a configuration file can be provided that accepts a list of regex-based namespaces or cluster names that will be excluded. For example:
 
@@ -111,6 +98,18 @@ extra_labels:
 
 These can also be viewed in the Web UI, along with the other matching rules and list of clusters scheduled for deletion.
 
+### Grace Period
+Newly created clusters can be given a grace period during which they will not be deleted or generate notifications, even if they are missing required labels or have already expired. This gives cluster creators time to properly label their clusters after creation.
+
+- **CLI**: Use the `--grace` flag with commands like `list-clusters`, `delete-clusters`, `notify`, and `serve`. For example:
+
+  ```bash
+  nkp-cluster-cleaner list-clusters --grace 2h
+  nkp-cluster-cleaner delete-clusters --grace 4h --delete
+  ```
+
+The grace period uses the same time format as the `expires` label (`1h`, `4h`, `1d`, `2w`, etc.). Clusters within the grace period will appear in the "excluded clusters" list with the reason "Cluster is within grace period".
+
 ## General Usage
 Although the preferred method of deployment and configuration is as an NKP application, you can still run the tool from the CLI or container image:
 
@@ -145,7 +144,6 @@ Each variable accepted is simply the flag name, converted to uppercase and with 
 | CLI flag example | Environment variable equivalent |
 | -----------------|-------------------------------- |
 | `--config`       | `CONFIG`                        |
-| `--grace`        | `GRACE`                         |
 | `--critical-threshold` | `CRITICAL_THRESHOLD`      |
 | `--slack-icon-emoji` | `SLACK_ICON_EMOJI`          |
 
@@ -166,6 +164,9 @@ Options:
   --debug                Enable debug mode
   --prefix TEXT          URL prefix for all routes (e.g., /foo for
                          /foo/clusters)
+  --grace TEXT           Grace period for newly created clusters (e.g., 1d,
+                         4h, 2w, 1y). Clusters younger than this will be
+                         excluded from the web UI.
   --redis-password TEXT  Redis password for authentication
   --redis-username TEXT  Redis username for authentication
   --redis-db INTEGER     Redis database number (default: 0)
