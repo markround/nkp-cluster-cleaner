@@ -234,12 +234,6 @@ class ClusterManager:
             )
             if creation_timestamp:
                 try:
-                    # Parse creation timestamp
-                    if creation_timestamp.endswith("Z"):
-                        creation_time = datetime.fromisoformat(creation_timestamp[:-1])
-                    else:
-                        creation_time = datetime.fromisoformat(creation_timestamp)
-
                     # Calculate grace period end time
                     grace_end_time = self._parse_time_period(self.grace_period, creation_timestamp)
                     current_time = datetime.now()
