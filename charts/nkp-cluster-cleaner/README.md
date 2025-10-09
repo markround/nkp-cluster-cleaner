@@ -24,6 +24,7 @@ A simple tool to automatically delete Nutanix NKP clusters that do not meet a sp
 | deletion.failedJobsHistoryLimit | int | `1` | How many failed jobs to keep |
 | deletion.successfulJobsHistoryLimit | int | `3` | How many successful jobs to keep |
 | app.kubeconfigSecretRef | string | `"kommander-self-attach-kubeconfig"` | Secret containing a valid kubeconfig for the management cluster |
+| app.gracePeriod | string | `"2h"` | Grace period for newly created clusters (e.g., 1d, 4h, 2w, 1y). Clusters younger than this will not be deleted or notified about. |
 | app.config | string | `"excluded_namespace_patterns:\n- ^default$\nprotected_cluster_patterns:\n- .*-prod-.*\nextra_labels:\n- name: owner\n  description: Cluster owner identifier\n"` | Default set of exclusion rules |
 | monitoring.grafanaDashboard.enabled | bool | `false` | Deploy a Dashboard into the NKP Grafana instance |
 | monitoring.serviceMonitor.enabled | bool | `false` | Enable ServiceMonitor for integration with NKP Prometheus monitoring |
