@@ -2,9 +2,11 @@
 Notification History module for storing notification history in Redis to avoid duplicate alerts.
 """
 
-import redis
-from typing import List, Tuple, Optional
-from colorama import Fore, Style
+import logging
+
+from .redis_client import build_redis_client
+
+logger = logging.getLogger(__name__)
 
 
 class NotificationHistory:
@@ -15,8 +17,8 @@ class NotificationHistory:
         redis_host: str = "redis",
         redis_port: int = 6379,
         redis_db: int = 0,
-        redis_username: Optional[str] = None,
-        redis_password: Optional[str] = None,
+        redis_username: str | None = None,
+        redis_password: str | None = None,
     ):
         """
         Initialize notification history manager.
@@ -28,30 +30,9 @@ class NotificationHistory:
             redis_username: Redis username for authentication
             redis_password: Redis password for authentication
         """
-        redis_kwargs = {
-            "host": redis_host,
-            "port": redis_port,
-            "db": redis_db,
-            "decode_responses": True,
-            "socket_connect_timeout": 5,
-            "socket_timeout": 5,
-            "retry_on_timeout": True,
-        }
-
-        if redis_username:
-            redis_kwargs["username"] = redis_username
-        if redis_password:
-            redis_kwargs["password"] = redis_password
-
-        self.redis_client = redis.Redis(**redis_kwargs)
-
-        # Test connection
-        try:
-            self.redis_client.ping()
-        except redis.ConnectionError as e:
-            raise Exception(
-                f"Failed to connect to Redis at {redis_host}:{redis_port}: {e}"
-            )
+        self.redis_client = build_redis_client(
+            redis_host, redis_port, redis_db, redis_username, redis_password
+        )
 
     def _get_cluster_key(self, cluster_name: str, namespace: str) -> str:
         """Generate Redis key for cluster notification history."""
@@ -94,42 +75,37 @@ class NotificationHistory:
         # Set TTL for the key
         self.redis_client.expire(key, ttl_days * 24 * 3600)
 
-    def filter_new_notifications(
-        self, clusters: List[Tuple], severity: str
-    ) -> List[Tuple]:
+    def filter_new_notifications(self, notifications: list, severity: str) -> list:
         """
-        Filter out clusters that have already been notified at this severity level.
+        Drop notifications that have already been sent at this severity.
 
         Args:
-            clusters: List of (cluster_info, elapsed_percentage, expiry_time) tuples
-            severity: "warning" or "critical"
+            notifications: ClusterNotification objects.
+            severity: "warning" or "critical".
 
         Returns:
-            List of clusters that haven't been notified yet
+            Only the notifications not yet sent.
         """
-        new_clusters = []
+        return [
+            notification
+            for notification in notifications
+            if not self.has_been_notified(
+                notification.cluster.name, notification.cluster.namespace, severity
+            )
+        ]
 
-        for cluster_info, elapsed_percentage, expiry_time in clusters:
-            cluster_name = cluster_info.get("capi_cluster_name", "unknown")
-            namespace = cluster_info.get("capi_cluster_namespace", "unknown")
-
-            if not self.has_been_notified(cluster_name, namespace, severity):
-                new_clusters.append((cluster_info, elapsed_percentage, expiry_time))
-
-        return new_clusters
-
-    def mark_clusters_as_notified(self, clusters: List[Tuple], severity: str):
+    def mark_clusters_as_notified(self, notifications: list, severity: str):
         """
-        Mark multiple clusters as notified.
+        Record that these clusters have been notified about.
 
         Args:
-            clusters: List of (cluster_info, elapsed_percentage, expiry_time) tuples
-            severity: "warning" or "critical"
+            notifications: ClusterNotification objects.
+            severity: "warning" or "critical".
         """
-        for cluster_info, elapsed_percentage, expiry_time in clusters:
-            cluster_name = cluster_info.get("capi_cluster_name", "unknown")
-            namespace = cluster_info.get("capi_cluster_namespace", "unknown")
-            self.mark_as_notified(cluster_name, namespace, severity)
+        for notification in notifications:
+            self.mark_as_notified(
+                notification.cluster.name, notification.cluster.namespace, severity
+            )
 
     def clear_cluster_history(self, cluster_name: str, namespace: str):
         """
@@ -145,8 +121,8 @@ class NotificationHistory:
         deleted = self.redis_client.delete(key)
 
         if deleted:
-            print(
-                f"{Fore.CYAN}Cleared notification history for {cluster_name} in {namespace}{Style.RESET_ALL}"
+            logger.info(
+                "Cleared notification history for %s in %s", cluster_name, namespace
             )
 
         return deleted > 0
@@ -164,7 +140,7 @@ class NotificationHistory:
         except Exception:
             return 0
 
-    def get_all_notified_clusters(self) -> List[dict]:
+    def get_all_notified_clusters(self) -> list[dict]:
         """
         Get all clusters that have been notified and their notification levels.
 

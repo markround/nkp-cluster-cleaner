@@ -5,9 +5,11 @@ This module generates Prometheus-formatted metrics from analytics data.
 """
 
 from datetime import datetime
-from typing import Dict, Any, List, Optional
-from .redis_analytics_service import RedisAnalyticsService
+from typing import Any
+
 import nkp_cluster_cleaner
+
+from .redis_analytics_service import RedisAnalyticsService
 
 __version__ = nkp_cluster_cleaner.__version__
 
@@ -15,7 +17,7 @@ __version__ = nkp_cluster_cleaner.__version__
 class PrometheusMetricsService:
     """Service for generating Prometheus metrics from analytics data."""
 
-    def __init__(self, analytics_service: Optional[RedisAnalyticsService] = None):
+    def __init__(self, analytics_service: RedisAnalyticsService | None = None):
         """
         Initialize the Prometheus metrics service.
 
@@ -104,7 +106,7 @@ class PrometheusMetricsService:
         )
         return "\n".join(metrics_lines)
 
-    def _get_application_metrics(self, enabled: bool = True) -> List[str]:
+    def _get_application_metrics(self, enabled: bool = True) -> list[str]:
         """Get application information metrics."""
         return [
             "# HELP nkp_cluster_cleaner_info Application information",
@@ -118,14 +120,18 @@ class PrometheusMetricsService:
         ]
 
     def _get_cluster_status_metrics(
-        self, dashboard_summary: Dict[str, Any]
-    ) -> List[str]:
+        self, dashboard_summary: dict[str, Any]
+    ) -> list[str]:
         """Get current cluster status metrics."""
         if "error" in dashboard_summary:
             return []
 
         current_status = dashboard_summary.get("current_status", {})
         week_summary = dashboard_summary.get("week_summary", {})
+
+        api_mode = self._sanitize_label_value(
+            str(current_status.get("api_mode", "unknown"))
+        )
 
         return [
             "# HELP nkp_cluster_cleaner_clusters_for_deletion Current number of clusters marked for deletion",
@@ -135,6 +141,14 @@ class PrometheusMetricsService:
             "# HELP nkp_cluster_cleaner_clusters_protected Current number of protected clusters",
             "# TYPE nkp_cluster_cleaner_clusters_protected gauge",
             f"nkp_cluster_cleaner_clusters_protected {current_status.get('clusters_protected', 0)}",
+            "",
+            "# HELP nkp_cluster_cleaner_clusters_deleting Current number of clusters whose deletion is in progress",
+            "# TYPE nkp_cluster_cleaner_clusters_deleting gauge",
+            f"nkp_cluster_cleaner_clusters_deleting {current_status.get('clusters_deleting', 0)}",
+            "",
+            "# HELP nkp_cluster_cleaner_api_mode Which deletion API is in use (nkpcluster on NKP 2.18+, capi on older releases)",
+            "# TYPE nkp_cluster_cleaner_api_mode gauge",
+            f'nkp_cluster_cleaner_api_mode{{mode="{api_mode}"}} 1',
             "",
             "# HELP nkp_cluster_cleaner_compliance_rate Current label compliance rate (0-100)",
             "# TYPE nkp_cluster_cleaner_compliance_rate gauge",
@@ -147,8 +161,8 @@ class PrometheusMetricsService:
         ]
 
     def _get_trend_metrics(
-        self, cluster_trends_7d: Dict[str, Any], dashboard_summary: Dict[str, Any]
-    ) -> List[str]:
+        self, cluster_trends_7d: dict[str, Any], dashboard_summary: dict[str, Any]
+    ) -> list[str]:
         """Get trend direction metrics."""
         if not cluster_trends_7d or "summary" not in cluster_trends_7d:
             return []
@@ -165,7 +179,7 @@ class PrometheusMetricsService:
             "",
         ]
 
-    def _get_compliance_metrics(self, compliance_stats: Dict[str, Any]) -> List[str]:
+    def _get_compliance_metrics(self, compliance_stats: dict[str, Any]) -> list[str]:
         """Get compliance metrics."""
         if not compliance_stats or "summary" not in compliance_stats:
             return []
@@ -201,7 +215,7 @@ class PrometheusMetricsService:
 
         return metrics
 
-    def _get_activity_metrics(self, deletion_activity: Dict[str, Any]) -> List[str]:
+    def _get_activity_metrics(self, deletion_activity: dict[str, Any]) -> list[str]:
         """Get deletion activity metrics."""
         if not deletion_activity or "summary" not in deletion_activity:
             return []
@@ -235,7 +249,7 @@ class PrometheusMetricsService:
 
         return metrics
 
-    def _get_namespace_metrics(self, namespace_activity: Dict[str, Any]) -> List[str]:
+    def _get_namespace_metrics(self, namespace_activity: dict[str, Any]) -> list[str]:
         """Get namespace activity metrics."""
         if not namespace_activity or "summary" not in namespace_activity:
             return []
@@ -275,7 +289,7 @@ class PrometheusMetricsService:
 
         return metrics
 
-    def _get_owner_metrics(self, owner_distribution: Dict[str, Any]) -> List[str]:
+    def _get_owner_metrics(self, owner_distribution: dict[str, Any]) -> list[str]:
         """Get owner distribution metrics."""
         if not owner_distribution or "summary" not in owner_distribution:
             return []
@@ -315,7 +329,7 @@ class PrometheusMetricsService:
 
         return metrics
 
-    def _get_expiration_metrics(self, expiration_analysis: Dict[str, Any]) -> List[str]:
+    def _get_expiration_metrics(self, expiration_analysis: dict[str, Any]) -> list[str]:
         """Get expiration analysis metrics."""
         if not expiration_analysis or "summary" not in expiration_analysis:
             return []
@@ -349,7 +363,7 @@ class PrometheusMetricsService:
 
         return metrics
 
-    def _get_infrastructure_metrics(self, database_stats: Dict[str, Any]) -> List[str]:
+    def _get_infrastructure_metrics(self, database_stats: dict[str, Any]) -> list[str]:
         """Get infrastructure/Redis metrics."""
         if not database_stats or "error" in database_stats:
             return []
@@ -445,7 +459,7 @@ class PrometheusMetricsService:
 
         return metrics
 
-    def _get_timestamp_metrics(self) -> List[str]:
+    def _get_timestamp_metrics(self) -> list[str]:
         """Get timestamp metrics."""
         return [
             "# HELP nkp_cluster_cleaner_metrics_last_update_timestamp Unix timestamp of last metrics update",
@@ -476,7 +490,7 @@ class PrometheusMetricsService:
         """Sanitize label values for Prometheus format."""
         return value.replace('"', '\\"').replace("\\", "\\\\")
 
-    def _parse_memory_value(self, memory_str: str) -> Optional[int]:
+    def _parse_memory_value(self, memory_str: str) -> int | None:
         """
         Parse human-readable memory values to bytes.
 

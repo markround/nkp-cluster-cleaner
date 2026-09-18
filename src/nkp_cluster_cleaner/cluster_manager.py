@@ -1,555 +1,219 @@
 """
-Cluster Manager module for interacting with CAPI clusters.
+Cluster Manager — the entry point for everything that talks to a cluster.
+
+Ties together the three pieces it delegates to: `discovery` finds clusters,
+`criteria` decides what should happen to them, and `deletion` carries it out.
 """
+
+from __future__ import annotations
+
+import logging
 
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
-import re
-from datetime import datetime, timedelta
-from typing import List, Dict, Optional, Tuple
-from colorama import Fore, Style
+
 from .config import ConfigManager
+from .criteria import evaluate
+from .deletion import select_strategy
+from .discovery import ClusterDiscovery
+from .models import (
+    KOMMANDER_GROUP,
+    KOMMANDER_PLURAL,
+    KOMMANDER_VERSION,
+    Cluster,
+    ClusterState,
+    ClusterStatus,
+)
+from .timeparse import now
+
+logger = logging.getLogger(__name__)
 
 
 class ClusterManager:
-    """Manages CAPI cluster operations."""
+    """Finds, evaluates and deletes NKP clusters."""
 
     def __init__(
         self,
-        kubeconfig_path: Optional[str] = None,
-        config_manager: Optional[ConfigManager] = None,
-        grace_period: Optional[str] = None,
+        kubeconfig_path: str | None = None,
+        config_manager: ConfigManager | None = None,
+        grace_period: str | None = None,
     ):
         """
         Initialize the cluster manager.
 
         Args:
-            kubeconfig_path: Path to kubeconfig file. If None, uses default locations.
-            config_manager: Configuration manager instance
-            grace_period: Grace period for newly created clusters (e.g., "1d", "4h", "2w", "1y")
+            kubeconfig_path: Path to a kubeconfig file. If None, falls back to
+                the default locations and then to in-cluster credentials.
+            config_manager: Supplies protection rules and required labels.
+            grace_period: Duration such as "1d" or "4h". Clusters younger than
+                this are never deleted.
         """
         self.kubeconfig_path = kubeconfig_path
         self.config_manager = config_manager or ConfigManager()
         self.grace_period = grace_period
         self._load_config()
 
+        self.strategy = select_strategy(self.custom_api)
+        self.discovery = ClusterDiscovery(self.custom_api, self.core_v1, self.strategy)
+
     def _load_config(self):
-        """Load Kubernetes configuration."""
+        """Load Kubernetes configuration and build the API clients."""
         try:
             if self.kubeconfig_path:
                 config.load_kube_config(config_file=self.kubeconfig_path)
             else:
-                config.load_kube_config()
+                try:
+                    config.load_kube_config()
+                except Exception:
+                    # Running inside a pod with a service account rather than a
+                    # mounted kubeconfig.
+                    config.load_incluster_config()
         except Exception as e:
-            raise Exception(f"Failed to load kubeconfig: {e}")
+            raise Exception(f"Failed to load kubeconfig: {e}") from e
 
-        # Initialize API clients
         self.core_v1 = client.CoreV1Api()
         self.custom_api = client.CustomObjectsApi()
 
-    def get_nkp_version(self) -> Optional[str]:
+    @property
+    def api_mode(self) -> str:
         """
-        Get the NKP version from KommanderCore CRD.
+        Which deletion API this management cluster uses.
 
-        Returns:
-            NKP version string or None if not found
+        "nkpcluster" on NKP 2.18+, "capi" on older releases. Surfaced in the UI,
+        /health and the metrics endpoint so the active path is never a guess.
         """
-        try:
-            # Get KommanderCore resources
-            kommander_cores = self.custom_api.list_cluster_custom_object(
-                group="dkp.d2iq.io", version="v1alpha1", plural="kommandercores"
-            )
+        return self.strategy.mode
 
-            # Look for a KommanderCore with version in status
-            for core in kommander_cores.get("items", []):
-                status = core.get("status", {})
-                version = status.get("version")
-                if version:
-                    return version
-
-            return None
-
-        except ApiException as e:
-            if e.status == 404:
-                print(
-                    f"{Fore.YELLOW}Warning: KommanderCore CRDs not found.{Style.RESET_ALL}"
-                )
-                return None
-            else:
-                print(
-                    f"{Fore.YELLOW}Warning: Could not retrieve NKP version: {e}{Style.RESET_ALL}"
-                )
-                return None
-        except Exception as e:
-            print(
-                f"{Fore.YELLOW}Warning: Could not retrieve NKP version: {e}{Style.RESET_ALL}"
-            )
-            return None
-
-    def list_all_kommander_clusters(
-        self, namespace: Optional[str] = None
-    ) -> List[Dict]:
+    def get_cluster_statuses(self, namespace: str | None = None) -> list[ClusterStatus]:
         """
-        List all KommanderCluster objects across all namespaces or in a specific namespace.
-        Excludes clusters that do not have a spec.clusterRef.capiCluster dictionary (attached clusters).
+        Find every NKP-provisioned cluster and decide what to do with it.
 
         Args:
-            namespace: If specified, only list KommanderClusters in this namespace
+            namespace: If given, only examine clusters in this namespace.
 
         Returns:
-            List of KommanderCluster objects with their namespaces
+            One ClusterStatus per cluster, in namespace/name order.
         """
-        all_kommander_clusters = []
+        current_time = now()
+        return [
+            ClusterStatus(
+                cluster=cluster,
+                verdict=evaluate(
+                    cluster, self.config_manager, self.grace_period, current_time
+                ),
+            )
+            for cluster in self.discovery.discover(namespace)
+        ]
 
+    def get_clusters_for_deletion(
+        self, namespace: str | None = None
+    ) -> list[ClusterStatus]:
+        """
+        Find the clusters that should be deleted right now.
+
+        Excludes clusters already being torn down, so a slow NKPCluster deletion
+        is not repeatedly re-issued.
+
+        Args:
+            namespace: If given, only examine clusters in this namespace.
+
+        Returns:
+            The clusters matching the deletion criteria.
+        """
+        return [s for s in self.get_cluster_statuses(namespace) if s.should_delete]
+
+    def group_by_state(
+        self, namespace: str | None = None
+    ) -> dict[ClusterState, list[ClusterStatus]]:
+        """
+        Find every cluster, grouped by state.
+
+        Args:
+            namespace: If given, only examine clusters in this namespace.
+
+        Returns:
+            A dict keyed by ClusterState. Every state is present, possibly
+            mapping to an empty list, so callers need not use .get().
+        """
+        grouped: dict[ClusterState, list[ClusterStatus]] = {
+            state: [] for state in ClusterState
+        }
+        for status in self.get_cluster_statuses(namespace):
+            grouped[status.state].append(status)
+        return grouped
+
+    def delete_cluster(self, cluster: Cluster, dry_run: bool = False) -> bool:
+        """
+        Delete a cluster.
+
+        On NKP 2.18+ this removes the NKPCluster and its finalizers tear down
+        the CAPI cluster and KommanderCluster in turn, which takes a while. The
+        cluster stays visible in ClusterState.DELETING until that completes.
+
+        Args:
+            cluster: The cluster to delete.
+            dry_run: If True, log what would happen and change nothing.
+
+        Returns:
+            True if the deletion was requested successfully, or if this was a
+            dry run. False if there was nothing to delete or the call failed.
+        """
+        if cluster.target is None:
+            logger.error("No deletion target for cluster %s", cluster)
+            return False
+
+        return self.strategy.delete(cluster.target, dry_run)
+
+    def get_nkp_version(self) -> str | None:
+        """
+        Read the NKP version from the KommanderCore resource.
+
+        Returns:
+            A version string such as "v2.18.0", or None if it could not be read.
+        """
         try:
-            if namespace:
-                # List only in the specified namespace
-                namespaces_to_check = [namespace]
-            else:
-                # Get all namespaces
-                namespaces_response = self.core_v1.list_namespace()
-                namespaces_to_check = [
-                    ns.metadata.name for ns in namespaces_response.items
-                ]
-
-            for namespace_name in namespaces_to_check:
-                try:
-                    # List KommanderClusters in this namespace
-                    response = self.custom_api.list_namespaced_custom_object(
-                        group="kommander.mesosphere.io",
-                        version="v1beta1",
-                        namespace=namespace_name,
-                        plural="kommanderclusters",
-                    )
-
-                    kommander_clusters = response.get("items", [])
-                    for kc in kommander_clusters:
-                        # Filter out clusters without spec.clusterRef.capiCluster (attached clusters)
-                        spec = kc.get("spec", {})
-                        cluster_ref = spec.get("clusterRef", {})
-                        capi_cluster = cluster_ref.get("capiCluster")
-
-                        # Skip clusters that don't have a capiCluster dictionary
-                        if not isinstance(capi_cluster, dict):
-                            kc_name = kc.get("metadata", {}).get("name", "unknown")
-                            print(
-                                f"{Fore.CYAN}Info: Skipping attached cluster {kc_name} (no spec.clusterRef.capiCluster){Style.RESET_ALL}"
-                            )
-                            continue
-
-                        # Add namespace info for easier handling
-                        kc["_namespace"] = namespace_name
-                        all_kommander_clusters.append(kc)
-
-                except ApiException as e:
-                    if e.status == 404:
-                        # No KommanderClusters in this namespace, continue
-                        continue
-                    else:
-                        print(
-                            f"{Fore.YELLOW}Warning: Could not list KommanderClusters in namespace {namespace_name}: {e}{Style.RESET_ALL}"
-                        )
-                        continue
-
+            cores = self.custom_api.list_cluster_custom_object(
+                group="dkp.d2iq.io", version="v1alpha1", plural="kommandercores"
+            )
         except ApiException as e:
             if e.status == 404:
-                print(
-                    f"{Fore.YELLOW}Warning: KommanderCluster CRDs not found. Is Kommander installed?{Style.RESET_ALL}"
-                )
-                return []
-            raise Exception(f"Failed to list namespaces: {e}")
+                logger.warning("KommanderCore CRDs not found")
+            else:
+                logger.warning("Could not retrieve the NKP version: %s", e)
+            return None
+        except Exception as e:
+            logger.warning("Could not retrieve the NKP version: %s", e)
+            return None
 
-        return all_kommander_clusters
+        for core in cores.get("items", []):
+            version = core.get("status", {}).get("version")
+            if version:
+                return version
+
+        return None
 
     def check_kommander_crds(self) -> bool:
         """
-        Check if KommanderCluster CRDs are available.
+        Check that the KommanderCluster CRD is installed.
+
+        Used as a connectivity and sanity test by the health endpoint.
 
         Returns:
-            True if KommanderCluster CRDs are available
+            True if KommanderCluster resources can be listed.
         """
         try:
-            # Try to list KommanderClusters to check if CRDs exist
             self.custom_api.list_cluster_custom_object(
-                group="kommander.mesosphere.io",
-                version="v1beta1",
-                plural="kommanderclusters",
+                group=KOMMANDER_GROUP,
+                version=KOMMANDER_VERSION,
+                plural=KOMMANDER_PLURAL,
+                limit=1,
             )
             return True
         except ApiException as e:
             if e.status == 404:
-                print(
-                    f"{Fore.YELLOW}Warning: KommanderCluster CRDs not found. Is Kommander installed?{Style.RESET_ALL}"
-                )
-                return False
-            else:
-                print(
-                    f"{Fore.YELLOW}Warning: Could not check KommanderCluster CRDs: {e}{Style.RESET_ALL}"
-                )
-                return False
-
-    def get_cluster_labels(self, kommander_cluster: Dict) -> Dict[str, str]:
-        """
-        Extract labels from a KommanderCluster object.
-
-        Args:
-            kommander_cluster: KommanderCluster object from Kubernetes API
-
-        Returns:
-            Dictionary of labels
-        """
-        metadata = kommander_cluster.get("metadata", {})
-        return metadata.get("labels", {})
-
-    def kommander_cluster_matches_criteria(
-        self, kommander_cluster: Dict
-    ) -> Tuple[bool, str]:
-        """
-        Check if a KommanderCluster matches deletion criteria.
-
-        Args:
-            kommander_cluster: KommanderCluster object with _namespace field
-
-        Returns:
-            Tuple of (should_delete, reason)
-        """
-        kc_name = kommander_cluster.get("metadata", {}).get("name", "unknown")
-        kc_namespace = kommander_cluster.get("_namespace", "unknown")
-
-        # Special case: management cluster (host-cluster) should always be excluded!
-        # If the name ever changes, this will be a problem but a recent Slack conversation indicated
-        # that although the display name may change, the object name should stay consistent in future
-        # releases
-        if kc_name == "host-cluster":
-            return False, "Cluster is a management cluster"
-
-        # Check if KommanderCluster is protected by configuration
-        if self.config_manager.is_cluster_protected(kc_name, kc_namespace):
-            return False, f"KommanderCluster {kc_name} is protected by configuration"
-
-        # Check grace period - if cluster is younger than grace period, exclude it
-        if self.grace_period:
-            creation_timestamp = kommander_cluster.get("metadata", {}).get(
-                "creationTimestamp"
-            )
-            if creation_timestamp:
-                try:
-                    # Calculate grace period end time
-                    grace_end_time = self._parse_time_period(
-                        self.grace_period, creation_timestamp
-                    )
-                    current_time = datetime.now()
-
-                    # If cluster is still within grace period, exclude it
-                    if current_time < grace_end_time:
-                        remaining_time = grace_end_time - current_time
-                        days_remaining = remaining_time.days
-                        hours_remaining = remaining_time.seconds // 3600
-
-                        # Format time remaining string
-                        if days_remaining > 1:
-                            time_remaining = f"{days_remaining}d"
-                        elif days_remaining == 1:
-                            # Show "1d Xh" for better precision when exactly 1 day
-                            if hours_remaining > 0:
-                                time_remaining = f"1d {hours_remaining}h"
-                            else:
-                                time_remaining = "1d"
-                        else:
-                            # Less than a day - just show hours
-                            time_remaining = f"{hours_remaining}h"
-                        return (
-                            False,
-                            f"Cluster is within grace period (grace period ends in ~{time_remaining})",
-                        )
-                except ValueError as e:
-                    print(
-                        f"{Fore.YELLOW}Warning: Could not parse grace period or creation timestamp for {kc_name}: {e}{Style.RESET_ALL}"
-                    )
-
-        # Get labels from KommanderCluster
-        labels = self.get_cluster_labels(kommander_cluster)
-
-        # Check if expires label exists
-        if "expires" not in labels:
-            return True, "Missing 'expires' label"
-
-        # Validate extra labels
-        extra_label_errors = self.config_manager.validate_extra_labels(labels)
-        if extra_label_errors:
-            # Return the first error as the reason
-            return True, extra_label_errors[0]
-
-        # Parse and check expires label
-        expires_value = labels["expires"]
-        try:
-            # Get creation timestamp from metadata
-            creation_timestamp = kommander_cluster.get("metadata", {}).get(
-                "creationTimestamp"
-            )
-            if not creation_timestamp:
-                return True, "Missing creationTimestamp in KommanderCluster metadata"
-
-            expiry_time = self._parse_time_period(expires_value, creation_timestamp)
-            current_time = datetime.now()
-
-            if current_time >= expiry_time:
-                return (
-                    True,
-                    f"Cluster has expired (created: {creation_timestamp[:10]}, expires after: {expires_value})",
+                logger.warning(
+                    "KommanderCluster CRDs not found. Is Kommander installed?"
                 )
             else:
-                remaining_time = expiry_time - current_time
-                days_remaining = remaining_time.days
-                hours_remaining = remaining_time.seconds // 3600
-                if days_remaining > 0:
-                    time_remaining = f"{days_remaining}d"
-                else:
-                    time_remaining = f"{hours_remaining}h"
-                return (
-                    False,
-                    f"Cluster has not expired yet (expires in ~{time_remaining})",
-                )
-
-        except ValueError as e:
-            return True, f"Invalid 'expires' label format: {expires_value} ({e})"
-
-    def get_capi_cluster_reference(
-        self, kommander_cluster: Dict
-    ) -> Tuple[Optional[str], Optional[str]]:
-        """
-        Extract CAPI cluster reference from KommanderCluster.
-
-        Args:
-            kommander_cluster: KommanderCluster object
-
-        Returns:
-            Tuple of (cluster_name, cluster_namespace) or (None, None) if not found
-        """
-        spec = kommander_cluster.get("spec", {})
-        cluster_ref = spec.get("clusterRef", {})
-        capi_cluster = cluster_ref.get("capiCluster", {})
-
-        cluster_name = capi_cluster.get("name")
-        cluster_namespace = capi_cluster.get("namespace")
-
-        return cluster_name, cluster_namespace
-
-    def verify_capi_cluster_exists(
-        self, cluster_name: str, cluster_namespace: str
-    ) -> bool:
-        """
-        Verify that the referenced CAPI cluster actually exists.
-
-        Args:
-            cluster_name: Name of the CAPI cluster
-            cluster_namespace: Namespace of the CAPI cluster
-
-        Returns:
-            True if the CAPI cluster exists
-        """
-        try:
-            self.custom_api.get_namespaced_custom_object(
-                group="cluster.x-k8s.io",
-                version="v1beta1",
-                namespace=cluster_namespace,
-                plural="clusters",
-                name=cluster_name,
-            )
-            return True
-        except ApiException as e:
-            if e.status == 404:
-                return False
-            else:
-                print(
-                    f"{Fore.YELLOW}Warning: Could not verify CAPI cluster {cluster_name}: {e}{Style.RESET_ALL}"
-                )
-                return False
-
-    def _parse_time_period(self, time_period: str, creation_timestamp: str) -> datetime:
-        """
-        Parse time period value and calculate target time based on creation timestamp.
-
-        Args:
-            time_period: String like "1d", "2w", "48h", "1y", etc.
-            creation_timestamp: ISO format timestamp like "2025-06-23T07:04:37Z"
-
-        Returns:
-            datetime object representing the target time (creation + time_period)
-
-        Raises:
-            ValueError: If format is invalid
-        """
-        # Remove whitespace
-        time_period = time_period.strip()
-
-        # Parse number and unit
-        pattern = r"^(\d+)([dhwy])$"
-        match = re.match(pattern, time_period.lower())
-
-        if not match:
-            raise ValueError(
-                "Invalid format. Expected format: <number><unit> where unit is d/w/h/y (e.g., '1d', '2w', '48h', '1y')"
-            )
-
-        number, unit = match.groups()
-        number = int(number)
-
-        # Calculate timedelta
-        if unit == "h":
-            delta = timedelta(hours=number)
-        elif unit == "d":
-            delta = timedelta(days=number)
-        elif unit == "w":
-            delta = timedelta(weeks=number)
-        elif unit == "y":
-            delta = timedelta(days=number * 365)
-        else:
-            raise ValueError(f"Unsupported time unit: {unit}")
-
-        # Parse creation timestamp
-        try:
-            # Handle ISO format with Z suffix
-            if creation_timestamp.endswith("Z"):
-                creation_time = datetime.fromisoformat(creation_timestamp[:-1])
-            else:
-                creation_time = datetime.fromisoformat(creation_timestamp)
-        except ValueError as e:
-            raise ValueError(
-                f"Invalid creation timestamp format: {creation_timestamp} ({e})"
-            )
-
-        # Return creation time plus the delta
-        return creation_time + delta
-
-    def delete_cluster(
-        self, cluster_name: str, cluster_namespace: str, dry_run: bool = False
-    ) -> bool:
-        """
-        Delete a CAPI cluster.
-
-        Args:
-            cluster_name: Name of the CAPI cluster to delete
-            cluster_namespace: Namespace of the CAPI cluster
-            dry_run: If True, only simulate the deletion
-
-        Returns:
-            True if deletion was successful (or simulated)
-        """
-        if dry_run:
-            print(
-                f"{Fore.YELLOW}[DRY RUN] Would delete cluster: {cluster_name} in namespace {cluster_namespace}{Style.RESET_ALL}"
-            )
-            return True
-
-        try:
-            self.custom_api.delete_namespaced_custom_object(
-                group="cluster.x-k8s.io",
-                version="v1beta1",
-                namespace=cluster_namespace,
-                plural="clusters",
-                name=cluster_name,
-            )
-            print(
-                f"{Fore.GREEN}Successfully deleted cluster: {cluster_name} in namespace {cluster_namespace}{Style.RESET_ALL}"
-            )
-            return True
-        except ApiException as e:
-            print(
-                f"{Fore.RED}Failed to delete cluster {cluster_name} in namespace {cluster_namespace}: {e}{Style.RESET_ALL}"
-            )
+                logger.warning("Could not check the KommanderCluster CRDs: %s", e)
             return False
-
-    def get_clusters_for_deletion(
-        self, namespace: Optional[str] = None
-    ) -> List[Tuple[str, str, str]]:
-        """
-        Get all clusters that should be deleted based on criteria.
-
-        Args:
-            namespace: If specified, only examine clusters in this namespace
-
-        Returns:
-            List of tuples (cluster_name, cluster_namespace, reason) for clusters to be deleted
-        """
-        all_kommander_clusters = self.list_all_kommander_clusters(namespace)
-        clusters_to_delete = []
-
-        for kc in all_kommander_clusters:
-            should_delete, reason = self.kommander_cluster_matches_criteria(kc)
-            if should_delete:
-                # Get the CAPI cluster reference
-                cluster_name, cluster_namespace = self.get_capi_cluster_reference(kc)
-
-                if cluster_name and cluster_namespace:
-                    # Verify the CAPI cluster exists
-                    if self.verify_capi_cluster_exists(cluster_name, cluster_namespace):
-                        clusters_to_delete.append(
-                            (cluster_name, cluster_namespace, reason)
-                        )
-                    else:
-                        kc_name = kc.get("metadata", {}).get("name", "unknown")
-                        print(
-                            f"{Fore.YELLOW}Warning: CAPI cluster {cluster_name} referenced by KommanderCluster {kc_name} not found{Style.RESET_ALL}"
-                        )
-                else:
-                    kc_name = kc.get("metadata", {}).get("name", "unknown")
-                    print(
-                        f"{Fore.YELLOW}Warning: KommanderCluster {kc_name} has no valid CAPI cluster reference{Style.RESET_ALL}"
-                    )
-
-        return clusters_to_delete
-
-    def get_clusters_with_exclusions(
-        self, namespace: Optional[str] = None
-    ) -> Tuple[List[Tuple[Dict, str]], List[Tuple[Dict, str]]]:
-        """
-        Get all clusters categorized into those for deletion and those excluded.
-
-        Args:
-            namespace: If specified, only examine clusters in this namespace
-
-        Returns:
-            Tuple of (clusters_to_delete, excluded_clusters) where each contains
-            (kommander_cluster_with_capi_info, reason) tuples
-        """
-        all_kommander_clusters = self.list_all_kommander_clusters(namespace)
-        clusters_to_delete = []
-        excluded_clusters = []
-
-        for kc in all_kommander_clusters:
-            should_delete, reason = self.kommander_cluster_matches_criteria(kc)
-
-            # Get the CAPI cluster reference
-            cluster_name, cluster_namespace = self.get_capi_cluster_reference(kc)
-
-            # Create a combined object with both KommanderCluster and CAPI cluster info
-            combined_info = {
-                "kommander_cluster": kc,
-                "capi_cluster_name": cluster_name,
-                "capi_cluster_namespace": cluster_namespace,
-                "labels": self.get_cluster_labels(kc),
-            }
-
-            if should_delete:
-                if cluster_name and cluster_namespace:
-                    # Verify the CAPI cluster exists
-                    if self.verify_capi_cluster_exists(cluster_name, cluster_namespace):
-                        clusters_to_delete.append((combined_info, reason))
-                    else:
-                        # CAPI cluster doesn't exist, exclude for safety
-                        excluded_clusters.append(
-                            (
-                                combined_info,
-                                f"Referenced CAPI cluster {cluster_name} not found",
-                            )
-                        )
-                else:
-                    # No valid CAPI cluster reference, exclude for safety
-                    excluded_clusters.append(
-                        (combined_info, "No valid CAPI cluster reference")
-                    )
-            else:
-                excluded_clusters.append((combined_info, reason))
-
-        return clusters_to_delete, excluded_clusters

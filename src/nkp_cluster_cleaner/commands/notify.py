@@ -2,265 +2,158 @@
 Notify command implementation for the NKP Cluster Cleaner tool.
 """
 
+from __future__ import annotations
+
 import click
 from colorama import Fore, Style
 from tabulate import tabulate
-from typing import Optional, List, Tuple
+
 from ..config import ConfigManager
-from ..notification_manager import NotificationManager
 from ..notification_history import NotificationHistory
+from ..notification_manager import (
+    CRITICAL,
+    WARNING,
+    ClusterNotification,
+    NotificationManager,
+)
+from ..timeparse import now
+
+_TABLE_HEADERS = [
+    "Cluster Name",
+    "Namespace",
+    "Owner",
+    "Expires",
+    "Elapsed",
+    "Remaining",
+]
 
 
-def _send_notifications(
-    critical_clusters: List[Tuple],
-    warning_clusters: List[Tuple],
-    backend: str,
-    notification_manager: NotificationManager,
-    notification_history: Optional[NotificationHistory],
-    **kwargs,
-):
+def _validate_backend(notify_backend: str | None, kwargs: dict):
     """
-    Send actual notifications using the specified backend.
+    Check that a notification backend is usable before doing any work.
 
-    Args:
-        critical_clusters: List of critical cluster data
-        warning_clusters: List of warning cluster data
-        backend: Notification backend to use
-        notification_manager: NotificationManager instance
-        notification_history: NotificationHistory instance for tracking sent notifications
-        **kwargs: Backend-specific parameters
+    Raises:
+        click.Abort: If the backend is unknown or incompletely configured.
     """
-    if backend == "slack":
-        _send_slack_expiry_notifications(
-            critical_clusters,
-            warning_clusters,
-            notification_manager,
-            notification_history,
-            **kwargs,
-        )
-    else:
-        click.echo(
-            f"{Fore.RED}Error: Unknown notification backend '{backend}'{Style.RESET_ALL}"
-        )
-        raise click.Abort()
-
-
-def _send_slack_expiry_notifications(
-    critical_clusters: List[Tuple],
-    warning_clusters: List[Tuple],
-    notification_manager: NotificationManager,
-    notification_history: Optional[NotificationHistory],
-    **kwargs,
-):
-    """
-    Send expiry notifications to Slack using the new generic notification methods.
-
-    Args:
-        critical_clusters: List of critical cluster data
-        warning_clusters: List of warning cluster data
-        notification_manager: NotificationManager instance
-        notification_history: NotificationHistory instance for tracking sent notifications
-        **kwargs: Slack-specific parameters (slack_token, slack_channel, etc.)
-    """
-    slack_token = kwargs.get("slack_token")
-    slack_channel = kwargs.get("slack_channel")
-    slack_username = kwargs.get("slack_username", "NKP Cluster Cleaner")
-    slack_icon_emoji = kwargs.get("slack_icon_emoji", ":broom:")
-    warning_threshold = kwargs.get("warning_threshold", 80)
-    critical_threshold = kwargs.get("critical_threshold", 95)
-
-    total_notifications = len(critical_clusters) + len(warning_clusters)
-
-    if total_notifications == 0:
-        click.echo(
-            f"{Fore.GREEN}No new notifications to send to Slack.{Style.RESET_ALL}"
-        )
+    if not notify_backend:
         return
 
-    click.echo(
-        f"{Fore.CYAN}Sending {total_notifications} notifications to Slack channel #{slack_channel}...{Style.RESET_ALL}"
-    )
-
-    try:
-        # Send critical notifications
-        if critical_clusters:
-            notification_manager.send_expiry_notification(
-                backend="slack",
-                clusters=critical_clusters,
-                severity="critical",
-                threshold=critical_threshold,
-                token=slack_token,
-                channel=slack_channel,
-                username=slack_username,
-                icon_emoji=slack_icon_emoji,
-            )
-
-            # Mark as notified
-            if notification_history:
-                notification_history.mark_clusters_as_notified(
-                    critical_clusters, "critical"
-                )
-
-            click.echo(
-                f"{Fore.GREEN}Sent critical notification for {len(critical_clusters)} clusters to #{slack_channel}{Style.RESET_ALL}"
-            )
-
-        # Send warning notifications
-        if warning_clusters:
-            notification_manager.send_expiry_notification(
-                backend="slack",
-                clusters=warning_clusters,
-                severity="warning",
-                threshold=warning_threshold,
-                token=slack_token,
-                channel=slack_channel,
-                username=slack_username,
-                icon_emoji=slack_icon_emoji,
-            )
-
-            # Mark as notified
-            if notification_history:
-                notification_history.mark_clusters_as_notified(
-                    warning_clusters, "warning"
-                )
-
-            click.echo(
-                f"{Fore.GREEN}Sent warning notification for {len(warning_clusters)} clusters to #{slack_channel}{Style.RESET_ALL}"
-            )
-
+    if notify_backend not in NotificationManager.SUPPORTED_BACKENDS:
         click.echo(
-            f"{Fore.GREEN}Successfully sent notifications to Slack!{Style.RESET_ALL}"
-        )
-
-    except Exception as e:
-        click.echo(
-            f"{Fore.RED}Failed to send Slack notifications: {e}{Style.RESET_ALL}"
+            f"{Fore.RED}Error: Unsupported notification backend "
+            f"'{notify_backend}'. Supported backends: "
+            f"{', '.join(NotificationManager.SUPPORTED_BACKENDS)}{Style.RESET_ALL}"
         )
         raise click.Abort()
+
+    if notify_backend == "slack":
+        for option in ("slack_token", "slack_channel"):
+            if not kwargs.get(option):
+                click.echo(
+                    f"{Fore.RED}Error: {option} is required when using the "
+                    f"slack backend{Style.RESET_ALL}"
+                )
+                raise click.Abort()
+
+
+def _display(notifications: list[ClusterNotification], heading: str, colour: str):
+    """Print a table of notifications under a coloured heading."""
+    current_time = now()
+    rows = []
+    for notification in notifications:
+        data = notification.as_dict(current_time)
+        rows.append(
+            [
+                data["cluster_name"],
+                data["namespace"],
+                data["owner"],
+                data["expires"],
+                f"{data['elapsed_percentage']:.1f}%",
+                data["time_remaining"],
+            ]
+        )
+
+    click.echo(f"\n{colour}{heading}{Style.RESET_ALL}")
+    click.echo(tabulate(rows, headers=_TABLE_HEADERS, tablefmt="grid"))
 
 
 def _cleanup_stale_notifications(
-    notification_manager: NotificationManager,
+    current: list[ClusterNotification],
     notification_history: NotificationHistory,
-    warning_threshold: int,
-    critical_threshold: int,
-    namespace: Optional[str] = None,
 ) -> int:
     """
-    Clean up notifications for clusters that are currently in compliance.
+    Forget notifications for clusters that are now back in compliance.
+
+    Without this, a cluster that was alerted on for a missing label and then
+    fixed would stay marked as notified, and so would never be alerted on again
+    when it eventually did expire.
 
     Args:
-        notification_manager: NotificationManager instance
-        notification_history: NotificationHistory instance
-        warning_threshold: Warning threshold percentage
-        critical_threshold: Critical threshold percentage
-        namespace: Namespace filter
+        current: The clusters that presently warrant an alert.
+        notification_history: Where sent notifications are recorded.
 
     Returns:
-        Number of clusters with notifications cleaned up
+        How many clusters had their history cleared.
     """
-    # Get all clusters that currently require notifications
-    current_critical, current_warning = (
-        notification_manager.get_clusters_for_notification(
-            warning_threshold, critical_threshold, namespace
-        )
-    )
+    still_relevant = {(n.cluster.namespace, n.cluster.name) for n in current}
 
-    # Create set of cluster keys that currently need any notifications
-    clusters_needing_notifications = set()
-
-    for cluster_info, _, _ in current_critical + current_warning:
-        cluster_name = cluster_info.get("capi_cluster_name", "unknown")
-        cluster_namespace = cluster_info.get("capi_cluster_namespace", "unknown")
-        key = f"{cluster_namespace}:{cluster_name}"
-        clusters_needing_notifications.add(key)
-
-    # Get all clusters with notification history
-    all_notified_clusters = notification_history.get_all_notified_clusters()
-
-    cleaned_count = 0
-
-    for cluster_info in all_notified_clusters:
-        cluster_name = cluster_info["cluster_name"]
-        cluster_namespace = cluster_info["namespace"]
-        key = f"{cluster_namespace}:{cluster_name}"
-
-        # If cluster doesn't need any notifications, clear all its notification history
-        if key not in clusters_needing_notifications:
-            notification_history.clear_cluster_history(cluster_name, cluster_namespace)
-            cleaned_count += 1
-
-    return cleaned_count
+    cleaned = 0
+    for record in notification_history.get_all_notified_clusters():
+        key = (record["namespace"], record["cluster_name"])
+        if key not in still_relevant:
+            notification_history.clear_cluster_history(
+                record["cluster_name"], record["namespace"]
+            )
+            cleaned += 1
+    return cleaned
 
 
 def execute_notify_command(
-    kubeconfig: Optional[str],
-    config: Optional[str],
-    namespace: Optional[str],
+    kubeconfig: str | None,
+    config: str | None,
+    namespace: str | None,
     warning_threshold: int,
     critical_threshold: int,
-    grace: Optional[str] = None,
-    notify_backend: Optional[str] = None,
+    grace: str | None = None,
+    notify_backend: str | None = None,
     redis_host: str = "redis",
     redis_port: int = 6379,
     redis_db: int = 0,
-    redis_username: Optional[str] = None,
-    redis_password: Optional[str] = None,
+    redis_username: str | None = None,
+    redis_password: str | None = None,
     **kwargs,
 ):
     """
-    Execute the notify command with the given parameters.
+    Execute the notify command.
 
     Args:
-        kubeconfig: Path to kubeconfig file
-        config: Path to configuration file
-        namespace: Namespace to limit operation to
-        warning_threshold: Warning threshold percentage
-        critical_threshold: Critical threshold percentage
-        grace: Grace period for newly created clusters
-        notify_backend: Notification backend to use (slack, etc.)
-        redis_host: Redis host for notification history
-        redis_port: Redis port
-        redis_db: Redis database number
-        redis_username: Redis username for authentication
-        redis_password: Redis password for authentication
-        **kwargs: Backend-specific parameters (e.g. slack_token, slack_channel for slack backend)
+        kubeconfig: Path to kubeconfig file.
+        config: Path to configuration file.
+        namespace: Namespace to limit the operation to.
+        warning_threshold: Percentage of lifetime elapsed for a warning.
+        critical_threshold: Percentage of lifetime elapsed for a critical alert.
+        grace: Grace period for newly created clusters.
+        notify_backend: Backend to send alerts through. Without one, the
+            command only reports what it would send.
+        redis_host: Redis host for notification history.
+        redis_port: Redis port.
+        redis_db: Redis database number.
+        redis_username: Redis username.
+        redis_password: Redis password.
+        **kwargs: Backend-specific parameters, e.g. slack_token.
     """
-    # Validate notification backend
-    if notify_backend and notify_backend not in NotificationManager.SUPPORTED_BACKENDS:
-        click.echo(
-            f"{Fore.RED}Error: Unsupported notification backend '{notify_backend}'. Supported backends: {', '.join(NotificationManager.SUPPORTED_BACKENDS)}{Style.RESET_ALL}"
-        )
-        raise click.Abort()
+    _validate_backend(notify_backend, kwargs)
 
-    # Validate backend-specific requirements
-    if notify_backend == "slack":
-        if not kwargs.get("slack_token"):
-            click.echo(
-                f"{Fore.RED}Error: slack_token is required when using slack backend{Style.RESET_ALL}"
-            )
-            raise click.Abort()
-        if not kwargs.get("slack_channel"):
-            click.echo(
-                f"{Fore.RED}Error: slack_channel is required when using slack backend{Style.RESET_ALL}"
-            )
-            raise click.Abort()
-
-    if namespace:
-        click.echo(
-            f"{Fore.BLUE}Checking clusters for notification in namespace '{namespace}'...{Style.RESET_ALL}"
-        )
-    else:
-        click.echo(
-            f"{Fore.BLUE}Checking clusters for notification across all namespaces...{Style.RESET_ALL}"
-        )
+    scope = f"namespace '{namespace}'" if namespace else "all namespaces"
+    click.echo(
+        f"{Fore.BLUE}Checking clusters for notification across {scope}...{Style.RESET_ALL}"
+    )
 
     if notify_backend:
         click.echo(
             f"{Fore.CYAN}Notification backend: {notify_backend}{Style.RESET_ALL}"
         )
 
-    # Initialize notification history if using a backend
     notification_history = None
     if notify_backend:
         try:
@@ -268,130 +161,122 @@ def execute_notify_command(
                 redis_host, redis_port, redis_db, redis_username, redis_password
             )
             click.echo(
-                f"{Fore.CYAN}Connected to notification history at {redis_host}:{redis_port} (db {redis_db}){Style.RESET_ALL}"
+                f"{Fore.CYAN}Connected to notification history at "
+                f"{redis_host}:{redis_port} (db {redis_db}){Style.RESET_ALL}"
             )
         except Exception as e:
             click.echo(
-                f"{Fore.RED}Failed to connect to notification history: {e}{Style.RESET_ALL}"
+                f"{Fore.RED}Failed to connect to notification history: "
+                f"{e}{Style.RESET_ALL}"
             )
-            raise click.Abort()
+            raise click.Abort() from e
 
     if grace:
         click.echo(
-            f"{Fore.CYAN}Grace period: {grace} (clusters younger than this will not receive notifications){Style.RESET_ALL}"
+            f"{Fore.CYAN}Grace period: {grace} (clusters younger than this "
+            f"will not receive notifications){Style.RESET_ALL}"
         )
 
     try:
-        # Initialize configuration and notification manager
         config_manager = ConfigManager(config) if config else ConfigManager()
         notification_manager = NotificationManager(
             kubeconfig, config_manager, grace_period=grace
         )
 
-        # Clean up stale notifications first
-        # This can happen if e.g. a cluster was missing tags, a notification got sent, and the user then
-        # later added tags. This ensures they will still get notifications when the cluster does expire.
+        all_notifications = notification_manager.get_notifications(
+            warning_threshold, critical_threshold, namespace
+        )
+
         if notification_history:
             click.echo(
                 f"{Fore.BLUE}Cleaning up stale notifications...{Style.RESET_ALL}"
             )
-            cleaned_count = _cleanup_stale_notifications(
-                notification_manager,
-                notification_history,
-                warning_threshold,
-                critical_threshold,
-                namespace,
+            cleaned = _cleanup_stale_notifications(
+                all_notifications, notification_history
             )
-
-            if cleaned_count > 0:
+            if cleaned:
                 click.echo(
-                    f"{Fore.GREEN}Cleaned up notifications for {cleaned_count} compliant clusters{Style.RESET_ALL}"
+                    f"{Fore.GREEN}Cleaned up notifications for {cleaned} "
+                    f"compliant clusters{Style.RESET_ALL}"
                 )
             else:
                 click.echo(
-                    f"{Fore.GREEN}No compliant clusters with stale notifications found{Style.RESET_ALL}"
+                    f"{Fore.GREEN}No compliant clusters with stale "
+                    f"notifications found{Style.RESET_ALL}"
                 )
 
-        # Get clusters requiring notifications
-        critical_clusters, warning_clusters = (
-            notification_manager.get_clusters_for_notification(
-                warning_threshold, critical_threshold, namespace
-            )
-        )
-
-        # Filter out already notified clusters if using a backend
-        original_critical_count = len(critical_clusters)
-        original_warning_count = len(warning_clusters)
+        critical = [n for n in all_notifications if n.severity == CRITICAL]
+        warning = [n for n in all_notifications if n.severity == WARNING]
+        total_matched = len(all_notifications)
 
         if notification_history:
-            critical_clusters = notification_history.filter_new_notifications(
-                critical_clusters, "critical"
-            )
-            warning_clusters = notification_history.filter_new_notifications(
-                warning_clusters, "warning"
-            )
+            critical = notification_history.filter_new_notifications(critical, CRITICAL)
+            warning = notification_history.filter_new_notifications(warning, WARNING)
 
-            # Show filtering results
-            filtered_critical = original_critical_count - len(critical_clusters)
-            filtered_warning = original_warning_count - len(warning_clusters)
-
-            if filtered_critical > 0 or filtered_warning > 0:
+            filtered = total_matched - len(critical) - len(warning)
+            if filtered:
                 click.echo(
-                    f"{Fore.CYAN}Filtered out {filtered_critical} critical and {filtered_warning} warning notifications (already sent){Style.RESET_ALL}"
+                    f"{Fore.CYAN}Filtered out {filtered} notifications "
+                    f"(already sent){Style.RESET_ALL}"
                 )
 
-        # Display results
-        total_notifications = len(warning_clusters) + len(critical_clusters)
-        total_original = original_critical_count + original_warning_count
+        total_new = len(critical) + len(warning)
 
-        if total_notifications == 0:
-            if total_original == 0:
+        if not total_new:
+            if not total_matched:
                 click.echo(
-                    f"\n{Fore.GREEN}No clusters require notifications at current thresholds.{Style.RESET_ALL}"
+                    f"\n{Fore.GREEN}No clusters require notifications at "
+                    f"current thresholds.{Style.RESET_ALL}"
                 )
             else:
                 click.echo(
-                    f"\n{Fore.GREEN}No new notifications to send (all {total_original} clusters have already been notified).{Style.RESET_ALL}"
+                    f"\n{Fore.GREEN}No new notifications to send (all "
+                    f"{total_matched} clusters have already been "
+                    f"notified).{Style.RESET_ALL}"
                 )
             click.echo(
-                f"{Fore.CYAN}Thresholds: Warning {warning_threshold}%, Critical {critical_threshold}%{Style.RESET_ALL}"
+                f"{Fore.CYAN}Thresholds: Warning {warning_threshold}%, "
+                f"Critical {critical_threshold}%{Style.RESET_ALL}"
             )
             return
 
         click.echo(
-            f"\n{Fore.YELLOW}Found {total_notifications} clusters requiring notifications:{Style.RESET_ALL}"
+            f"\n{Fore.YELLOW}Found {total_new} clusters requiring "
+            f"notifications:{Style.RESET_ALL}"
         )
-        if notification_history and total_original > total_notifications:
+        if notification_history and total_matched > total_new:
             click.echo(
-                f"{Fore.CYAN}({total_original} total clusters matched thresholds, {total_notifications} are new notifications){Style.RESET_ALL}"
+                f"{Fore.CYAN}({total_matched} total clusters matched "
+                f"thresholds, {total_new} are new notifications){Style.RESET_ALL}"
             )
         click.echo(
-            f"{Fore.CYAN}Thresholds: Warning {warning_threshold}%, Critical {critical_threshold}%{Style.RESET_ALL}"
+            f"{Fore.CYAN}Thresholds: Warning {warning_threshold}%, "
+            f"Critical {critical_threshold}%{Style.RESET_ALL}"
         )
 
-        # Display critical clusters
-        if critical_clusters:
-            _display_critical_clusters(
-                critical_clusters, critical_threshold, notification_manager
+        if critical:
+            _display(
+                critical,
+                f"🚨 CRITICAL: {len(critical)} clusters (≥{critical_threshold}% elapsed):",
+                Fore.RED,
+            )
+        if warning:
+            _display(
+                warning,
+                f"⚠️  WARNING: {len(warning)} clusters "
+                f"({warning_threshold}%-{critical_threshold - 1}% elapsed):",
+                Fore.YELLOW,
             )
 
-        # Display warning clusters
-        if warning_clusters:
-            _display_warning_clusters(
-                warning_clusters,
-                warning_threshold,
-                critical_threshold,
-                notification_manager,
-            )
+        click.echo(f"\n{Fore.CYAN}Notification Summary:{Style.RESET_ALL}")
+        click.echo(f"  • Critical notifications: {len(critical)}")
+        click.echo(f"  • Warning notifications: {len(warning)}")
+        click.echo(f"  • Total notifications: {total_new}")
 
-        # Display summary
-        _display_summary(critical_clusters, warning_clusters)
-
-        # Send notifications if backend is specified
         if notify_backend:
             _send_notifications(
-                critical_clusters,
-                warning_clusters,
+                critical,
+                warning,
                 notify_backend,
                 notification_manager,
                 notification_history,
@@ -402,78 +287,66 @@ def execute_notify_command(
 
     except ValueError as e:
         click.echo(f"{Fore.RED}Error: {e}{Style.RESET_ALL}")
-        raise click.Abort()
+        raise click.Abort() from e
     except Exception as e:
         click.echo(f"{Fore.RED}Error: {e}{Style.RESET_ALL}")
-        raise click.Abort()
+        raise click.Abort() from e
 
 
-def _display_critical_clusters(
-    critical_clusters,
-    critical_threshold: int,
+def _send_notifications(
+    critical: list[ClusterNotification],
+    warning: list[ClusterNotification],
+    backend: str,
     notification_manager: NotificationManager,
+    notification_history: NotificationHistory | None,
+    **kwargs,
 ):
-    """Display critical clusters in a formatted table."""
-    critical_table_data = []
-    for cluster_info, elapsed_percentage, expiry_time in critical_clusters:
-        cluster_data = notification_manager.get_cluster_notification_data(
-            cluster_info, elapsed_percentage, expiry_time
-        )
+    """
+    Deliver the alerts, recording each batch as sent.
 
-        critical_table_data.append(
-            [
-                cluster_data["cluster_name"],
-                cluster_data["namespace"],
-                cluster_data["owner"],
-                cluster_data["expires"],
-                f"{cluster_data['elapsed_percentage']:.1f}%",
-                cluster_data["time_remaining"],
-            ]
-        )
+    History is updated per severity immediately after that batch is delivered,
+    so a failure partway through does not mark undelivered alerts as sent.
+    """
+    slack_params = {
+        "token": kwargs.get("slack_token"),
+        "channel": kwargs.get("slack_channel"),
+        "username": kwargs.get("slack_username", "NKP Cluster Cleaner"),
+        "icon_emoji": kwargs.get("slack_icon_emoji", ":broom:"),
+    }
+    channel = slack_params["channel"]
 
-    headers = ["Cluster Name", "Namespace", "Owner", "Expires", "Elapsed", "Remaining"]
     click.echo(
-        f"\n{Fore.RED}🚨 CRITICAL: {len(critical_clusters)} clusters (≥{critical_threshold}% elapsed):{Style.RESET_ALL}"
+        f"{Fore.CYAN}Sending {len(critical) + len(warning)} notifications to "
+        f"Slack channel #{channel}...{Style.RESET_ALL}"
     )
-    click.echo(tabulate(critical_table_data, headers=headers, tablefmt="grid"))
 
+    try:
+        for notifications, severity, threshold in (
+            (critical, CRITICAL, kwargs.get("critical_threshold", 95)),
+            (warning, WARNING, kwargs.get("warning_threshold", 80)),
+        ):
+            if not notifications:
+                continue
 
-def _display_warning_clusters(
-    warning_clusters,
-    warning_threshold: int,
-    critical_threshold: int,
-    notification_manager: NotificationManager,
-):
-    """Display warning clusters in a formatted table."""
-    warning_table_data = []
-    for cluster_info, elapsed_percentage, expiry_time in warning_clusters:
-        cluster_data = notification_manager.get_cluster_notification_data(
-            cluster_info, elapsed_percentage, expiry_time
+            notification_manager.send_expiry_notification(
+                backend=backend,
+                notifications=notifications,
+                severity=severity,
+                threshold=threshold,
+                **slack_params,
+            )
+            if notification_history:
+                notification_history.mark_clusters_as_notified(notifications, severity)
+
+            click.echo(
+                f"{Fore.GREEN}Sent {severity} notification for "
+                f"{len(notifications)} clusters to #{channel}{Style.RESET_ALL}"
+            )
+
+        click.echo(
+            f"{Fore.GREEN}Successfully sent notifications to Slack!{Style.RESET_ALL}"
         )
 
-        warning_table_data.append(
-            [
-                cluster_data["cluster_name"],
-                cluster_data["namespace"],
-                cluster_data["owner"],
-                cluster_data["expires"],
-                f"{cluster_data['elapsed_percentage']:.1f}%",
-                cluster_data["time_remaining"],
-            ]
-        )
-
-    headers = ["Cluster Name", "Namespace", "Owner", "Expires", "Elapsed", "Remaining"]
-    click.echo(
-        f"\n{Fore.YELLOW}⚠️  WARNING: {len(warning_clusters)} clusters ({warning_threshold}%-{critical_threshold - 1}% elapsed):{Style.RESET_ALL}"
-    )
-    click.echo(tabulate(warning_table_data, headers=headers, tablefmt="grid"))
-
-
-def _display_summary(critical_clusters, warning_clusters):
-    """Display notification summary."""
-    click.echo(f"\n{Fore.CYAN}Notification Summary:{Style.RESET_ALL}")
-    click.echo(f"  • Critical notifications: {len(critical_clusters)}")
-    click.echo(f"  • Warning notifications: {len(warning_clusters)}")
-    click.echo(
-        f"  • Total notifications: {len(critical_clusters) + len(warning_clusters)}"
-    )
+    except Exception as e:
+        click.echo(f"{Fore.RED}Failed to send notifications: {e}{Style.RESET_ALL}")
+        raise click.Abort() from e

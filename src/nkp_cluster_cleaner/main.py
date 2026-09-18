@@ -4,14 +4,15 @@ Main entry point for the NKP Cluster Cleaner tool.
 """
 
 import click
-from colorama import init, Fore, Style
-from .config import ConfigManager
-from .redis_data_collector import RedisDataCollector
+from colorama import Fore, Style, init
+
+from .commands.delete_clusters import execute_delete_clusters_command
+from .commands.list_clusters import execute_list_clusters_command
 
 # These commands were making this file too long and hard to read
 from .commands.notify import execute_notify_command
-from .commands.list_clusters import execute_list_clusters_command
-from .commands.delete_clusters import execute_delete_clusters_command
+from .config import ConfigManager
+from .redis_data_collector import RedisDataCollector
 
 # Initialize colorama
 init()
@@ -119,7 +120,7 @@ def notification_backend_option(f):
 # Built-in function with click!
 @click.version_option()
 def cli():
-    """NKP Cluster Cleaner - Delete CAPI clusters based on label criteria."""
+    """NKP Cluster Cleaner - Delete NKP clusters based on label criteria."""
     pass
 
 
@@ -141,7 +142,7 @@ def cli():
     help="Grace period for newly created clusters (e.g., 1d, 4h, 2w, 1y). Clusters younger than this will not be considered for deletion.",
 )
 def list_clusters(kubeconfig, config, namespace, no_exclusions, grace):
-    """List CAPI clusters that match deletion criteria."""
+    """List NKP clusters that match deletion criteria."""
     execute_list_clusters_command(
         kubeconfig=kubeconfig,
         config=config,
@@ -185,7 +186,7 @@ def delete_clusters(
     redis_password,
     **kwargs,
 ):
-    """Delete CAPI clusters that match deletion criteria."""
+    """Delete NKP clusters that match deletion criteria."""
     # Filter out None values from kwargs to only pass relevant backend parameters
     backend_params = {k: v for k, v in kwargs.items() if v is not None}
 
@@ -354,7 +355,7 @@ def serve(
         click.echo(f"\n{Fore.YELLOW}Server stopped by user.{Style.RESET_ALL}")
     except Exception as e:
         click.echo(f"{Fore.RED}Error starting server: {e}{Style.RESET_ALL}")
-        raise click.Abort()
+        raise click.Abort() from e
 
 
 #
@@ -439,7 +440,7 @@ def collect_analytics(
 
     except Exception as e:
         click.echo(f"{Fore.RED}Error collecting analytics: {e}{Style.RESET_ALL}")
-        raise click.Abort()
+        raise click.Abort() from e
 
 
 if __name__ == "__main__":

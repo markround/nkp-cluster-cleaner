@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nkp-cluster-cleaner"
+description = "A tool to delete NKP/CAPI-provisioned Kubernetes clusters based on label criteria"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE.md"]
+authors = [{ name = "Mark Dastmalchi-Round", email = "github@markround.com" }]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: System Administrators",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+# Version comes from src/nkp_cluster_cleaner/__init__.py, which misc/bump_version.sh
+# rewrites along with the chart and docs. Dependencies come from requirements.txt so
+# the Dockerfile can still install them as a separate, cacheable layer.
+dynamic = ["version", "dependencies", "optional-dependencies"]
+
+[project.urls]
+Homepage = "https://github.com/markround/nkp-cluster-cleaner"
+
+[project.scripts]
+nkp-cluster-cleaner = "nkp_cluster_cleaner.main:cli"
+
+[tool.setuptools.dynamic]
+version = { attr = "nkp_cluster_cleaner.__version__" }
+dependencies = { file = ["requirements.txt"] }
+optional-dependencies.dev = { file = ["requirements-dev.txt"] }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# Templates and static assets are not Python modules, so they need declaring
+# explicitly or they are silently dropped from the wheel.
+[tool.setuptools.package-data]
+nkp_cluster_cleaner = ["templates/*.html", "static/**/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+addopts = "-ra --strict-markers"

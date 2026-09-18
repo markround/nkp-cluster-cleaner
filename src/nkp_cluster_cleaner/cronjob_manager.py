@@ -2,17 +2,17 @@
 CronJob Manager module for tracking scheduled cluster tasks.
 """
 
+from datetime import UTC, datetime
+
+from colorama import Fore, Style
 from kubernetes import client
 from kubernetes.client.rest import ApiException
-from datetime import datetime, timezone
-from typing import List, Dict, Optional
-from colorama import Fore, Style
 
 
 class CronJobManager:
     """Manages CronJob operations and monitoring."""
 
-    def __init__(self, kubeconfig_path: Optional[str] = None):
+    def __init__(self, kubeconfig_path: str | None = None):
         """
         Initialize the cronjob manager.
 
@@ -34,13 +34,13 @@ class CronJobManager:
 
                 config.load_kube_config()
         except Exception as e:
-            raise Exception(f"Failed to load kubeconfig: {e}")
+            raise Exception(f"Failed to load kubeconfig: {e}") from e
 
         # Initialize API clients
         self.batch_v1 = client.BatchV1Api()
         self.core_v1 = client.CoreV1Api()
 
-    def get_nkp_cronjobs(self, namespace: str = "kommander") -> List[Dict]:
+    def get_nkp_cronjobs(self, namespace: str = "kommander") -> list[dict]:
         """
         Get all CronJobs with the nkp-cluster-cleaner label.
 
@@ -88,7 +88,7 @@ class CronJobManager:
 
     def get_jobs_for_cronjob(
         self, cronjob_name: str, namespace: str = "kommander", limit: int = 10
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         Get recent Jobs created by a specific CronJob.
 
@@ -147,7 +147,7 @@ class CronJobManager:
             )
             return []
 
-    def get_job_pods(self, job_name: str, namespace: str = "kommander") -> List[Dict]:
+    def get_job_pods(self, job_name: str, namespace: str = "kommander") -> list[dict]:
         """
         Get pods created by a specific Job.
 
@@ -335,7 +335,7 @@ class CronJobManager:
         else:
             return "Pending"
 
-    def _calculate_duration(self, job) -> Optional[str]:
+    def _calculate_duration(self, job) -> str | None:
         """
         Calculate the duration of a job.
 
@@ -365,8 +365,8 @@ class CronJobManager:
                 return f"{hours}h {minutes}m"
         elif start_time:
             # Job is still running
-            now = datetime.now(timezone.utc)
-            duration = now - start_time.replace(tzinfo=timezone.utc)
+            now = datetime.now(UTC)
+            duration = now - start_time.replace(tzinfo=UTC)
             total_seconds = int(duration.total_seconds())
 
             if total_seconds < 60:
@@ -399,7 +399,7 @@ class CronJobManager:
         else:
             return "Unknown"
 
-    def trigger_cronjob(self, cronjob_name: str, namespace: str = "kommander") -> Dict:
+    def trigger_cronjob(self, cronjob_name: str, namespace: str = "kommander") -> dict:
         """
         Trigger a CronJob manually by creating a Job from its JobTemplate.
 
@@ -430,6 +430,7 @@ class CronJobManager:
 
             # Use the CronJob's job template directly and add owner reference
             import copy
+
             from kubernetes.client import V1OwnerReference
 
             job_template = copy.deepcopy(cronjob.spec.job_template)
@@ -472,7 +473,7 @@ class CronJobManager:
             print(f"{Fore.RED}{error_msg}{Style.RESET_ALL}")
             return {"success": False, "error": error_msg}
 
-    def get_all_scheduled_tasks_summary(self, namespace: str = "kommander") -> Dict:
+    def get_all_scheduled_tasks_summary(self, namespace: str = "kommander") -> dict:
         """
         Get a  summary of all scheduled tasks.
 

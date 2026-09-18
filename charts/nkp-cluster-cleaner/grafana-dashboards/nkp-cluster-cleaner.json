@@ -103,9 +103,16 @@
           "refId": "B"
         },
         {
+          "editorMode": "code",
+          "expr": "nkp_cluster_cleaner_clusters_deleting",
+          "legendFormat": "Deleting",
+          "range": true,
+          "refId": "C"
+        },
+        {
           "expr": "sum(nkp_cluster_cleaner_namespace_clusters{type=\"total\"})",
           "legendFormat": "Total",
-          "refId": "C"
+          "refId": "D"
         }
       ],
       "title": "Cluster Status Overview",
@@ -395,6 +402,19 @@
           "legendFormat": "Protected Clusters",
           "range": true,
           "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "nkp_cluster_cleaner_clusters_deleting",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "Deleting",
+          "range": true,
+          "refId": "C"
         }
       ],
       "title": "Cluster Trends",

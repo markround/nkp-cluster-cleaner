@@ -55,6 +55,11 @@
         color: #2e7d32;
         border: 1px solid #c8e6c9;
     }
+    .badge-deleting {
+        background-color: #fff4e5;
+        color: #b25e00;
+        border: 1px solid #ffe0b2;
+    }
     .empty-state {
         text-align: center;
         padding: 40px 20px;
@@ -119,19 +124,21 @@
                             <th>Namespace</th>
                             <th>Owner</th>
                             <th>Expires</th>
+                            <th>Target</th>
                             <th>Reason</th>
                             <th>Status</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for cluster_info, reason in clusters_to_delete %}
+                        {% for status in clusters_to_delete %}
                         <tr>
-                            <td><strong>{{ cluster_info.capi_cluster_name or 'N/A' }}</strong></td>
-                            <td>{{ cluster_info.capi_cluster_namespace or 'N/A' }}</td>
-                            <td>{{ cluster_info.labels.get('owner', 'N/A') }}</td>
-                            <td>{{ cluster_info.labels.get('expires', 'N/A') }}</td>
-                            <td>{{ reason }}</td>
-                            <td><span class="status-badge badge-delete">For Deletion</span></td>
+                            <td><strong>{{ status.cluster.name }}</strong></td>
+                            <td>{{ status.cluster.namespace }}</td>
+                            <td>{{ status.cluster.labels.get('owner', 'N/A') }}</td>
+                            <td>{{ status.cluster.labels.get('expires', 'N/A') }}</td>
+                            <td>{{ status.cluster.target.kind_name if status.cluster.target else 'none' }}</td>
+                            <td>{{ status.verdict.detail }}</td>
+                            <td><span class="status-badge badge-delete">{{ status.state.label }}</span></td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -144,6 +151,36 @@
                 </div>
             {% endif %}
         </div>
+
+        <!-- Clusters currently being torn down -->
+        {% if deleting_clusters %}
+        <div class="cluster-section">
+            <h2>⏳ Deletion in Progress</h2>
+            <p><strong>{{ deleting_clusters|length }}</strong> clusters are being torn down. This can take some time to complete.</p>
+            <table class="cluster-table">
+                <thead>
+                    <tr>
+                        <th>Cluster Name</th>
+                        <th>Namespace</th>
+                        <th>Owner</th>
+                        <th>Expires</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for status in deleting_clusters %}
+                    <tr>
+                        <td><strong>{{ status.cluster.name }}</strong></td>
+                        <td>{{ status.cluster.namespace }}</td>
+                        <td>{{ status.cluster.labels.get('owner', 'N/A') }}</td>
+                        <td>{{ status.cluster.labels.get('expires', 'N/A') }}</td>
+                        <td><span class="status-badge badge-deleting">{{ status.state.label }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
 
         <!-- Excluded Clusters -->
         <div class="cluster-section">
@@ -162,14 +199,14 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for cluster_info, reason in excluded_clusters %}
+                        {% for status in excluded_clusters %}
                         <tr>
-                            <td><strong>{{ cluster_info.capi_cluster_name or 'N/A' }}</strong></td>
-                            <td>{{ cluster_info.capi_cluster_namespace or 'N/A' }}</td>
-                            <td>{{ cluster_info.labels.get('owner', 'N/A') }}</td>
-                            <td>{{ cluster_info.labels.get('expires', 'N/A') }}</td>
-                            <td>{{ reason }}</td>
-                            <td><span class="status-badge badge-exclude">Protected</span></td>
+                            <td><strong>{{ status.cluster.name }}</strong></td>
+                            <td>{{ status.cluster.namespace }}</td>
+                            <td>{{ status.cluster.labels.get('owner', 'N/A') }}</td>
+                            <td>{{ status.cluster.labels.get('expires', 'N/A') }}</td>
+                            <td>{{ status.verdict.detail }}</td>
+                            <td><span class="status-badge badge-exclude">{{ status.state.label }}</span></td>
                         </tr>
                         {% endfor %}
                     </tbody>

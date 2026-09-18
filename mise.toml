@@ -3,4 +3,6 @@ python = "3.12"
 
 [env]
 _.python.venv = { path = ".venv", create = true } 
+REDIS_HOST = 'localhost'
+REDIS_PORT = '6379'
 

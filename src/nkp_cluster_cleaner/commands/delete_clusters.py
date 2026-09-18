@@ -2,100 +2,105 @@
 Delete clusters command implementation for the NKP Cluster Cleaner tool.
 """
 
+from __future__ import annotations
+
 import click
 from colorama import Fore, Style
 from tabulate import tabulate
-from typing import Optional
+
 from ..cluster_manager import ClusterManager
 from ..config import ConfigManager
+from ..models import ClusterState
 from ..notification_manager import NotificationManager
 
 
+def _validate_backend(notify_backend: str | None, kwargs: dict):
+    """
+    Check that a notification backend is usable before doing any work.
+
+    Args:
+        notify_backend: The requested backend, or None.
+        kwargs: Backend-specific parameters supplied on the command line.
+
+    Raises:
+        click.Abort: If the backend is unknown or incompletely configured.
+    """
+    if not notify_backend:
+        return
+
+    if notify_backend not in NotificationManager.SUPPORTED_BACKENDS:
+        click.echo(
+            f"{Fore.RED}Error: Unsupported notification backend "
+            f"'{notify_backend}'. Supported: "
+            f"{', '.join(NotificationManager.SUPPORTED_BACKENDS)}{Style.RESET_ALL}"
+        )
+        raise click.Abort()
+
+    if notify_backend == "slack":
+        for option in ("slack_token", "slack_channel"):
+            if not kwargs.get(option):
+                flag = "--" + option.replace("_", "-")
+                click.echo(
+                    f"{Fore.RED}Error: {flag} is required when using the slack "
+                    f"notification backend{Style.RESET_ALL}"
+                )
+                raise click.Abort()
+
+
 def execute_delete_clusters_command(
-    kubeconfig: Optional[str],
-    config: Optional[str],
-    namespace: Optional[str],
+    kubeconfig: str | None,
+    config: str | None,
+    namespace: str | None,
     delete: bool,
-    grace: Optional[str] = None,
-    notify_backend: Optional[str] = None,
+    grace: str | None = None,
+    notify_backend: str | None = None,
     redis_host: str = "redis",
     redis_port: int = 6379,
     redis_db: int = 0,
-    redis_username: Optional[str] = None,
-    redis_password: Optional[str] = None,
+    redis_username: str | None = None,
+    redis_password: str | None = None,
     **kwargs,
 ):
     """
-    Execute the delete-clusters command with the given parameters.
+    Execute the delete-clusters command.
 
     Args:
-        kubeconfig: Path to kubeconfig file
-        config: Path to configuration file
-        namespace: Namespace to limit operation to
-        delete: Whether to actually delete clusters (False = dry-run)
-        grace: Grace period for newly created clusters
-        notify_backend: Notification backend to use (slack, etc.)
-        redis_host: Redis host for notification history
-        redis_port: Redis port
-        redis_db: Redis database number
-        redis_username: Redis username for authentication
-        redis_password: Redis password for authentication
-        **kwargs: Backend-specific parameters (e.g. slack_token, slack_channel for slack backend)
+        kubeconfig: Path to kubeconfig file.
+        config: Path to configuration file.
+        namespace: Namespace to limit the operation to.
+        delete: Actually delete. Without this the command is a dry run.
+        grace: Grace period for newly created clusters.
+        notify_backend: Notification backend to report deletions through.
+        redis_host: Redis host for notification history.
+        redis_port: Redis port.
+        redis_db: Redis database number.
+        redis_username: Redis username.
+        redis_password: Redis password.
+        **kwargs: Backend-specific parameters, e.g. slack_token.
     """
-    # Default behavior is dry-run unless --delete is specified
     dry_run = not delete
+    _validate_backend(notify_backend, kwargs)
 
-    # Validate notification backend if specified
-    if notify_backend:
-        if notify_backend not in NotificationManager.SUPPORTED_BACKENDS:
-            click.echo(
-                f"{Fore.RED}Error: Unsupported notification backend '{notify_backend}'. Supported: slack{Style.RESET_ALL}"
-            )
-            raise click.Abort()
-
-        # Validate backend-specific requirements
-        if notify_backend == "slack":
-            if not kwargs.get("slack_token"):
-                click.echo(
-                    f"{Fore.RED}Error: --slack-token is required when using slack notification backend{Style.RESET_ALL}"
-                )
-                raise click.Abort()
-            if not kwargs.get("slack_channel"):
-                click.echo(
-                    f"{Fore.RED}Error: --slack-channel is required when using slack notification backend{Style.RESET_ALL}"
-                )
-                raise click.Abort()
-
+    scope = f"namespace '{namespace}'" if namespace else "all namespaces"
     if dry_run:
-        if namespace:
-            click.echo(
-                f"{Fore.YELLOW}[DRY RUN MODE] Simulating cluster deletion in namespace '{namespace}'...{Style.RESET_ALL}"
-            )
-        else:
-            click.echo(
-                f"{Fore.YELLOW}[DRY RUN MODE] Simulating cluster deletion across all namespaces...{Style.RESET_ALL}"
-            )
         click.echo(
-            f"{Fore.CYAN}Note: Running in dry-run mode. Use --delete to actually delete clusters.{Style.RESET_ALL}"
+            f"{Fore.YELLOW}[DRY RUN MODE] Simulating cluster deletion across "
+            f"{scope}...{Style.RESET_ALL}"
+        )
+        click.echo(
+            f"{Fore.CYAN}Note: Running in dry-run mode. Use --delete to "
+            f"actually delete clusters.{Style.RESET_ALL}"
         )
     else:
-        if namespace:
-            click.echo(
-                f"{Fore.RED}Deleting CAPI clusters in namespace '{namespace}'...{Style.RESET_ALL}"
-            )
-        else:
-            click.echo(
-                f"{Fore.RED}Deleting CAPI clusters across all namespaces...{Style.RESET_ALL}"
-            )
+        click.echo(f"{Fore.RED}Deleting clusters across {scope}...{Style.RESET_ALL}")
 
     if grace:
         click.echo(
-            f"{Fore.CYAN}Grace period: {grace} (clusters younger than this will not be deleted){Style.RESET_ALL}"
+            f"{Fore.CYAN}Grace period: {grace} (clusters younger than this "
+            f"will not be deleted){Style.RESET_ALL}"
         )
 
-    # Initialize notification components if backend is specified
     notification_manager = None
-
     if notify_backend:
         try:
             config_manager = ConfigManager(config) if config else ConfigManager()
@@ -105,145 +110,164 @@ def execute_delete_clusters_command(
             click.echo(
                 f"{Fore.CYAN}Notification backend: {notify_backend}{Style.RESET_ALL}"
             )
-
         except Exception as e:
             click.echo(
-                f"{Fore.RED}Failed to initialize notification system: {e}{Style.RESET_ALL}"
+                f"{Fore.RED}Failed to initialize notification system: "
+                f"{e}{Style.RESET_ALL}"
             )
-            raise click.Abort()
+            raise click.Abort() from e
 
     try:
-        # Initialize configuration and cluster manager
         config_manager = ConfigManager(config) if config else ConfigManager()
         cluster_manager = ClusterManager(kubeconfig, config_manager, grace_period=grace)
 
-        # Get clusters that match deletion criteria
-        clusters_to_delete, excluded_clusters = (
-            cluster_manager.get_clusters_with_exclusions(namespace)
+        click.echo(
+            f"{Fore.CYAN}Deletion API: {cluster_manager.api_mode}{Style.RESET_ALL}"
         )
 
-        if not clusters_to_delete:
-            if dry_run:
-                click.echo(
-                    f"\n{Fore.GREEN}No clusters found matching deletion criteria (dry-run mode).{Style.RESET_ALL}"
-                )
-            else:
-                click.echo(
-                    f"\n{Fore.GREEN}No clusters found matching deletion criteria.{Style.RESET_ALL}"
-                )
+        grouped = cluster_manager.group_by_state(namespace)
+        to_delete = grouped[ClusterState.FOR_DELETION]
+        in_flight = grouped[ClusterState.DELETING]
+
+        if in_flight:
+            click.echo(
+                f"{Fore.CYAN}Skipping {len(in_flight)} clusters already being "
+                f"deleted{Style.RESET_ALL}"
+            )
+
+        if not to_delete:
+            suffix = " (dry-run mode)" if dry_run else ""
+            click.echo(
+                f"\n{Fore.GREEN}No clusters found matching deletion "
+                f"criteria{suffix}.{Style.RESET_ALL}"
+            )
             return
 
-        # Show what will be deleted
-        table_data = []
-        for cluster_info, reason in clusters_to_delete:
-            capi_cluster_name = cluster_info.get("capi_cluster_name", "unknown")
-            capi_cluster_namespace = cluster_info.get(
-                "capi_cluster_namespace", "unknown"
+        verb = "would be deleted" if dry_run else "for deletion"
+        click.echo(
+            f"\n{Fore.YELLOW}Found {len(to_delete)} clusters {verb}:{Style.RESET_ALL}"
+        )
+        click.echo(
+            tabulate(
+                [
+                    [
+                        status.cluster.name,
+                        status.cluster.namespace,
+                        status.cluster.labels.get("owner", "N/A"),
+                        status.cluster.labels.get("expires", "N/A"),
+                        # Show what will actually be deleted, so the operator can
+                        # see whether this is an NKPCluster or a CAPI Cluster.
+                        status.cluster.target.kind_name
+                        if status.cluster.target
+                        else "none",
+                        status.verdict.detail,
+                    ]
+                    for status in to_delete
+                ],
+                headers=[
+                    "Cluster Name",
+                    "Namespace",
+                    "Owner",
+                    "Expires",
+                    "Target",
+                    "Reason",
+                ],
+                tablefmt="grid",
             )
-            labels = cluster_info.get("labels", {})
-            owner = labels.get("owner", "N/A")
-            expires = labels.get("expires", "N/A")
+        )
 
-            table_data.append(
-                [capi_cluster_name, capi_cluster_namespace, owner, expires, reason]
-            )
-
-        headers = ["Cluster Name", "Namespace", "Owner", "Expires", "Reason"]
-        if dry_run:
-            click.echo(
-                f"\n{Fore.YELLOW}Found {len(clusters_to_delete)} clusters that would be deleted:{Style.RESET_ALL}"
-            )
-        else:
-            click.echo(
-                f"\n{Fore.YELLOW}Found {len(clusters_to_delete)} clusters for deletion:{Style.RESET_ALL}"
-            )
-        click.echo(tabulate(table_data, headers=headers, tablefmt="grid"))
-
-        # Delete clusters (or simulate deletion)
         deleted_count = 0
         failed_count = 0
-        successfully_deleted = []  # Track successfully deleted clusters for notifications
+        successfully_deleted = []
 
-        for cluster_info, reason in clusters_to_delete:
-            capi_cluster_name = cluster_info.get("capi_cluster_name", "unknown")
-            capi_cluster_namespace = cluster_info.get(
-                "capi_cluster_namespace", "unknown"
-            )
-            labels = cluster_info.get("labels", {})
-
-            if dry_run:
-                click.echo(
-                    f"{Fore.YELLOW}[DRY RUN] Would delete: {capi_cluster_name} in {capi_cluster_namespace} ({reason}){Style.RESET_ALL}"
-                )
+        for status in to_delete:
+            cluster = status.cluster
+            if cluster_manager.delete_cluster(cluster, dry_run):
                 deleted_count += 1
+                successfully_deleted.append(
+                    {
+                        "name": cluster.name,
+                        "namespace": cluster.namespace,
+                        "owner": cluster.owner,
+                        "reason": status.verdict.detail,
+                    }
+                )
             else:
-                if cluster_manager.delete_cluster(
-                    capi_cluster_name, capi_cluster_namespace, dry_run
-                ):
-                    deleted_count += 1
-                    # Track successfully deleted cluster for notification
-                    successfully_deleted.append(
-                        {
-                            "name": capi_cluster_name,
-                            "namespace": capi_cluster_namespace,
-                            "owner": labels.get("owner", "unknown"),
-                            "reason": reason,
-                        }
-                    )
+                failed_count += 1
 
-                else:
-                    failed_count += 1
-
-        # Send deletion notification if configured and clusters were deleted
-        if notification_manager and successfully_deleted:
-            click.echo(
-                f"\n{Fore.CYAN}Sending deletion notification via {notify_backend}...{Style.RESET_ALL}"
+        if notification_manager and successfully_deleted and not dry_run:
+            _send_deletion_notification(
+                notification_manager, notify_backend, successfully_deleted, kwargs
             )
-            try:
-                # Extract backend-specific parameters from kwargs
-                backend_params = {
-                    "token": kwargs.get("slack_token"),
-                    "channel": kwargs.get("slack_channel"),
-                    "username": kwargs.get("slack_username", "NKP Cluster Cleaner"),
-                    "icon_emoji": kwargs.get("slack_icon_emoji", ":broom:"),
-                }
 
-                notification_manager.send_deletion_notification(
-                    backend=notify_backend,
-                    deleted_clusters=successfully_deleted,
-                    severity="info",
-                    **backend_params,
-                )
-                click.echo(
-                    f"{Fore.GREEN}Successfully sent deletion notification to {notify_backend}!{Style.RESET_ALL}"
-                )
-            except Exception as e:
-                click.echo(
-                    f"{Fore.YELLOW}Warning: Failed to send deletion notification: {e}{Style.RESET_ALL}"
-                )
-                # Don't fail the entire operation if notification fails
-
-        # Summary
         if dry_run:
             click.echo(
-                f"\n{Fore.CYAN}Dry run completed. {deleted_count} clusters would be deleted.{Style.RESET_ALL}"
+                f"\n{Fore.CYAN}Dry run completed. {deleted_count} clusters "
+                f"would be deleted.{Style.RESET_ALL}"
             )
             click.echo(
-                f"{Fore.CYAN}To actually delete these clusters, run the command again with --delete{Style.RESET_ALL}"
+                f"{Fore.CYAN}To actually delete these clusters, run the "
+                f"command again with --delete{Style.RESET_ALL}"
             )
             if notify_backend:
                 click.echo(
-                    f"{Fore.CYAN}Note: Deletion notifications would be sent via {notify_backend} when running with --delete{Style.RESET_ALL}"
+                    f"{Fore.CYAN}Note: Deletion notifications would be sent via "
+                    f"{notify_backend} when running with --delete{Style.RESET_ALL}"
                 )
         else:
             click.echo(
-                f"\n{Fore.GREEN}Deletion completed. {deleted_count} clusters deleted successfully.{Style.RESET_ALL}"
+                f"\n{Fore.GREEN}Deletion requested for {deleted_count} "
+                f"clusters.{Style.RESET_ALL}"
             )
-            if failed_count > 0:
+            if cluster_manager.api_mode == "nkpcluster":
                 click.echo(
-                    f"{Fore.RED}{failed_count} clusters failed to delete.{Style.RESET_ALL}"
+                    f"{Fore.CYAN}Teardown runs asynchronously and can take some "
+                    f"time; these clusters will report as 'Deleting' until it "
+                    f"completes.{Style.RESET_ALL}"
+                )
+            if failed_count:
+                click.echo(
+                    f"{Fore.RED}{failed_count} clusters failed to "
+                    f"delete.{Style.RESET_ALL}"
                 )
 
     except Exception as e:
         click.echo(f"{Fore.RED}Error: {e}{Style.RESET_ALL}")
-        raise click.Abort()
+        raise click.Abort() from e
+
+
+def _send_deletion_notification(
+    notification_manager: NotificationManager,
+    notify_backend: str,
+    deleted_clusters: list[dict],
+    kwargs: dict,
+):
+    """
+    Report the deletions, without letting a delivery failure fail the command.
+
+    The clusters are already gone by this point, so an unreachable Slack is not
+    a reason to exit non-zero.
+    """
+    click.echo(
+        f"\n{Fore.CYAN}Sending deletion notification via "
+        f"{notify_backend}...{Style.RESET_ALL}"
+    )
+    try:
+        notification_manager.send_deletion_notification(
+            backend=notify_backend,
+            deleted_clusters=deleted_clusters,
+            severity="info",
+            token=kwargs.get("slack_token"),
+            channel=kwargs.get("slack_channel"),
+            username=kwargs.get("slack_username", "NKP Cluster Cleaner"),
+            icon_emoji=kwargs.get("slack_icon_emoji", ":broom:"),
+        )
+        click.echo(
+            f"{Fore.GREEN}Successfully sent deletion notification to "
+            f"{notify_backend}!{Style.RESET_ALL}"
+        )
+    except Exception as e:
+        click.echo(
+            f"{Fore.YELLOW}Warning: Failed to send deletion notification: "
+            f"{e}{Style.RESET_ALL}"
+        )

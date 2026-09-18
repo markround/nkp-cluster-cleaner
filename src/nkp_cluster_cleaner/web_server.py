@@ -4,28 +4,41 @@ Web server module for the NKP Cluster Cleaner web UI.
 
 import os
 from datetime import datetime
-from flask import Flask, render_template, jsonify, request
-from typing import Optional
-from .config import ConfigManager
-from .cluster_manager import ClusterManager
-from .cronjob_manager import CronJobManager
-from .redis_analytics_service import RedisAnalyticsService
-from .prometheus_metrics_service import PrometheusMetricsService
+
+from flask import Flask, jsonify, render_template, request
+from kubernetes.client.rest import ApiException
+
 import nkp_cluster_cleaner
+
+from .cluster_manager import ClusterManager
+from .config import ConfigManager
+from .cronjob_manager import CronJobManager
+from .models import ClusterState
+from .prometheus_metrics_service import PrometheusMetricsService
+from .redis_analytics_service import RedisAnalyticsService
 
 __version__ = nkp_cluster_cleaner.__version__
 
+#: States shown under the "excluded" heading, in the order they appear.
+EXCLUDED_STATES = [
+    ClusterState.MANAGEMENT,
+    ClusterState.PROTECTED,
+    ClusterState.IN_GRACE,
+    ClusterState.ACTIVE,
+    ClusterState.NO_TARGET,
+]
+
 
 def create_app(
-    kubeconfig_path: Optional[str] = None,
-    config_path: Optional[str] = None,
-    url_prefix: Optional[str] = None,
-    grace_period: Optional[str] = None,
+    kubeconfig_path: str | None = None,
+    config_path: str | None = None,
+    url_prefix: str | None = None,
+    grace_period: str | None = None,
     redis_host: str = "redis",
     redis_port: int = 6379,
     redis_db: int = 0,
-    redis_username: Optional[str] = None,
-    redis_password: Optional[str] = None,
+    redis_username: str | None = None,
+    redis_password: str | None = None,
     no_redis: bool = False,
 ) -> Flask:
     """
@@ -137,6 +150,7 @@ def create_app(
             grace_period=app.config["GRACE_PERIOD"],
             version=__version__,
             nkp_version=nkp_version,
+            api_mode=cluster_manager.api_mode,
         )
 
     @app.route(url_prefix + "/health")
@@ -152,6 +166,9 @@ def create_app(
                 "status": "ok",
                 "service": "nkp-cluster-cleaner",
                 "version": __version__,
+                # Which deletion API was detected: "nkpcluster" on NKP 2.18+,
+                # "capi" on older releases.
+                "api_mode": cluster_manager.api_mode,
                 "kubeconfig": app.config["KUBECONFIG_PATH"] or "default",
                 "config": app.config["CONFIG_PATH"] or "none",
                 "timestamp": datetime.now().isoformat(),
@@ -189,49 +206,43 @@ def create_app(
 
     @app.route(url_prefix + "/clusters")
     def clusters():
-        """Display clusters that match deletion criteria."""
+        """Display clusters grouped by what the tool has decided about them."""
         namespace_filter = request.args.get("namespace")
 
+        common = {
+            "no_redis": app.config["NO_REDIS"],
+            "kubeconfig_status": app.config["KUBECONFIG_PATH"] or "default",
+            "config_status": app.config["CONFIG_PATH"] or "none",
+            "namespace_filter": namespace_filter,
+            "grace_period": app.config["GRACE_PERIOD"],
+            "version": __version__,
+            "refresh_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        }
+
         try:
-            # Get cluster manager
             cluster_manager = get_cluster_manager()
-
-            # Get clusters with exclusions
-            clusters_to_delete, excluded_clusters = (
-                cluster_manager.get_clusters_with_exclusions(namespace_filter)
-            )
-
-            # Determine configuration status
-            kubeconfig_status = app.config["KUBECONFIG_PATH"] or "default"
-            config_status = app.config["CONFIG_PATH"] or "none"
+            grouped = cluster_manager.group_by_state(namespace_filter)
 
             return render_template(
                 "clusters.html",
-                no_redis=app.config["NO_REDIS"],
-                clusters_to_delete=clusters_to_delete,
-                excluded_clusters=excluded_clusters,
-                kubeconfig_status=kubeconfig_status,
-                config_status=config_status,
-                namespace_filter=namespace_filter,
-                grace_period=app.config["GRACE_PERIOD"],
-                version=__version__,
-                refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                clusters_to_delete=grouped[ClusterState.FOR_DELETION],
+                deleting_clusters=grouped[ClusterState.DELETING],
+                excluded_clusters=[
+                    status for state in EXCLUDED_STATES for status in grouped[state]
+                ],
+                api_mode=cluster_manager.api_mode,
                 error=None,
+                **common,
             )
         except Exception as e:
-            # Render error state
             return render_template(
                 "clusters.html",
-                no_redis=app.config["NO_REDIS"],
                 clusters_to_delete=[],
+                deleting_clusters=[],
                 excluded_clusters=[],
-                kubeconfig_status=app.config["KUBECONFIG_PATH"] or "default",
-                config_status=app.config["CONFIG_PATH"] or "none",
-                namespace_filter=namespace_filter,
-                grace_period=app.config["GRACE_PERIOD"],
-                version=__version__,
-                refresh_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                api_mode="unknown",
                 error=str(e),
+                **common,
             )
 
     @app.route(url_prefix + "/analytics")
@@ -426,7 +437,7 @@ def create_app(
                                 if labels.get("app") == "nkp-cluster-cleaner":
                                     is_our_job = True
                                     break
-                            except:
+                            except ApiException:
                                 continue
 
                 if not is_our_job:
@@ -533,8 +544,8 @@ def create_app(
             )
 
         try:
-            from .notification_manager import NotificationManager
             from .notification_history import NotificationHistory
+            from .notification_manager import CRITICAL, WARNING, NotificationManager
 
             # Initialize managers
             config_manager = (
@@ -559,31 +570,19 @@ def create_app(
             warning_threshold = 80
             critical_threshold = 95
 
-            # Get clusters requiring notifications
-            critical_clusters, warning_clusters = (
-                notification_manager.get_clusters_for_notification(
-                    warning_threshold, critical_threshold
-                )
+            all_notifications = notification_manager.get_notifications(
+                warning_threshold, critical_threshold
             )
-
-            # Format notification data
-            critical_notifications = []
-            for cluster_info, elapsed_percentage, expiry_time in critical_clusters:
-                notification_data = notification_manager.get_cluster_notification_data(
-                    cluster_info, elapsed_percentage, expiry_time
-                )
-                critical_notifications.append(notification_data)
-
-            warning_notifications = []
-            for cluster_info, elapsed_percentage, expiry_time in warning_clusters:
-                notification_data = notification_manager.get_cluster_notification_data(
-                    cluster_info, elapsed_percentage, expiry_time
-                )
-                warning_notifications.append(notification_data)
+            critical_notifications = [
+                n.as_dict() for n in all_notifications if n.severity == CRITICAL
+            ]
+            warning_notifications = [
+                n.as_dict() for n in all_notifications if n.severity == WARNING
+            ]
 
             # Get notification statistics from Redis
             notification_stats = {
-                "total_tracked": len(critical_clusters) + len(warning_clusters),
+                "total_tracked": len(all_notifications),
                 "active_keys": notification_history.get_active_notification_count(),
             }
 
@@ -730,15 +729,15 @@ def run_server(
     host: str = "127.0.0.1",
     port: int = 8080,
     debug: bool = False,
-    kubeconfig_path: Optional[str] = None,
-    config_path: Optional[str] = None,
-    url_prefix: Optional[str] = None,
-    grace_period: Optional[str] = None,
+    kubeconfig_path: str | None = None,
+    config_path: str | None = None,
+    url_prefix: str | None = None,
+    grace_period: str | None = None,
     redis_host: str = "redis",
     redis_port: int = 6379,
     redis_db: int = 0,
-    redis_username: Optional[str] = None,
-    redis_password: Optional[str] = None,
+    redis_username: str | None = None,
+    redis_password: str | None = None,
     no_redis: bool = False,
 ):
     """

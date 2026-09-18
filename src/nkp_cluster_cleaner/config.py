@@ -2,13 +2,12 @@
 Configuration management for cluster deletion criteria.
 """
 
-import yaml
 import re
-from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 
 # Because dumping YAML with reserved characters like [] is difficult otherwise
 import ruamel.yaml
+import yaml
 from ruamel.yaml.scalarstring import DoubleQuotedScalarString
 
 
@@ -17,8 +16,8 @@ class ExtraLabel:
     """Configuration for additional required labels."""
 
     name: str
-    description: Optional[str] = None
-    regex: Optional[str] = None
+    description: str | None = None
+    regex: str | None = None
 
     def validate_value(self, value: str) -> bool:
         """
@@ -47,19 +46,19 @@ class DeletionCriteria:
     """Complete configuration for cluster deletion criteria."""
 
     # Clusters to always exclude (regex patterns for cluster names)
-    protected_cluster_patterns: List[str] = field(default_factory=list)
+    protected_cluster_patterns: list[str] = field(default_factory=list)
 
     # Namespaces to exclude (regex patterns for namespace names)
-    excluded_namespace_patterns: List[str] = field(default_factory=list)
+    excluded_namespace_patterns: list[str] = field(default_factory=list)
 
     # Additional required labels with optional validation
-    extra_labels: List[ExtraLabel] = field(default_factory=list)
+    extra_labels: list[ExtraLabel] = field(default_factory=list)
 
 
 class ConfigManager:
     """Manages configuration for cluster deletion criteria."""
 
-    def __init__(self, config_file: Optional[str] = None):
+    def __init__(self, config_file: str | None = None):
         """
         Initialize config manager.
 
@@ -80,14 +79,14 @@ class ConfigManager:
             config_file: Path to YAML configuration file
         """
         try:
-            with open(config_file, "r") as f:
+            with open(config_file) as f:
                 config_data = yaml.safe_load(f)
 
             self.criteria = self._parse_config(config_data)
         except Exception as e:
-            raise Exception(f"Failed to load config file {config_file}: {e}")
+            raise Exception(f"Failed to load config file {config_file}: {e}") from e
 
-    def _parse_config(self, config_data: Dict) -> DeletionCriteria:
+    def _parse_config(self, config_data: dict) -> DeletionCriteria:
         """
         Parse configuration data into DeletionCriteria object.
 
@@ -192,7 +191,7 @@ class ConfigManager:
 
         return False
 
-    def validate_extra_labels(self, labels: Dict[str, str]) -> List[str]:
+    def validate_extra_labels(self, labels: dict[str, str]) -> list[str]:
         """
         Validate that all required extra labels are present and valid.
 

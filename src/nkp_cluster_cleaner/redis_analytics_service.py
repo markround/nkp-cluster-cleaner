@@ -5,11 +5,12 @@ This module provides methods to query historical analytics data stored in Redis
 for use in the web UI.
 """
 
-import redis
 import json
+from collections import Counter, defaultdict
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
-from collections import defaultdict, Counter
+from typing import Any
+
+from .redis_client import build_redis_client
 
 
 class RedisAnalyticsService:
@@ -17,12 +18,12 @@ class RedisAnalyticsService:
 
     def __init__(
         self,
-        kubeconfig_path: Optional[str] = None,
+        kubeconfig_path: str | None = None,
         redis_host: str = "redis",
         redis_port: int = 6379,
         redis_db: int = 0,
-        redis_username: Optional[str] = None,
-        redis_password: Optional[str] = None,
+        redis_username: str | None = None,
+        redis_password: str | None = None,
     ):
         """
         Initialize the analytics service.
@@ -35,34 +36,11 @@ class RedisAnalyticsService:
             redis_username: Redis username for authentication
             redis_password: Redis password for authentication
         """
-        # Redis connection (reuse RedisDataCollector connection settings)
-        redis_kwargs = {
-            "host": redis_host,
-            "port": redis_port,
-            "db": redis_db,
-            "decode_responses": True,
-            "socket_connect_timeout": 5,
-            "socket_timeout": 5,
-            "retry_on_timeout": True,
-            "health_check_interval": 30,
-        }
+        self.redis_client = build_redis_client(
+            redis_host, redis_port, redis_db, redis_username, redis_password
+        )
 
-        if redis_username:
-            redis_kwargs["username"] = redis_username
-        if redis_password:
-            redis_kwargs["password"] = redis_password
-
-        self.redis_client = redis.Redis(**redis_kwargs)
-
-        # Test connection
-        try:
-            self.redis_client.ping()
-        except redis.ConnectionError as e:
-            raise Exception(
-                f"Failed to connect to Redis at {redis_host}:{redis_port}: {e}"
-            )
-
-    def _get_historical_data(self, days: int = 30) -> List[Dict[str, Any]]:
+    def _get_historical_data(self, days: int = 30) -> list[dict[str, Any]]:
         """
         Retrieve historical analytics data from Redis.
 
@@ -99,7 +77,7 @@ class RedisAnalyticsService:
 
         return historical_data
 
-    def get_cluster_trends(self, days: int = 30) -> Dict[str, Any]:
+    def get_cluster_trends(self, days: int = 30) -> dict[str, Any]:
         """
         Get cluster count trends over time.
 
@@ -189,7 +167,7 @@ class RedisAnalyticsService:
             },
         }
 
-    def get_deletion_activity(self, days: int = 14) -> Dict[str, Any]:
+    def get_deletion_activity(self, days: int = 14) -> dict[str, Any]:
         """
         Get deletion activity patterns.
 
@@ -241,7 +219,7 @@ class RedisAnalyticsService:
             },
         }
 
-    def get_compliance_stats(self, days: int = 30) -> Dict[str, Any]:
+    def get_compliance_stats(self, days: int = 30) -> dict[str, Any]:
         """
         Get label compliance statistics over time.
 
@@ -349,7 +327,7 @@ class RedisAnalyticsService:
             },
         }
 
-    def get_namespace_activity(self, days: int = 30) -> Dict[str, Any]:
+    def get_namespace_activity(self, days: int = 30) -> dict[str, Any]:
         """
         Get namespace activity and cluster distribution.
 
@@ -414,7 +392,7 @@ class RedisAnalyticsService:
             },
         }
 
-    def get_owner_distribution(self, days: int = 30) -> Dict[str, Any]:
+    def get_owner_distribution(self, days: int = 30) -> dict[str, Any]:
         """
         Get cluster ownership distribution and trends.
 
@@ -461,7 +439,7 @@ class RedisAnalyticsService:
             },
         }
 
-    def get_expiration_analysis(self, days: int = 30) -> Dict[str, Any]:
+    def get_expiration_analysis(self, days: int = 30) -> dict[str, Any]:
         """
         Get cluster expiration pattern analysis.
 
@@ -517,7 +495,7 @@ class RedisAnalyticsService:
             },
         }
 
-    def get_dashboard_summary(self) -> Dict[str, Any]:
+    def get_dashboard_summary(self) -> dict[str, Any]:
         """
         Get a summary for the dashboard.
 
@@ -529,6 +507,7 @@ class RedisAnalyticsService:
             trends_7d = self.get_cluster_trends(7)
             trends_30d = self.get_cluster_trends(30)
             compliance = self.get_compliance_stats(7)
+            latest = self.get_latest_snapshot()
 
             return {
                 "current_status": {
@@ -536,6 +515,15 @@ class RedisAnalyticsService:
                         "current_for_deletion"
                     ],
                     "clusters_protected": trends_7d["summary"]["current_protected"],
+                    # Added in 2.0 alongside the NKPCluster deletion path: these
+                    # come straight off the newest snapshot, since deletions in
+                    # flight are a point-in-time fact rather than a trend.
+                    "clusters_deleting": latest.get("cluster_counts", {}).get(
+                        "deleting", 0
+                    ),
+                    "api_mode": latest.get("collection_metadata", {}).get(
+                        "api_mode", "unknown"
+                    ),
                     "compliance_rate": compliance["current_compliance"],
                     "trend_direction": trends_7d["summary"]["trend_direction"],
                 },
@@ -560,12 +548,34 @@ class RedisAnalyticsService:
                 "current_status": {
                     "clusters_for_deletion": 0,
                     "clusters_protected": 0,
+                    "clusters_deleting": 0,
+                    "api_mode": "unknown",
                     "compliance_rate": 0,
                     "trend_direction": "unknown",
                 },
             }
 
-    def get_database_stats(self) -> Dict[str, Any]:
+    def get_latest_snapshot(self) -> dict[str, Any]:
+        """
+        Read back the most recent snapshot.
+
+        Returns:
+            The newest stored snapshot, or an empty dict if there is none.
+        """
+        keys = self.redis_client.zrange("analytics:snapshots:index", -1, -1)
+        if not keys:
+            return {}
+
+        payload = self.redis_client.get(keys[0])
+        if not payload:
+            return {}
+
+        try:
+            return json.loads(payload)
+        except json.JSONDecodeError:
+            return {}
+
+    def get_database_stats(self) -> dict[str, Any]:
         """Get Redis statistics and health information."""
         try:
             info = self.redis_client.info()

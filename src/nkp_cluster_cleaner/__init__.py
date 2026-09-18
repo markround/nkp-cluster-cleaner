@@ -1,7 +1,7 @@
 """
 NKP Cluster Cleaner
 
-A tool to delete CAPI-provided Kubernetes clusters based on label criteria.
+A tool to delete NKP-provisioned Kubernetes clusters based on label criteria.
 """
 
 __version__ = "0.15.0"
