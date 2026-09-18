@@ -2,7 +2,7 @@
 
 import pytest
 
-from nkp_cluster_cleaner.config import ConfigManager
+from nkp_cluster_cleaner.core.config import ConfigManager
 
 
 @pytest.fixture

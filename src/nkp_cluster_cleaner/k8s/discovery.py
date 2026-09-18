@@ -15,8 +15,7 @@ import logging
 from kubernetes.client import CoreV1Api, CustomObjectsApi
 from kubernetes.client.rest import ApiException
 
-from .deletion import DeletionStrategy
-from .models import (
+from ..core.models import (
     CAPI_GROUP,
     CAPI_PLURAL,
     CAPI_VERSION,
@@ -34,7 +33,8 @@ from .models import (
     kommander_ref,
     nkp_ref,
 )
-from .timeparse import parse_timestamp
+from ..core.timeparse import parse_timestamp
+from .deletion import DeletionStrategy
 
 logger = logging.getLogger(__name__)
 

@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import redis
 
+from ..core.settings import RedisSettings
+
 #: Fail fast rather than hanging a web request or a CronJob on an unreachable
 #: Redis. The data this stores is useful but never critical.
 _CONNECTION_DEFAULTS = {
@@ -21,22 +23,14 @@ _CONNECTION_DEFAULTS = {
 
 
 def build_redis_client(
-    host: str = "redis",
-    port: int = 6379,
-    db: int = 0,
-    username: str | None = None,
-    password: str | None = None,
-    verify: bool = True,
+    settings: RedisSettings | None = None, verify: bool = True
 ) -> redis.Redis:
     """
     Build a Redis client with the project's standard options.
 
     Args:
-        host: Redis host.
-        port: Redis port.
-        db: Database number.
-        username: Username, if the server requires authentication.
-        password: Password, if the server requires authentication.
+        settings: Connection details. Defaults to the built-in defaults, which
+            match the in-cluster service name.
         verify: Ping the server before returning, so a bad connection surfaces
             here rather than at the first query.
 
@@ -46,11 +40,18 @@ def build_redis_client(
     Raises:
         Exception: If `verify` is set and the server cannot be reached.
     """
-    options = dict(_CONNECTION_DEFAULTS, host=host, port=port, db=db)
-    if username:
-        options["username"] = username
-    if password:
-        options["password"] = password
+    settings = settings or RedisSettings()
+
+    options = dict(
+        _CONNECTION_DEFAULTS,
+        host=settings.host,
+        port=settings.port,
+        db=settings.db,
+    )
+    if settings.username:
+        options["username"] = settings.username
+    if settings.password:
+        options["password"] = settings.password
 
     client = redis.Redis(**options)
 
@@ -58,6 +59,6 @@ def build_redis_client(
         try:
             client.ping()
         except redis.ConnectionError as e:
-            raise Exception(f"Failed to connect to Redis at {host}:{port}: {e}") from e
+            raise Exception(f"Failed to connect to Redis at {settings}: {e}") from e
 
     return client

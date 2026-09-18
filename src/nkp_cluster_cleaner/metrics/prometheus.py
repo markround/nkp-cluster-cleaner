@@ -9,7 +9,7 @@ from typing import Any
 
 import nkp_cluster_cleaner
 
-from .redis_analytics_service import RedisAnalyticsService
+from ..storage.analytics import RedisAnalyticsService
 
 __version__ = nkp_cluster_cleaner.__version__
 
@@ -17,14 +17,23 @@ __version__ = nkp_cluster_cleaner.__version__
 class PrometheusMetricsService:
     """Service for generating Prometheus metrics from analytics data."""
 
-    def __init__(self, analytics_service: RedisAnalyticsService | None = None):
+    def __init__(
+        self,
+        analytics_service: RedisAnalyticsService | None = None,
+        api_mode: str = "unknown",
+    ):
         """
         Initialize the Prometheus metrics service.
 
         Args:
-            analytics_service: Optional analytics service instance
+            analytics_service: Analytics service, when Redis is available.
+                Without one, only the always-available metrics are emitted.
+            api_mode: Which deletion API is in use. Reported whether or not
+                analytics is enabled, since it describes the cluster rather
+                than the stored data.
         """
         self.analytics_service = analytics_service
+        self.api_mode = api_mode
 
     def generate_metrics(self) -> str:
         """
@@ -84,7 +93,7 @@ class PrometheusMetricsService:
             return "\n".join(metrics_lines)
 
         except Exception as e:
-            return self._generate_error_metrics(str(e))
+            return self.generate_error_metrics(str(e))
 
     def _generate_basic_metrics(self) -> str:
         """Generate basic metrics when analytics is disabled."""
@@ -92,7 +101,7 @@ class PrometheusMetricsService:
         metrics_lines.extend(self._get_application_metrics(enabled=False))
         return "\n".join(metrics_lines)
 
-    def _generate_error_metrics(self, error: str) -> str:
+    def generate_error_metrics(self, error: str) -> str:
         """Generate error metrics when analytics fails."""
         metrics_lines = []
         metrics_lines.extend(self._get_application_metrics(enabled=False))
@@ -107,7 +116,8 @@ class PrometheusMetricsService:
         return "\n".join(metrics_lines)
 
     def _get_application_metrics(self, enabled: bool = True) -> list[str]:
-        """Get application information metrics."""
+        """Get the metrics that are available regardless of Redis."""
+        api_mode = self._sanitize_label_value(self.api_mode)
         return [
             "# HELP nkp_cluster_cleaner_info Application information",
             "# TYPE nkp_cluster_cleaner_info gauge",
@@ -116,6 +126,10 @@ class PrometheusMetricsService:
             "# HELP nkp_cluster_cleaner_analytics_enabled Analytics feature status",
             "# TYPE nkp_cluster_cleaner_analytics_enabled gauge",
             f"nkp_cluster_cleaner_analytics_enabled {1 if enabled else 0}",
+            "",
+            "# HELP nkp_cluster_cleaner_api_mode Which deletion API is in use (nkpcluster on NKP 2.18+, capi on older releases)",
+            "# TYPE nkp_cluster_cleaner_api_mode gauge",
+            f'nkp_cluster_cleaner_api_mode{{mode="{api_mode}"}} 1',
             "",
         ]
 
@@ -129,10 +143,6 @@ class PrometheusMetricsService:
         current_status = dashboard_summary.get("current_status", {})
         week_summary = dashboard_summary.get("week_summary", {})
 
-        api_mode = self._sanitize_label_value(
-            str(current_status.get("api_mode", "unknown"))
-        )
-
         return [
             "# HELP nkp_cluster_cleaner_clusters_for_deletion Current number of clusters marked for deletion",
             "# TYPE nkp_cluster_cleaner_clusters_for_deletion gauge",
@@ -145,10 +155,6 @@ class PrometheusMetricsService:
             "# HELP nkp_cluster_cleaner_clusters_deleting Current number of clusters whose deletion is in progress",
             "# TYPE nkp_cluster_cleaner_clusters_deleting gauge",
             f"nkp_cluster_cleaner_clusters_deleting {current_status.get('clusters_deleting', 0)}",
-            "",
-            "# HELP nkp_cluster_cleaner_api_mode Which deletion API is in use (nkpcluster on NKP 2.18+, capi on older releases)",
-            "# TYPE nkp_cluster_cleaner_api_mode gauge",
-            f'nkp_cluster_cleaner_api_mode{{mode="{api_mode}"}} 1',
             "",
             "# HELP nkp_cluster_cleaner_compliance_rate Current label compliance rate (0-100)",
             "# TYPE nkp_cluster_cleaner_compliance_rate gauge",

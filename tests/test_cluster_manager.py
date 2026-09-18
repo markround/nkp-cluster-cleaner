@@ -6,13 +6,12 @@ they catch wiring mistakes the unit tests would not.
 """
 
 from datetime import timedelta
-from unittest.mock import MagicMock, patch
 
 import pytest
 
-from nkp_cluster_cleaner.cluster_manager import ClusterManager
-from nkp_cluster_cleaner.config import ConfigManager
-from nkp_cluster_cleaner.models import NKP_PLURAL, ClusterState
+from nkp_cluster_cleaner.core.config import ConfigManager
+from nkp_cluster_cleaner.core.models import NKP_PLURAL, ClusterState
+from nkp_cluster_cleaner.k8s.clusters import ClusterManager
 from tests.factories import (
     MANAGEMENT_NAMESPACE,
     make_capi_cluster,
@@ -20,7 +19,7 @@ from tests.factories import (
     make_nkp_cluster,
     ts,
 )
-from tests.test_discovery import fake_api
+from tests.test_discovery import fake_api, fake_client
 
 
 def build_manager(api, config_manager=None, grace_period=None):
@@ -40,14 +39,11 @@ def build_manager(api, config_manager=None, grace_period=None):
         A ClusterManager ready to query.
     """
 
-    def fake_load_config(self):
-        self.core_v1 = MagicMock()
-        self.custom_api = api
-
-    with patch.object(ClusterManager, "_load_config", fake_load_config):
-        return ClusterManager(
-            config_manager=config_manager or ConfigManager(), grace_period=grace_period
-        )
+    return ClusterManager(
+        config_manager=config_manager or ConfigManager(),
+        grace_period=grace_period,
+        client=fake_client(api),
+    )
 
 
 @pytest.fixture

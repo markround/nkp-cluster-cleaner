@@ -2,7 +2,7 @@
 
 import pytest
 
-from nkp_cluster_cleaner.config import ConfigManager, ExtraLabel
+from nkp_cluster_cleaner.core.config import ConfigManager, ExtraLabel
 
 
 class TestExtraLabel:

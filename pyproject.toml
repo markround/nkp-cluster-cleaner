@@ -27,7 +27,7 @@ dynamic = ["version", "dependencies", "optional-dependencies"]
 Homepage = "https://github.com/markround/nkp-cluster-cleaner"
 
 [project.scripts]
-nkp-cluster-cleaner = "nkp_cluster_cleaner.main:cli"
+nkp-cluster-cleaner = "nkp_cluster_cleaner.cli.main:cli"
 
 [tool.setuptools.dynamic]
 version = { attr = "nkp_cluster_cleaner.__version__" }
@@ -40,7 +40,7 @@ where = ["src"]
 # Templates and static assets are not Python modules, so they need declaring
 # explicitly or they are silently dropped from the wheel.
 [tool.setuptools.package-data]
-nkp_cluster_cleaner = ["templates/*.html", "static/**/*"]
+"nkp_cluster_cleaner.web" = ["templates/*.html", "static/**/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -13,11 +13,12 @@ from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 from typing import Any
 
-from .cluster_manager import ClusterManager
-from .config import ConfigManager
-from .models import ClusterState, ClusterStatus
-from .redis_client import build_redis_client
-from .timeparse import now
+from ..core.config import ConfigManager
+from ..core.models import ClusterState, ClusterStatus
+from ..core.settings import RedisSettings
+from ..core.timeparse import now
+from ..k8s.clusters import ClusterManager
+from .client import build_redis_client
 
 logger = logging.getLogger(__name__)
 
@@ -44,35 +45,24 @@ class RedisDataCollector:
         self,
         kubeconfig_path: str | None = None,
         config_manager: ConfigManager | None = None,
-        redis_host: str = "redis",
-        redis_port: int = 6379,
-        redis_db: int = 0,
-        redis_username: str | None = None,
-        redis_password: str | None = None,
+        redis: RedisSettings | None = None,
         debug: bool = False,
+        cluster_manager: ClusterManager | None = None,
     ):
         """
         Args:
             kubeconfig_path: Path to kubeconfig file.
             config_manager: Supplies protection rules and required labels.
-            redis_host: Redis host.
-            redis_port: Redis port.
-            redis_db: Redis database number.
-            redis_username: Redis username.
-            redis_password: Redis password.
+            redis: Where to store the snapshots.
             debug: Emit progress output during collection.
+            cluster_manager: A pre-built cluster manager. Mainly for tests.
         """
         self.debug = debug
-        self.redis_client = build_redis_client(
-            redis_host, redis_port, redis_db, redis_username, redis_password
-        )
+        self.redis_client = build_redis_client(redis)
         self.config_manager = config_manager or ConfigManager()
-        self.cluster_manager = ClusterManager(kubeconfig_path, self.config_manager)
-
-    def _debug_print(self, message: str):
-        """Print a progress message if debug mode is enabled."""
-        if self.debug:
-            print(message)
+        self.cluster_manager = cluster_manager or ClusterManager(
+            kubeconfig_path, self.config_manager
+        )
 
     def collect_snapshot(self, retention_days: int = 90) -> dict[str, Any]:
         """
@@ -85,27 +75,20 @@ class RedisDataCollector:
             The snapshot that was stored.
         """
         timestamp = now()
-        self._debug_print(f"Collecting analytics snapshot at {timestamp.isoformat()}")
+        logger.debug("Collecting analytics snapshot at %s", timestamp.isoformat())
 
         statuses = self.cluster_manager.get_cluster_statuses()
-        self._debug_print(f"Found {len(statuses)} clusters")
+        logger.debug("Found %d clusters", len(statuses))
 
         snapshot = self._build_snapshot_data(statuses, timestamp)
-
-        self._debug_print("Storing snapshot in Redis...")
         self._store_snapshot(snapshot, timestamp, retention_days)
 
         cleaned = self._cleanup_old_data(retention_days)
         if cleaned:
-            self._debug_print(f"Cleaned up {cleaned} old snapshots")
+            logger.debug("Cleaned up %d old snapshots", cleaned)
 
-        counts = snapshot["cluster_counts"]
-        print("Analytics snapshot stored successfully in Redis:")
-        print(f"  - Total clusters: {counts['total']}")
-        print(f"  - For deletion: {counts['for_deletion']}")
-        print(f"  - Deleting: {counts['deleting']}")
-        print(f"  - Protected: {counts['protected']}")
-        print(f"  - Redis key: {self._snapshot_key(timestamp)}")
+        # The caller reports the summary; this records where it landed.
+        logger.info("Stored analytics snapshot %s", self._snapshot_key(timestamp))
 
         return snapshot
 

@@ -8,9 +8,9 @@ import click
 from colorama import Fore, Style
 from tabulate import tabulate
 
-from ..cluster_manager import ClusterManager
-from ..config import ConfigManager
-from ..models import ClusterState, ClusterStatus
+from ..core.config import ConfigManager
+from ..core.models import ClusterState, ClusterStatus
+from ..k8s.clusters import ClusterManager
 
 #: Which states appear under the "excluded" heading, and in what order.
 EXCLUDED_STATES = [

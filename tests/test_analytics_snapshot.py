@@ -12,10 +12,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from nkp_cluster_cleaner.config import ConfigManager
-from nkp_cluster_cleaner.criteria import evaluate
-from nkp_cluster_cleaner.models import ClusterStatus
-from nkp_cluster_cleaner.redis_data_collector import RedisDataCollector
+from nkp_cluster_cleaner.core.config import ConfigManager
+from nkp_cluster_cleaner.core.criteria import evaluate
+from nkp_cluster_cleaner.core.models import ClusterStatus
+from nkp_cluster_cleaner.storage.collector import RedisDataCollector
 from tests.factories import make_cluster
 
 NOW = datetime(2026, 9, 18, 12, 0, 0, tzinfo=UTC)

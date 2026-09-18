@@ -10,8 +10,8 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from nkp_cluster_cleaner.criteria import evaluate
-from nkp_cluster_cleaner.models import ClusterState, DeletionReason
+from nkp_cluster_cleaner.core.criteria import evaluate
+from nkp_cluster_cleaner.core.models import ClusterState, DeletionReason
 from tests.factories import make_cluster
 
 

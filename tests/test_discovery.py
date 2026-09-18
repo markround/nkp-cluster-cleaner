@@ -11,12 +11,17 @@ from unittest.mock import MagicMock
 import pytest
 from kubernetes.client.rest import ApiException
 
-from nkp_cluster_cleaner.deletion import CapiClusterStrategy, NKPClusterStrategy
-from nkp_cluster_cleaner.discovery import ClusterDiscovery, is_attached, is_management
-from nkp_cluster_cleaner.models import (
+from nkp_cluster_cleaner.core.models import (
     CAPI_PLURAL,
     KOMMANDER_PLURAL,
     NKP_PLURAL,
+)
+from nkp_cluster_cleaner.k8s.client import KubernetesClient
+from nkp_cluster_cleaner.k8s.deletion import CapiClusterStrategy, NKPClusterStrategy
+from nkp_cluster_cleaner.k8s.discovery import (
+    ClusterDiscovery,
+    is_attached,
+    is_management,
 )
 from tests.factories import (
     MANAGEMENT_NAMESPACE,
@@ -67,6 +72,21 @@ def fake_api(kommander=(), nkp=(), capi=(), missing_crds=()):
     api.list_cluster_custom_object.side_effect = _list_cluster
     api.list_namespaced_custom_object.side_effect = _list_namespaced
     return api
+
+
+def fake_client(api):
+    """
+    Build a KubernetesClient backed by the given CustomObjectsApi mock.
+
+    Authentication is skipped and the API clients are substituted directly, so
+    nothing touches a real cluster or a kubeconfig.
+    """
+    client = KubernetesClient(load=False)
+    # cached_property values can simply be written into the instance dict.
+    client.__dict__["custom_objects"] = api
+    client.__dict__["core_v1"] = MagicMock()
+    client.__dict__["batch_v1"] = MagicMock()
+    return client
 
 
 def discovery_for(api, legacy=False):

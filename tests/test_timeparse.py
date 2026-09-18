@@ -9,7 +9,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from nkp_cluster_cleaner.timeparse import (
+from nkp_cluster_cleaner.core.timeparse import (
     expiry_from,
     format_duration,
     now,

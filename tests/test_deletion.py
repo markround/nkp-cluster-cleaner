@@ -11,13 +11,13 @@ from unittest.mock import MagicMock
 import pytest
 from kubernetes.client.rest import ApiException
 
-from nkp_cluster_cleaner.deletion import (
+from nkp_cluster_cleaner.core.models import CAPI_PLURAL, NKP_PLURAL
+from nkp_cluster_cleaner.k8s.deletion import (
     CapiClusterStrategy,
     NKPClusterStrategy,
     nkp_cluster_crd_available,
     select_strategy,
 )
-from nkp_cluster_cleaner.models import CAPI_PLURAL, NKP_PLURAL
 from tests.factories import make_cluster
 
 

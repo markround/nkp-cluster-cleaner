@@ -4,7 +4,8 @@ Notification History module for storing notification history in Redis to avoid d
 
 import logging
 
-from .redis_client import build_redis_client
+from ..core.settings import RedisSettings
+from .client import build_redis_client
 
 logger = logging.getLogger(__name__)
 
@@ -12,27 +13,14 @@ logger = logging.getLogger(__name__)
 class NotificationHistory:
     """Manages notification history using Redis to prevent duplicate alerts."""
 
-    def __init__(
-        self,
-        redis_host: str = "redis",
-        redis_port: int = 6379,
-        redis_db: int = 0,
-        redis_username: str | None = None,
-        redis_password: str | None = None,
-    ):
+    def __init__(self, redis: RedisSettings | None = None):
         """
         Initialize notification history manager.
 
         Args:
-            redis_host: Redis host
-            redis_port: Redis port
-            redis_db: Redis database number
-            redis_username: Redis username for authentication
-            redis_password: Redis password for authentication
+            redis: Where the notification history is stored.
         """
-        self.redis_client = build_redis_client(
-            redis_host, redis_port, redis_db, redis_username, redis_password
-        )
+        self.redis_client = build_redis_client(redis)
 
     def _get_cluster_key(self, cluster_name: str, namespace: str) -> str:
         """Generate Redis key for cluster notification history."""

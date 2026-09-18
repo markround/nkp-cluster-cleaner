@@ -10,35 +10,21 @@ from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 from typing import Any
 
-from .redis_client import build_redis_client
+from ..core.settings import RedisSettings
+from .client import build_redis_client
 
 
 class RedisAnalyticsService:
     """Service for retrieving and processing analytics data from Redis."""
 
-    def __init__(
-        self,
-        kubeconfig_path: str | None = None,
-        redis_host: str = "redis",
-        redis_port: int = 6379,
-        redis_db: int = 0,
-        redis_username: str | None = None,
-        redis_password: str | None = None,
-    ):
+    def __init__(self, redis: RedisSettings | None = None):
         """
         Initialize the analytics service.
 
         Args:
-            kubeconfig_path: Path to kubeconfig file
-            redis_host: Redis host
-            redis_port: Redis port
-            redis_db: Redis database number
-            redis_username: Redis username for authentication
-            redis_password: Redis password for authentication
+            redis: Where the analytics snapshots are stored.
         """
-        self.redis_client = build_redis_client(
-            redis_host, redis_port, redis_db, redis_username, redis_password
-        )
+        self.redis_client = build_redis_client(redis)
 
     def _get_historical_data(self, days: int = 30) -> list[dict[str, Any]]:
         """

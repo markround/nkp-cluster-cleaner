@@ -9,14 +9,11 @@ from __future__ import annotations
 
 import logging
 
-from kubernetes import client, config
 from kubernetes.client.rest import ApiException
 
-from .config import ConfigManager
-from .criteria import evaluate
-from .deletion import select_strategy
-from .discovery import ClusterDiscovery
-from .models import (
+from ..core.config import ConfigManager
+from ..core.criteria import evaluate
+from ..core.models import (
     KOMMANDER_GROUP,
     KOMMANDER_PLURAL,
     KOMMANDER_VERSION,
@@ -24,7 +21,10 @@ from .models import (
     ClusterState,
     ClusterStatus,
 )
-from .timeparse import now
+from ..core.timeparse import now
+from .client import KubernetesClient
+from .deletion import select_strategy
+from .discovery import ClusterDiscovery
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +37,7 @@ class ClusterManager:
         kubeconfig_path: str | None = None,
         config_manager: ConfigManager | None = None,
         grace_period: str | None = None,
+        client: KubernetesClient | None = None,
     ):
         """
         Initialize the cluster manager.
@@ -47,32 +48,24 @@ class ClusterManager:
             config_manager: Supplies protection rules and required labels.
             grace_period: Duration such as "1d" or "4h". Clusters younger than
                 this are never deleted.
+            client: A pre-built Kubernetes client, which takes precedence over
+                `kubeconfig_path`. Mainly for tests.
         """
-        self.kubeconfig_path = kubeconfig_path
         self.config_manager = config_manager or ConfigManager()
         self.grace_period = grace_period
-        self._load_config()
+        self.client = client or KubernetesClient(kubeconfig_path)
 
-        self.strategy = select_strategy(self.custom_api)
-        self.discovery = ClusterDiscovery(self.custom_api, self.core_v1, self.strategy)
+        # Which deletion API to use is settled once, at construction, by probing
+        # for the NKPCluster CRD.
+        self.strategy = select_strategy(self.client.custom_objects)
+        self.discovery = ClusterDiscovery(
+            self.client.custom_objects, self.client.core_v1, self.strategy
+        )
 
-    def _load_config(self):
-        """Load Kubernetes configuration and build the API clients."""
-        try:
-            if self.kubeconfig_path:
-                config.load_kube_config(config_file=self.kubeconfig_path)
-            else:
-                try:
-                    config.load_kube_config()
-                except Exception:
-                    # Running inside a pod with a service account rather than a
-                    # mounted kubeconfig.
-                    config.load_incluster_config()
-        except Exception as e:
-            raise Exception(f"Failed to load kubeconfig: {e}") from e
-
-        self.core_v1 = client.CoreV1Api()
-        self.custom_api = client.CustomObjectsApi()
+    @property
+    def custom_api(self):
+        """The custom-objects API client."""
+        return self.client.custom_objects
 
     @property
     def api_mode(self) -> str:

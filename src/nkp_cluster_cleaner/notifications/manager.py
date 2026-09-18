@@ -10,10 +10,10 @@ from datetime import datetime
 
 import requests
 
-from .cluster_manager import ClusterManager
-from .config import ConfigManager
-from .models import ClusterState, ClusterStatus
-from .timeparse import format_duration, now
+from ..core.config import ConfigManager
+from ..core.models import ClusterState, ClusterStatus
+from ..core.timeparse import format_duration, now
+from ..k8s.clusters import ClusterManager
 
 #: Severity levels, in increasing order of urgency.
 WARNING = "warning"
@@ -95,16 +95,19 @@ class NotificationManager:
         kubeconfig_path: str | None = None,
         config_manager: ConfigManager | None = None,
         grace_period: str | None = None,
+        cluster_manager: ClusterManager | None = None,
     ):
         """
         Args:
             kubeconfig_path: Path to a kubeconfig file.
             config_manager: Supplies protection rules and required labels.
             grace_period: Clusters younger than this are never notified about.
+            cluster_manager: An existing cluster manager to reuse. Passing one
+                avoids a second kubeconfig load and CRD probe.
         """
         self.kubeconfig_path = kubeconfig_path
         self.config_manager = config_manager or ConfigManager()
-        self.cluster_manager = ClusterManager(
+        self.cluster_manager = cluster_manager or ClusterManager(
             kubeconfig_path, self.config_manager, grace_period=grace_period
         )
 

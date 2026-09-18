@@ -8,19 +8,20 @@ import click
 from colorama import Fore, Style
 from tabulate import tabulate
 
-from ..cluster_manager import ClusterManager
-from ..config import ConfigManager
-from ..models import ClusterState
-from ..notification_manager import NotificationManager
+from ..core.config import ConfigManager
+from ..core.models import ClusterState
+from ..core.settings import SlackSettings
+from ..k8s.clusters import ClusterManager
+from ..notifications.manager import NotificationManager
 
 
-def _validate_backend(notify_backend: str | None, kwargs: dict):
+def _validate_backend(notify_backend: str | None, slack: SlackSettings):
     """
     Check that a notification backend is usable before doing any work.
 
     Args:
         notify_backend: The requested backend, or None.
-        kwargs: Backend-specific parameters supplied on the command line.
+        slack: Slack parameters, checked when that backend is selected.
 
     Raises:
         click.Abort: If the backend is unknown or incompletely configured.
@@ -37,9 +38,11 @@ def _validate_backend(notify_backend: str | None, kwargs: dict):
         raise click.Abort()
 
     if notify_backend == "slack":
-        for option in ("slack_token", "slack_channel"):
-            if not kwargs.get(option):
-                flag = "--" + option.replace("_", "-")
+        for flag, value in (
+            ("--slack-token", slack.token),
+            ("--slack-channel", slack.channel),
+        ):
+            if not value:
                 click.echo(
                     f"{Fore.RED}Error: {flag} is required when using the slack "
                     f"notification backend{Style.RESET_ALL}"
@@ -54,12 +57,7 @@ def execute_delete_clusters_command(
     delete: bool,
     grace: str | None = None,
     notify_backend: str | None = None,
-    redis_host: str = "redis",
-    redis_port: int = 6379,
-    redis_db: int = 0,
-    redis_username: str | None = None,
-    redis_password: str | None = None,
-    **kwargs,
+    slack: SlackSettings | None = None,
 ):
     """
     Execute the delete-clusters command.
@@ -71,15 +69,11 @@ def execute_delete_clusters_command(
         delete: Actually delete. Without this the command is a dry run.
         grace: Grace period for newly created clusters.
         notify_backend: Notification backend to report deletions through.
-        redis_host: Redis host for notification history.
-        redis_port: Redis port.
-        redis_db: Redis database number.
-        redis_username: Redis username.
-        redis_password: Redis password.
-        **kwargs: Backend-specific parameters, e.g. slack_token.
+        slack: Slack delivery parameters, when that backend is selected.
     """
     dry_run = not delete
-    _validate_backend(notify_backend, kwargs)
+    slack = slack or SlackSettings()
+    _validate_backend(notify_backend, slack)
 
     scope = f"namespace '{namespace}'" if namespace else "all namespaces"
     if dry_run:
@@ -197,7 +191,7 @@ def execute_delete_clusters_command(
 
         if notification_manager and successfully_deleted and not dry_run:
             _send_deletion_notification(
-                notification_manager, notify_backend, successfully_deleted, kwargs
+                notification_manager, notify_backend, successfully_deleted, slack
             )
 
         if dry_run:
@@ -240,7 +234,7 @@ def _send_deletion_notification(
     notification_manager: NotificationManager,
     notify_backend: str,
     deleted_clusters: list[dict],
-    kwargs: dict,
+    slack: SlackSettings,
 ):
     """
     Report the deletions, without letting a delivery failure fail the command.
@@ -257,10 +251,7 @@ def _send_deletion_notification(
             backend=notify_backend,
             deleted_clusters=deleted_clusters,
             severity="info",
-            token=kwargs.get("slack_token"),
-            channel=kwargs.get("slack_channel"),
-            username=kwargs.get("slack_username", "NKP Cluster Cleaner"),
-            icon_emoji=kwargs.get("slack_icon_emoji", ":broom:"),
+            **slack.as_backend_kwargs(),
         )
         click.echo(
             f"{Fore.GREEN}Successfully sent deletion notification to "

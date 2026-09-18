@@ -166,8 +166,6 @@ class ConfigManager:
         with open(output_file, "w") as f:
             yaml.dump(example_config, f)
 
-        print(f"Example configuration saved to {output_file}")
-
     def is_cluster_protected(self, cluster_name: str, namespace: str) -> bool:
         """
         Check if a cluster is protected from deletion.

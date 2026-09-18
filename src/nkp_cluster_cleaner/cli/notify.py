@@ -8,15 +8,16 @@ import click
 from colorama import Fore, Style
 from tabulate import tabulate
 
-from ..config import ConfigManager
-from ..notification_history import NotificationHistory
-from ..notification_manager import (
+from ..core.config import ConfigManager
+from ..core.settings import RedisSettings, SlackSettings
+from ..core.timeparse import now
+from ..notifications.manager import (
     CRITICAL,
     WARNING,
     ClusterNotification,
     NotificationManager,
 )
-from ..timeparse import now
+from ..storage.notification_history import NotificationHistory
 
 _TABLE_HEADERS = [
     "Cluster Name",
@@ -28,7 +29,7 @@ _TABLE_HEADERS = [
 ]
 
 
-def _validate_backend(notify_backend: str | None, kwargs: dict):
+def _validate_backend(notify_backend: str | None, slack: SlackSettings):
     """
     Check that a notification backend is usable before doing any work.
 
@@ -47,10 +48,13 @@ def _validate_backend(notify_backend: str | None, kwargs: dict):
         raise click.Abort()
 
     if notify_backend == "slack":
-        for option in ("slack_token", "slack_channel"):
-            if not kwargs.get(option):
+        for flag, value in (
+            ("--slack-token", slack.token),
+            ("--slack-channel", slack.channel),
+        ):
+            if not value:
                 click.echo(
-                    f"{Fore.RED}Error: {option} is required when using the "
+                    f"{Fore.RED}Error: {flag} is required when using the "
                     f"slack backend{Style.RESET_ALL}"
                 )
                 raise click.Abort()
@@ -116,12 +120,8 @@ def execute_notify_command(
     critical_threshold: int,
     grace: str | None = None,
     notify_backend: str | None = None,
-    redis_host: str = "redis",
-    redis_port: int = 6379,
-    redis_db: int = 0,
-    redis_username: str | None = None,
-    redis_password: str | None = None,
-    **kwargs,
+    redis: RedisSettings | None = None,
+    slack: SlackSettings | None = None,
 ):
     """
     Execute the notify command.
@@ -135,14 +135,12 @@ def execute_notify_command(
         grace: Grace period for newly created clusters.
         notify_backend: Backend to send alerts through. Without one, the
             command only reports what it would send.
-        redis_host: Redis host for notification history.
-        redis_port: Redis port.
-        redis_db: Redis database number.
-        redis_username: Redis username.
-        redis_password: Redis password.
-        **kwargs: Backend-specific parameters, e.g. slack_token.
+        redis: Where notification history is stored.
+        slack: Slack delivery parameters, when that backend is selected.
     """
-    _validate_backend(notify_backend, kwargs)
+    redis = redis or RedisSettings()
+    slack = slack or SlackSettings()
+    _validate_backend(notify_backend, slack)
 
     scope = f"namespace '{namespace}'" if namespace else "all namespaces"
     click.echo(
@@ -157,12 +155,10 @@ def execute_notify_command(
     notification_history = None
     if notify_backend:
         try:
-            notification_history = NotificationHistory(
-                redis_host, redis_port, redis_db, redis_username, redis_password
-            )
+            notification_history = NotificationHistory(redis)
             click.echo(
                 f"{Fore.CYAN}Connected to notification history at "
-                f"{redis_host}:{redis_port} (db {redis_db}){Style.RESET_ALL}"
+                f"{redis}{Style.RESET_ALL}"
             )
         except Exception as e:
             click.echo(
@@ -280,9 +276,9 @@ def execute_notify_command(
                 notify_backend,
                 notification_manager,
                 notification_history,
+                slack,
                 warning_threshold=warning_threshold,
                 critical_threshold=critical_threshold,
-                **kwargs,
             )
 
     except ValueError as e:
@@ -299,6 +295,7 @@ def _send_notifications(
     backend: str,
     notification_manager: NotificationManager,
     notification_history: NotificationHistory | None,
+    slack: SlackSettings,
     **kwargs,
 ):
     """
@@ -307,13 +304,8 @@ def _send_notifications(
     History is updated per severity immediately after that batch is delivered,
     so a failure partway through does not mark undelivered alerts as sent.
     """
-    slack_params = {
-        "token": kwargs.get("slack_token"),
-        "channel": kwargs.get("slack_channel"),
-        "username": kwargs.get("slack_username", "NKP Cluster Cleaner"),
-        "icon_emoji": kwargs.get("slack_icon_emoji", ":broom:"),
-    }
-    channel = slack_params["channel"]
+    slack_params = slack.as_backend_kwargs()
+    channel = slack.channel
 
     click.echo(
         f"{Fore.CYAN}Sending {len(critical) + len(warning)} notifications to "

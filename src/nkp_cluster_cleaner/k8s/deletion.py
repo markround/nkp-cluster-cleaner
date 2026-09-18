@@ -19,7 +19,7 @@ from typing import Protocol
 from kubernetes.client import CustomObjectsApi
 from kubernetes.client.rest import ApiException
 
-from .models import NKP_GROUP, NKP_PLURAL, NKP_VERSION, Cluster, ResourceRef
+from ..core.models import NKP_GROUP, NKP_PLURAL, NKP_VERSION, Cluster, ResourceRef
 
 logger = logging.getLogger(__name__)
 

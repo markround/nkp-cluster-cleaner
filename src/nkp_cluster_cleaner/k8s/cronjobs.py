@@ -2,43 +2,46 @@
 CronJob Manager module for tracking scheduled cluster tasks.
 """
 
+from __future__ import annotations
+
+import logging
 from datetime import UTC, datetime
 
-from colorama import Fore, Style
-from kubernetes import client
 from kubernetes.client.rest import ApiException
+
+from .client import KubernetesClient
+
+logger = logging.getLogger(__name__)
 
 
 class CronJobManager:
     """Manages CronJob operations and monitoring."""
 
-    def __init__(self, kubeconfig_path: str | None = None):
+    def __init__(
+        self,
+        kubeconfig_path: str | None = None,
+        client: KubernetesClient | None = None,
+    ):
         """
         Initialize the cronjob manager.
 
         Args:
-            kubeconfig_path: Path to kubeconfig file. If None, uses default locations.
+            kubeconfig_path: Path to kubeconfig file. If None, uses the default
+                locations and then in-cluster credentials.
+            client: A pre-built Kubernetes client, which takes precedence over
+                `kubeconfig_path`. Mainly for tests.
         """
-        self.kubeconfig_path = kubeconfig_path
-        self._load_config()
+        self.client = client or KubernetesClient(kubeconfig_path)
 
-    def _load_config(self):
-        """Load Kubernetes configuration."""
-        try:
-            if self.kubeconfig_path:
-                from kubernetes import config
+    @property
+    def batch_v1(self):
+        """Client for Jobs and CronJobs."""
+        return self.client.batch_v1
 
-                config.load_kube_config(config_file=self.kubeconfig_path)
-            else:
-                from kubernetes import config
-
-                config.load_kube_config()
-        except Exception as e:
-            raise Exception(f"Failed to load kubeconfig: {e}") from e
-
-        # Initialize API clients
-        self.batch_v1 = client.BatchV1Api()
-        self.core_v1 = client.CoreV1Api()
+    @property
+    def core_v1(self):
+        """Client for core resources."""
+        return self.client.core_v1
 
     def get_nkp_cronjobs(self, namespace: str = "kommander") -> list[dict]:
         """
@@ -83,7 +86,7 @@ class CronJobManager:
             return cronjob_list
 
         except ApiException as e:
-            print(f"{Fore.RED}Failed to list CronJobs: {e}{Style.RESET_ALL}")
+            logger.error("Failed to list CronJobs: %s", e)
             return []
 
     def get_jobs_for_cronjob(
@@ -142,9 +145,7 @@ class CronJobManager:
             return cronjob_jobs[:limit]
 
         except ApiException as e:
-            print(
-                f"{Fore.RED}Failed to list Jobs for CronJob {cronjob_name}: {e}{Style.RESET_ALL}"
-            )
+            logger.error("Failed to list Jobs for CronJob %s: %s", cronjob_name, e)
             return []
 
     def get_job_pods(self, job_name: str, namespace: str = "kommander") -> list[dict]:
@@ -191,9 +192,7 @@ class CronJobManager:
             return pod_list
 
         except ApiException as e:
-            print(
-                f"{Fore.RED}Failed to list Pods for Job {job_name}: {e}{Style.RESET_ALL}"
-            )
+            logger.error("Failed to list Pods for Job %s: %s", job_name, e)
             return []
 
     def get_pod_logs(
@@ -306,7 +305,7 @@ class CronJobManager:
                 return False
 
         except ApiException as e:
-            print(f"Failed to validate pod ownership for {pod_name}: {e}")
+            logger.warning("Failed to validate pod ownership for %s: %s", pod_name, e)
             return False
 
     def _get_job_status(self, job) -> str:
@@ -466,11 +465,11 @@ class CronJobManager:
 
         except ApiException as e:
             error_msg = f"Failed to trigger CronJob {cronjob_name}: {e}"
-            print(f"{Fore.RED}{error_msg}{Style.RESET_ALL}")
+            logger.error(error_msg)
             return {"success": False, "error": error_msg}
         except Exception as e:
             error_msg = f"Unexpected error triggering CronJob {cronjob_name}: {e}"
-            print(f"{Fore.RED}{error_msg}{Style.RESET_ALL}")
+            logger.error(error_msg)
             return {"success": False, "error": error_msg}
 
     def get_all_scheduled_tasks_summary(self, namespace: str = "kommander") -> dict:

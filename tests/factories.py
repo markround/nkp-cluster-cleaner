@@ -7,7 +7,7 @@ dev/kommanderclusters.yaml for the real resources these are modelled on.
 
 from datetime import UTC, datetime, timedelta
 
-from nkp_cluster_cleaner.models import (
+from nkp_cluster_cleaner.core.models import (
     CAPI_GROUP,
     KOMMANDER_GROUP,
     MANAGEMENT_LABEL,
