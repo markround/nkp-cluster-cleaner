@@ -10,6 +10,7 @@ from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 from typing import Any
 
+from ..core.models import UNKNOWN_OWNER
 from ..core.settings import RedisSettings
 from .client import build_redis_client
 
@@ -424,7 +425,10 @@ class RedisAnalyticsService:
             "top_owners": dict(sorted_owners[:10]),
             "summary": {
                 "total_owners": len(owner_stats),
-                "no_owner_clusters": owner_stats.get("no-owner", {}).get(
+                # Snapshots group unlabelled clusters under Cluster.owner, which
+                # is UNKNOWN_OWNER. This used to look for "no-owner", a key
+                # nothing has ever written, so the figure was always zero.
+                "no_owner_clusters": owner_stats.get(UNKNOWN_OWNER, {}).get(
                     "total_clusters", 0
                 ),
                 "largest_owner": sorted_owners[0][0] if sorted_owners else "N/A",

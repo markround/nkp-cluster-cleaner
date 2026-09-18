@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}NKP Cluster Cleaner{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_with_prefix('/static/css/app.css') }}">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><text y='20' font-size='20'>🧹</text></svg>">
+    <link rel="icon" type="image/svg+xml" href="{{ url_with_prefix('/static/favicon.svg') }}">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -15,7 +15,7 @@
     <div class="app">
         <aside class="sidebar" id="sidebar">
             <div class="sidebar__header">
-                <span class="sidebar__mark">{{ ui.icon('broom', 'nav__icon') }}</span>
+                <span class="sidebar__mark">{{ ui.icon('bin', 'nav__icon') }}</span>
                 <div>
                     <div class="sidebar__title">Cluster Cleaner</div>
                     <div class="sidebar__subtitle">NKP</div>

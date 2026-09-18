@@ -36,6 +36,11 @@ MANAGEMENT_LABEL = "kommander.d2iq.io/host"
 #: Legacy name of the management cluster, kept as a fallback signal.
 LEGACY_MANAGEMENT_NAME = "host-cluster"
 
+#: Owner reported for a cluster with no `owner` label. Analytics groups by
+#: owner, so this is a key those results are looked up under, not just display
+#: text — hence a constant rather than a literal in two places.
+UNKNOWN_OWNER = "unknown"
+
 
 class ClusterState(Enum):
     """
@@ -188,8 +193,8 @@ class Cluster:
 
     @property
     def owner(self) -> str:
-        """Value of the `owner` label, or 'unknown'."""
-        return self.labels.get("owner", "unknown")
+        """Value of the `owner` label, or UNKNOWN_OWNER."""
+        return self.labels.get("owner", UNKNOWN_OWNER)
 
     @property
     def expires_label(self) -> str | None:

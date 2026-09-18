@@ -13,11 +13,14 @@ from ..core.settings import RedisSettings
 
 #: Fail fast rather than hanging a web request or a CronJob on an unreachable
 #: Redis. The data this stores is useful but never critical.
+#:
+#: Timeouts are still retried: redis-py's default Retry covers TimeoutError and
+#: ConnectionError, which is why `retry_on_timeout` was deprecated in 6.0 and is
+#: not set here.
 _CONNECTION_DEFAULTS = {
     "decode_responses": True,
     "socket_connect_timeout": 5,
     "socket_timeout": 5,
-    "retry_on_timeout": True,
     "health_check_interval": 30,
 }
 

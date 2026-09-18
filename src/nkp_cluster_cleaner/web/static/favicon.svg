@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Browser tab icon. The same bin as the sidebar logo in _icons.html, so the two
+  match; kept as a file rather than an inline data URI because the paths are too
+  long to read on one line.
+
+  The colour is hard-coded to the primary blue from app.css. A favicon has no
+  CSS context to inherit currentColor from, and this mid blue holds up against
+  both light and dark tab bars. Bin icon from Streamline (streamlinehq.com).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"
+     fill="none" stroke="#1b6bdb" stroke-width="1.5"
+     stroke-linecap="round" stroke-linejoin="round">
+  <path d="M18.0576 22.3846H5.94219c-0.45902 0 -0.89925 -0.1823 -1.22383 -0.5069 -0.32459 -0.3246 -0.50693 -0.7648 -0.50693 -1.2239V5.07692H19.7883V20.6538c0 0.4591 -0.1823 0.8993 -0.5069 1.2239s-0.7648 0.5069 -1.2238 0.5069Z"/>
+  <path d="M9.40381 17.1923v-6.9231"/>
+  <path d="M14.5962 17.1923v-6.9231"/>
+  <path d="M0.75 5.07692h22.5"/>
+  <path d="M14.5962 1.61539H9.40386c-0.45902 0 -0.89925 0.18235 -1.22383 0.50693 -0.32459 0.32458 -0.50693 0.76481 -0.50693 1.22384v1.73077h8.6538V3.34616c0 -0.45903 -0.1823 -0.89926 -0.5069 -1.22384 -0.3246 -0.32458 -0.7648 -0.50693 -1.2238 -0.50693Z"/>
+</svg>
