@@ -85,10 +85,24 @@ class TestPages:
 
         body = response.data.decode()
         assert "expired" in body
-        assert "Deletion in Progress" in body
         assert "tearing-down" in body
         # The management cluster must show up as excluded, never as deletable.
         assert "mdr-mgmt" in body
+
+    def test_clusters_page_labels_each_state(self, client):
+        """
+        State is shown as a labelled pill, so identity never rests on colour
+        alone: every pill carries an icon and a text label.
+        """
+        body = client.get("/clusters").data.decode()
+
+        for label in ("Deleting", "Management", "Active"):
+            assert label in body, f"no pill labelled {label}"
+
+        # Each pill tone must come with its icon, not just a coloured chip.
+        for tone in ("pill--warning", "pill--info", "pill--ok"):
+            assert tone in body
+        assert body.count('<use href="#icon-') >= 3
 
     def test_clusters_page_names_the_deletion_target(self, client):
         """Operators need to see whether an NKPCluster or a CAPI Cluster goes."""

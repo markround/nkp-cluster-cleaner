@@ -80,6 +80,7 @@ class RedisAnalyticsService:
                 "dates": [],
                 "deletion_counts": [],
                 "protected_counts": [],
+                "deleting_counts": [],
                 "total_counts": [],
                 "summary": {
                     "current_for_deletion": 0,
@@ -102,6 +103,8 @@ class RedisAnalyticsService:
                 daily_data[date] = {
                     "for_deletion": counts["for_deletion"],
                     "protected": counts["protected"],
+                    # Snapshots taken before 2.0 have no "deleting" key.
+                    "deleting": counts.get("deleting", 0),
                     "total": counts["total"],
                     "timestamp": snapshot_time,
                 }
@@ -110,6 +113,7 @@ class RedisAnalyticsService:
         dates = []
         deletion_counts = []
         protected_counts = []
+        deleting_counts = []
         total_counts = []
 
         for date in sorted(daily_data.keys()):
@@ -117,6 +121,7 @@ class RedisAnalyticsService:
             dates.append(date)
             deletion_counts.append(data["for_deletion"])
             protected_counts.append(data["protected"])
+            deleting_counts.append(data["deleting"])
             total_counts.append(data["total"])
 
         # Calculate summary statistics
@@ -142,6 +147,7 @@ class RedisAnalyticsService:
             "dates": dates,
             "deletion_counts": deletion_counts,
             "protected_counts": protected_counts,
+            "deleting_counts": deleting_counts,
             "total_counts": total_counts,
             "summary": {
                 "current_for_deletion": current_for_deletion,

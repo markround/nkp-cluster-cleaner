@@ -94,13 +94,21 @@ def render_or_error(template: str, build: callable, **fallback) -> str:
 
 @bp.route("/")
 def index():
-    """Dashboard."""
+    """Dashboard: current estate at a glance, plus how the tool is configured."""
 
     def build():
-        clusters = services().clusters
+        manager = services().clusters
+        grouped = manager.group_by_state()
+
         return {
-            "nkp_version": clusters.get_nkp_version(),
-            "api_mode": clusters.api_mode,
+            "nkp_version": manager.get_nkp_version(),
+            "api_mode": manager.api_mode,
+            "counts": {state: len(rows) for state, rows in grouped.items()},
+            "total_clusters": sum(len(rows) for rows in grouped.values()),
+            # The soonest-expiring clusters, so the dashboard answers "what is
+            # about to go" without a trip to the clusters page.
+            "upcoming": _soonest_expiring(grouped[ClusterState.ACTIVE]),
+            "for_deletion": grouped[ClusterState.FOR_DELETION],
             "kubeconfig_status": settings().kubeconfig_path
             or "Using default (~/.kube/config)",
             "config_status": settings().config_path
@@ -112,9 +120,30 @@ def index():
         build,
         nkp_version=None,
         api_mode="unknown",
+        counts={state: 0 for state in ClusterState},
+        total_clusters=0,
+        upcoming=[],
+        for_deletion=[],
         kubeconfig_status=settings().kubeconfig_display,
         config_status=settings().config_display,
     )
+
+
+def _soonest_expiring(statuses: list, limit: int = 5) -> list:
+    """
+    The active clusters closest to expiry.
+
+    Args:
+        statuses: Clusters in the ACTIVE state.
+        limit: How many to return.
+
+    Returns:
+        Up to `limit` clusters, soonest expiry first. Clusters with no
+        computable expiry are omitted rather than sorted arbitrarily.
+    """
+    datable = [s for s in statuses if s.verdict.expires_at]
+    datable.sort(key=lambda s: s.verdict.expires_at)
+    return datable[:limit]
 
 
 @bp.route("/clusters")

@@ -15,6 +15,7 @@ from flask import Blueprint, Flask, jsonify
 
 import nkp_cluster_cleaner
 
+from ..core.models import ClusterState
 from ..core.settings import RedisSettings
 from .blueprints import api, pages
 from .services import Services, WebSettings, services, settings
@@ -93,6 +94,54 @@ def normalise_prefix(url_prefix: str | None) -> str:
     return f"/{stripped}" if stripped else ""
 
 
+def _register_table_filters(app: Flask):
+    """
+    Filters that turn analytics payloads into table rows.
+
+    Every chart ships a table alternative, so that identity never rests on
+    colour alone. These do the reshaping in Jinja rather than duplicating each
+    payload's structure in the route.
+    """
+
+    @app.template_filter("zip_rows")
+    def zip_rows(first, *rest):
+        """
+        Zip parallel sequences into rows.
+
+        Shorter sequences are padded, so a series the snapshots do not carry
+        yet renders as a dash instead of truncating the table.
+        """
+        columns = [list(first), *[list(column) for column in rest]]
+        length = max((len(column) for column in columns), default=0)
+        return [
+            [column[i] if i < len(column) else "—" for column in columns]
+            for i in range(length)
+        ]
+
+    @app.template_filter("dict_rows")
+    def dict_rows(mapping):
+        """Turn {label: count} into rows, largest first."""
+        return sorted(
+            ([key, value] for key, value in (mapping or {}).items()),
+            key=lambda row: row[1],
+            reverse=True,
+        )
+
+    @app.template_filter("nested_rows")
+    def nested_rows(mapping, key, limit=8):
+        """
+        Turn {label: {key: count, ...}} into rows, largest first.
+
+        Args:
+            mapping: The nested payload.
+            key: Which inner value to read.
+            limit: How many rows to keep, matching the chart's own cap.
+        """
+        rows = [[name, stats.get(key, 0)] for name, stats in (mapping or {}).items()]
+        rows.sort(key=lambda row: row[1], reverse=True)
+        return rows[:limit]
+
+
 def create_app(
     kubeconfig_path: str | None = None,
     config_path: str | None = None,
@@ -117,7 +166,9 @@ def create_app(
     """
     prefix = normalise_prefix(url_prefix)
 
-    app = Flask(__name__)
+    # Templates and static files sit next to this module. The static URL has to
+    # carry the prefix too, or the CSS 404s behind an ingress path.
+    app = Flask(__name__, static_url_path=f"{prefix}/static")
     app.extensions["nkp_cluster_cleaner"] = Services(
         WebSettings(
             kubeconfig_path=kubeconfig_path,
@@ -135,6 +186,11 @@ def create_app(
         if not path.startswith("/"):
             path = f"/{path}"
         return prefix + path
+
+    # Templates index counts by state, so they need the enum itself rather than
+    # a stringly-typed copy of its members.
+    app.jinja_env.globals["ClusterState"] = ClusterState
+    _register_table_filters(app)
 
     app.register_blueprint(pages.bp, url_prefix=prefix or None)
     app.register_blueprint(health_bp, url_prefix=prefix or None)
