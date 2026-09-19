@@ -1,10 +1,9 @@
 name: Create Release
 
+# Triggers and stage ordering live in pipeline.yml, which only reaches this
+# stage for a tag push, so GITHUB_REF below is always refs/tags/<version>.
 on:
-  push:
-    tags:
-      - 'v*'
-      - '[0-9]+.[0-9]+.[0-9]+'
+  workflow_call:
 
 env:
   REGISTRY: ghcr.io
@@ -59,50 +58,31 @@ jobs:
           echo "" >> release_body.md
           echo "### Helm Chart" >> release_body.md
           echo '```bash' >> release_body.md
-          echo "helm install nkp-cluster-cleaner ./charts/nkp-cluster-cleaner --version ${{ steps.extract_version.outputs.version }}" >> release_body.md
+          echo "helm install nkp-cluster-cleaner oci://${{ env.REGISTRY }}/${{ github.repository_owner }}/helm --version ${{ steps.extract_version.outputs.version }}" >> release_body.md
           echo '```' >> release_body.md
 
-      - name: Wait for Docker build to complete
-        run: |
-          echo "Waiting for Docker image to be built and pushed..."
-          
-          # Wait up to 10 minutes for the Docker workflow to complete
-          for i in {1..60}; do
-            # Check if the image exists in the registry
-            if docker manifest inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.extract_version.outputs.version }} >/dev/null 2>&1; then
-              echo "✅ Docker image found in registry"
-              break
-            fi
-            
-            echo "⏳ Waiting for Docker image... (attempt $i/60)"
-            sleep 10
-            
-            if [ $i -eq 60 ]; then
-              echo "⚠️ Docker image not found after 10 minutes, proceeding with release anyway"
-            fi
-          done
+      # The image no longer needs polling for: pipeline.yml runs this stage only
+      # after the Docker build has pushed it successfully.
 
+      - name: Download packaged Helm chart
+        uses: actions/download-artifact@v4
+        with:
+          name: helm-chart
+          path: release-assets
+
+      # Creates the release and attaches the chart in one step. The previous
+      # actions/create-release and actions/upload-release-asset pair is archived.
       - name: Create GitHub Release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        id: create_release
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.extract_version.outputs.tag_name }}
-          release_name: "Release ${{ steps.extract_version.outputs.tag_name }}"
+          name: "Release ${{ steps.extract_version.outputs.tag_name }}"
           body_path: release_body.md
           draft: false
           prerelease: ${{ contains(steps.extract_version.outputs.version, '-') || contains(steps.extract_version.outputs.version, 'alpha') || contains(steps.extract_version.outputs.version, 'beta') || contains(steps.extract_version.outputs.version, 'rc') }}
-
-      - name: Upload Helm Chart as Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: charts/nkp-cluster-cleaner
-          asset_name: nkp-cluster-cleaner-chart-${{ steps.extract_version.outputs.version }}.tar.gz
-          asset_content_type: application/gzip
-        continue-on-error: true
+          files: release-assets/*.tgz
+          fail_on_unmatched_files: true
 
       - name: Output release information
         run: |
@@ -110,8 +90,8 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Version:** ${{ steps.extract_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "**Tag:** ${{ steps.extract_version.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Release URL:** ${{ steps.create_release.outputs.html_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Release URL:** ${{ steps.create_release.outputs.url }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Available Artifacts:" >> $GITHUB_STEP_SUMMARY
           echo "- 🐳 Docker Image: \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.extract_version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- ⚓ Helm Chart: \`./charts/nkp-cluster-cleaner\`" >> $GITHUB_STEP_SUMMARY
+          echo "- ⚓ Helm Chart: \`oci://${{ env.REGISTRY }}/${{ github.repository_owner }}/helm:${{ steps.extract_version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY

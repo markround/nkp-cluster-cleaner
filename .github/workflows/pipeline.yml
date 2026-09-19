@@ -1,0 +1,65 @@
+name: CI/CD Pipeline
+
+# The only workflow with event triggers. Everything else in this directory is a
+# reusable workflow called from here, so the whole build appears as a single run
+# with an explicit dependency graph. Adding a trigger to one of the called
+# workflows would run it twice for the same commit.
+on:
+  push:
+    branches:
+      - main
+      - dev
+      - 'feature/**'
+      - 'release/**'
+    tags:
+      - 'v*'
+      - '[0-9]+.[0-9]+.[0-9]+'
+  pull_request:
+    branches:
+      - main
+      - dev
+
+jobs:
+  # Runs for every branch push, tag and pull request.
+  checks:
+    name: Python Checks
+    uses: ./.github/workflows/check.yml
+    permissions:
+      contents: read
+
+  docker:
+    name: Docker Image
+    needs: checks
+    uses: ./.github/workflows/docker.yml
+    permissions:
+      contents: read
+      packages: write
+
+  # The publish and release stages only make sense for a version tag. Each one
+  # still waits on the stage before it, so a failure anywhere stops the chain.
+  helm:
+    name: Helm Chart
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: docker
+    uses: ./.github/workflows/helm.yml
+    permissions:
+      contents: read
+      packages: write
+
+  catalog:
+    name: Catalog Bundle
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: helm
+    uses: ./.github/workflows/catalog.yml
+    permissions:
+      contents: read
+      packages: write
+
+  release:
+    name: GitHub Release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: catalog
+    uses: ./.github/workflows/release.yml
+    permissions:
+      contents: write
+      packages: read

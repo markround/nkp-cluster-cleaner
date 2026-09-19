@@ -1,16 +1,15 @@
 name: Catalog Packaging
 
+# Triggers and stage ordering live in pipeline.yml. This used to chain off a
+# workflow_run of the Helm workflow, which checked out the default branch rather
+# than the tag; as a called workflow it now runs against the tagged commit.
 on:
-  workflow_run:
-    workflows: ["Publish Helm Chart"]
-    types:
-      - completed
+  workflow_call:
 
 jobs:
   validate-catalog:
     runs-on: ubuntu-latest
-    if: github.event.workflow_run.conclusion == 'success'
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -21,7 +20,7 @@ jobs:
             --entrypoint /opt/nkp/nkp \
             -v ${{ github.workspace }}:/workspace \
             -w /workspace \
-            mesosphere/nkp-distributor-linux:v2.16.0 \
+            mesosphere/nkp-distributor-linux:v2.18.0 \
             validate catalog-repository
 
   # Note the use of /catalog as the volume path, this is because the
@@ -41,7 +40,7 @@ jobs:
             --entrypoint /opt/nkp/nkp \
             -v ${{ github.workspace }}:/catalog \
             -w /catalog \
-            mesosphere/nkp-distributor-linux:v2.16.0 \
+            mesosphere/nkp-distributor-linux:v2.18.0 \
             create catalog-bundle --output-file nkp-cluster-cleaner.tar
 
       - name: Upload catalog bundle artifact
@@ -73,7 +72,7 @@ jobs:
             --entrypoint /opt/nkp/nkp \
             -v ${{ github.workspace }}:/catalog \
             -w /catalog \
-            mesosphere/nkp-distributor-linux:v2.16.0 \
+            mesosphere/nkp-distributor-linux:v2.18.0 \
             push bundle --bundle nkp-cluster-cleaner.tar \
               --to-registry ghcr.io/markround \
               --to-registry-username ${{ github.actor }} \

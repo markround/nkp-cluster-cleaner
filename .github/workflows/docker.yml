@@ -1,19 +1,8 @@
 name: Build and Push Docker Image
 
+# Triggers and stage ordering live in pipeline.yml.
 on:
-  push:
-    branches:
-      - main
-      - dev
-      - 'feature/**'
-      - 'release/**'
-    tags:
-      - 'v*'
-      - '[0-9]+.[0-9]+.[0-9]+'
-  pull_request:
-    branches:
-      - main
-      - dev
+  workflow_call:
 
 env:
   REGISTRY: ghcr.io

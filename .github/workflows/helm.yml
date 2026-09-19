@@ -1,10 +1,9 @@
 name: Publish Helm Chart
 
+# Triggers and stage ordering live in pipeline.yml, which only reaches this
+# stage for a tag push, so GITHUB_REF below is always refs/tags/<version>.
 on:
-  push:
-    tags:
-      - 'v*'
-      - '[0-9]+.[0-9]+.[0-9]+'
+  workflow_call:
 
 env:
   CHART_PATH: charts/nkp-cluster-cleaner
@@ -71,6 +70,16 @@ jobs:
           helm push "./oci-charts/$CHART_FILE" "oci://$OCI_REGISTRY"
           
           echo "OCI Helm chart pushed successfully"
+
+      # Hand the exact tarball that was pushed to the registry on to the release
+      # stage, so the release asset and the OCI artifact cannot drift apart.
+      - name: Upload packaged chart for the release stage
+        uses: actions/upload-artifact@v4
+        with:
+          name: helm-chart
+          path: ./oci-charts/*.tgz
+          if-no-files-found: error
+          retention-days: 1
 
       - name: Output OCI publication details
         run: |

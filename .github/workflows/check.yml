@@ -1,23 +1,8 @@
 name: Python Checks
 
+# Triggers and stage ordering live in pipeline.yml.
 on:
-  push:
-    branches:
-      - main
-      - dev
-      - 'feature/**'
-      - 'release/**'
-  pull_request:
-    branches:
-      - main
-      - dev
-    paths:
-      - '**/*.py'
-      - 'requirements.txt'
-      - 'requirements-dev.txt'
-      - 'pyproject.toml'
-      - 'ruff.toml'
-      - '.github/workflows/check.yml'
+  workflow_call:
 
 jobs:
   lint:
