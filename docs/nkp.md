@@ -21,7 +21,7 @@ The application is available as an OCI catalog-application bundle, introduced in
 ```bash
 nkp create catalog-application nkp-cluster-cleaner \
   --workspace kommander-workspace \
-  --tag 0.15.0-donotuse \
+  --tag 0.15.0-rc1 \
   --url oci://ghcr.io/markround/catalog/nkp-cluster-cleaner
 ```
 
@@ -32,7 +32,7 @@ To install the custom catalog on NKP v2.15 and earlier, run the following comman
 ```bash
 nkp create catalog nkp-cluster-cleaner \
     -w kommander-workspace \
-    --tag 0.15.0-donotuse \
+    --tag 0.15.0-rc1 \
     --url https://github.com/markround/nkp-cluster-cleaner
 ```
 
@@ -69,7 +69,7 @@ kubectl patch \
   --type merge \
   -n kommander \
   ocirepository catalog-nkp-cluster-cleaner \
-  --patch '{"spec": {"ref":{"tag":"0.15.0-donotuse"}}}'
+  --patch '{"spec": {"ref":{"tag":"0.15.0-rc1"}}}'
 ```
 
 ### NKP 2.15 or earlier
@@ -78,7 +78,7 @@ kubectl patch \
   --type merge \
   -n kommander \
   gitrepository nkp-cluster-cleaner \
-  --patch '{"spec": {"ref":{"tag":"0.15.0-donotuse"}}}'
+  --patch '{"spec": {"ref":{"tag":"0.15.0-rc1"}}}'
 ```
 
 ### All Versions
@@ -90,5 +90,5 @@ kubectl patch \
   --type merge \
   -n kommander \
   AppDeployment nkp-cluster-cleaner \
-  --patch '{"spec":{"appRef":{"name":"nkp-cluster-cleaner-0.15.0-donotuse"}}}'
+  --patch '{"spec":{"appRef":{"name":"nkp-cluster-cleaner-0.15.0-rc1"}}}'
 ```
