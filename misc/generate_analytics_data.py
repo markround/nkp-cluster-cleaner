@@ -6,7 +6,8 @@ Populates the analytics dashboard with a plausible estate history so the charts
 can be worked on without a cluster, a scheduled CronJob, or a month of waiting:
 
     ./misc/generate_analytics_data.py
-    nkp-cluster-cleaner serve --config config.yaml --redis-host localhost
+    nkp-cluster-cleaner serve --config tests/fixtures/config.yaml \\
+        --redis-host localhost
 
 Snapshots are written by the real RedisDataCollector, with `now()` moved back
 in time for each one. That means the keys, TTLs, sorted-set indexes, summary
@@ -87,9 +88,14 @@ EXPIRES_VALUES = {
 #: Malformed values, so the "Invalid expires format" reason shows up.
 BAD_EXPIRES_VALUES = ["soon", "forever", "1 day", "7", "1m"]
 
+#: Deletion criteria supplying the protection rules and required labels.
+#: Tracked in the repository, unlike the config.yaml at the root, which is
+#: gitignored as an operator's own file and so is absent in a fresh clone.
+CRITERIA_CONFIG = Path(__file__).resolve().parent.parent / "tests/fixtures/config.yaml"
+
 #: Clusters that exist for the whole window, covering the states a purely
 #: random estate would rarely produce. Names match the protection patterns in
-#: the repository's config.yaml.
+#: CRITERIA_CONFIG.
 PERMANENT = [
     {"name": "nkp-mgmt-cluster", "namespace": "kommander", "management": True},
     {"name": "workload-1", "namespace": "team-beta", "expires": "90d", "owner": "mdr"},
@@ -514,7 +520,7 @@ def main():
     )
     parser.add_argument(
         "--config",
-        default=str(Path(__file__).resolve().parent.parent / "config.yaml"),
+        default=str(CRITERIA_CONFIG),
         help="Config file supplying protection rules and required labels",
     )
     parser.add_argument(
@@ -602,7 +608,7 @@ def main():
     print()
     print("View it with:")
     print(
-        "  nkp-cluster-cleaner serve --config config.yaml "
+        f"  nkp-cluster-cleaner serve --config {args.config} "
         f"--redis-host {args.redis_host} --redis-port {args.redis_port}"
     )
     print("  then open /analytics")

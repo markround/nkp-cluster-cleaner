@@ -160,10 +160,14 @@ def closed_port() -> int:
 
 
 @pytest.fixture(scope="module")
-def listing(mock_api, repo_config) -> str:
+def listing(mock_api, criteria_config) -> str:
     """The full output of a plain list-clusters run, produced once."""
     code, output = run(
-        "list-clusters", "--kubeconfig", mock_api.kubeconfig, "--config", repo_config
+        "list-clusters",
+        "--kubeconfig",
+        mock_api.kubeconfig,
+        "--config",
+        criteria_config,
     )
     assert code == 0, output
     return output
@@ -204,13 +208,13 @@ class TestListClusters:
         }
         assert set(targets.values()) == {"NKPCluster"}
 
-    def test_no_exclusions_drops_the_excluded_table(self, mock_api, repo_config):
+    def test_no_exclusions_drops_the_excluded_table(self, mock_api, criteria_config):
         code, output = run(
             "list-clusters",
             "--kubeconfig",
             mock_api.kubeconfig,
             "--config",
-            repo_config,
+            criteria_config,
             "--no-exclusions",
         )
         assert code == 0
@@ -218,13 +222,13 @@ class TestListClusters:
         assert "demo-expired" in output
         assert "dev-scratch" not in output
 
-    def test_namespace_limits_the_listing(self, mock_api, repo_config):
+    def test_namespace_limits_the_listing(self, mock_api, criteria_config):
         code, output = run(
             "list-clusters",
             "--kubeconfig",
             mock_api.kubeconfig,
             "--config",
-            repo_config,
+            criteria_config,
             "--namespace",
             "team-alpha",
         )
@@ -232,13 +236,13 @@ class TestListClusters:
         assert "namespace 'team-alpha'" in output
         assert set(rows(output)) == {"alpha-lab", "alpha-renamed"}
 
-    def test_grace_period_is_announced_and_applied(self, mock_api, repo_config):
+    def test_grace_period_is_announced_and_applied(self, mock_api, criteria_config):
         code, output = run(
             "list-clusters",
             "--kubeconfig",
             mock_api.kubeconfig,
             "--config",
-            repo_config,
+            criteria_config,
             "--grace",
             "1h",
         )
@@ -291,13 +295,13 @@ class TestListClustersFailures:
 
 
 class TestDeleteClusters:
-    def test_dry_run_is_the_default_and_writes_nothing(self, recorded, repo_config):
+    def test_dry_run_is_the_default_and_writes_nothing(self, recorded, criteria_config):
         code, output = run(
             "delete-clusters",
             "--kubeconfig",
             recorded.kubeconfig,
             "--config",
-            repo_config,
+            criteria_config,
         )
 
         assert code == 0
@@ -308,24 +312,24 @@ class TestDeleteClusters:
         assert [verb for verb, _ in recorded.requests if verb != "GET"] == []
 
     def test_dry_run_lists_the_same_clusters_list_clusters_does(
-        self, recorded, repo_config, listing
+        self, recorded, criteria_config, listing
     ):
         _, output = run(
             "delete-clusters",
             "--kubeconfig",
             recorded.kubeconfig,
             "--config",
-            repo_config,
+            criteria_config,
         )
         assert set(rows(output)) == set(rows(sections(listing)["for_deletion"]))
 
-    def test_delete_issues_one_request_per_nkp_cluster(self, recorded, repo_config):
+    def test_delete_issues_one_request_per_nkp_cluster(self, recorded, criteria_config):
         code, output = run(
             "delete-clusters",
             "--kubeconfig",
             recorded.kubeconfig,
             "--config",
-            repo_config,
+            criteria_config,
             "--delete",
         )
 
@@ -338,27 +342,29 @@ class TestDeleteClusters:
         }
         assert set(recorded.paths("DELETE")) == expected
 
-    def test_rejected_deletes_are_reported_not_swallowed(self, recorded, repo_config):
+    def test_rejected_deletes_are_reported_not_swallowed(
+        self, recorded, criteria_config
+    ):
         """The mock refuses every write, so all six deletions must fail loudly."""
         code, output = run(
             "delete-clusters",
             "--kubeconfig",
             recorded.kubeconfig,
             "--config",
-            repo_config,
+            criteria_config,
             "--delete",
         )
         assert code == 0
         assert "Deletion requested for 0 clusters." in output
         assert "6 clusters failed to delete." in output
 
-    def test_namespace_limits_what_would_be_deleted(self, recorded, repo_config):
+    def test_namespace_limits_what_would_be_deleted(self, recorded, criteria_config):
         code, output = run(
             "delete-clusters",
             "--kubeconfig",
             recorded.kubeconfig,
             "--config",
-            repo_config,
+            criteria_config,
             "--namespace",
             "team-alpha",
             "--delete",
@@ -369,23 +375,27 @@ class TestDeleteClusters:
             "/team-alpha/nkpclusters/alpha-lab"
         ]
 
-    def test_clusters_already_being_deleted_are_skipped(self, recorded, repo_config):
+    def test_clusters_already_being_deleted_are_skipped(
+        self, recorded, criteria_config
+    ):
         _, output = run(
             "delete-clusters",
             "--kubeconfig",
             recorded.kubeconfig,
             "--config",
-            repo_config,
+            criteria_config,
         )
         assert "Skipping 1 clusters already being deleted" in output
 
-    def test_unsupported_backend_aborts_before_any_request(self, recorded, repo_config):
+    def test_unsupported_backend_aborts_before_any_request(
+        self, recorded, criteria_config
+    ):
         code, output = run(
             "delete-clusters",
             "--kubeconfig",
             recorded.kubeconfig,
             "--config",
-            repo_config,
+            criteria_config,
             "--notify-backend",
             "carrier-pigeon",
         )
@@ -393,13 +403,13 @@ class TestDeleteClusters:
         assert "Unsupported notification backend 'carrier-pigeon'" in output
         assert recorded.requests == []
 
-    def test_slack_backend_requires_a_token(self, recorded, repo_config):
+    def test_slack_backend_requires_a_token(self, recorded, criteria_config):
         code, output = run(
             "delete-clusters",
             "--kubeconfig",
             recorded.kubeconfig,
             "--config",
-            repo_config,
+            criteria_config,
             "--notify-backend",
             "slack",
             "--slack-channel",
@@ -415,9 +425,9 @@ class TestDeleteClusters:
 
 
 class TestNotify:
-    def test_clusters_due_for_deletion_are_critical(self, mock_api, repo_config):
+    def test_clusters_due_for_deletion_are_critical(self, mock_api, criteria_config):
         code, output = run(
-            "notify", "--kubeconfig", mock_api.kubeconfig, "--config", repo_config
+            "notify", "--kubeconfig", mock_api.kubeconfig, "--config", criteria_config
         )
 
         assert code == 0
@@ -426,7 +436,7 @@ class TestNotify:
         assert "• Warning notifications: 0" in output
 
     def test_lowering_the_warning_threshold_catches_a_live_cluster(
-        self, mock_api, repo_config
+        self, mock_api, criteria_config
     ):
         """beta-sandbox is 9h into a 12h life, so 70% catches it and 80% does not."""
         code, output = run(
@@ -434,7 +444,7 @@ class TestNotify:
             "--kubeconfig",
             mock_api.kubeconfig,
             "--config",
-            repo_config,
+            criteria_config,
             "--warning-threshold",
             "70",
         )
@@ -444,14 +454,14 @@ class TestNotify:
         assert "beta-sandbox" in output
 
     def test_protected_and_deleting_clusters_are_never_alerted_on(
-        self, mock_api, repo_config
+        self, mock_api, criteria_config
     ):
         code, output = run(
             "notify",
             "--kubeconfig",
             mock_api.kubeconfig,
             "--config",
-            repo_config,
+            criteria_config,
             "--warning-threshold",
             "1",
         )
@@ -459,13 +469,13 @@ class TestNotify:
         for quiet in ("production-api", "demo-deleting", "nkp-mgmt-cluster"):
             assert quiet not in output
 
-    def test_inverted_thresholds_abort(self, mock_api, repo_config):
+    def test_inverted_thresholds_abort(self, mock_api, criteria_config):
         code, output = run(
             "notify",
             "--kubeconfig",
             mock_api.kubeconfig,
             "--config",
-            repo_config,
+            criteria_config,
             "--warning-threshold",
             "95",
             "--critical-threshold",
@@ -474,13 +484,13 @@ class TestNotify:
         assert code == 1
         assert "Warning threshold must be less than critical threshold" in output
 
-    def test_unsupported_backend_aborts(self, mock_api, repo_config):
+    def test_unsupported_backend_aborts(self, mock_api, criteria_config):
         code, output = run(
             "notify",
             "--kubeconfig",
             mock_api.kubeconfig,
             "--config",
-            repo_config,
+            criteria_config,
             "--notify-backend",
             "smoke-signal",
         )
@@ -518,14 +528,14 @@ class TestNotifyWithHistory:
         monkeypatch.setattr(manager.requests, "post", post)
         return posted
 
-    def notify(self, mock_api, repo_config, fake_redis, *extra) -> tuple[int, str]:
+    def notify(self, mock_api, criteria_config, fake_redis, *extra) -> tuple[int, str]:
         """Run notify with the slack backend against the in-memory history."""
         return run(
             "notify",
             "--kubeconfig",
             mock_api.kubeconfig,
             "--config",
-            repo_config,
+            criteria_config,
             "--notify-backend",
             "slack",
             "--slack-token",
@@ -540,9 +550,9 @@ class TestNotifyWithHistory:
         )
 
     def test_alerts_are_delivered_and_recorded(
-        self, mock_api, repo_config, fake_redis, slack
+        self, mock_api, criteria_config, fake_redis, slack
     ):
-        code, output = self.notify(mock_api, repo_config, fake_redis)
+        code, output = self.notify(mock_api, criteria_config, fake_redis)
 
         assert code == 0, output
         assert f"Connected to notification history at {fake_redis}" in output
@@ -551,16 +561,16 @@ class TestNotifyWithHistory:
         assert slack[0]["channel"] == "clusters"
 
     def test_the_same_alert_is_not_sent_twice(
-        self, mock_api, repo_config, fake_redis, slack
+        self, mock_api, criteria_config, fake_redis, slack
     ):
         """
         The whole point of the history: the CronJob runs on a schedule, and
         without this every run would re-alert on the same six clusters.
         """
-        self.notify(mock_api, repo_config, fake_redis)
+        self.notify(mock_api, criteria_config, fake_redis)
         slack.clear()
 
-        code, output = self.notify(mock_api, repo_config, fake_redis)
+        code, output = self.notify(mock_api, criteria_config, fake_redis)
 
         assert code == 0
         assert "Filtered out 6 notifications (already sent)" in output
@@ -568,7 +578,7 @@ class TestNotifyWithHistory:
         assert slack == []
 
     def test_a_cluster_back_in_compliance_is_forgotten(
-        self, mock_api, repo_config, fake_redis, slack
+        self, mock_api, criteria_config, fake_redis, slack
     ):
         """
         Otherwise a cluster alerted on for a missing label, then fixed, would
@@ -576,19 +586,19 @@ class TestNotifyWithHistory:
         """
         from nkp_cluster_cleaner.storage.notification_history import NotificationHistory
 
-        self.notify(mock_api, repo_config, fake_redis)
+        self.notify(mock_api, criteria_config, fake_redis)
 
         history = NotificationHistory(fake_redis)
         history.mark_as_notified("long-gone", "team-alpha", "warning")
 
-        code, output = self.notify(mock_api, repo_config, fake_redis)
+        code, output = self.notify(mock_api, criteria_config, fake_redis)
 
         assert code == 0
         assert "Cleaned up notifications for 1 compliant clusters" in output
         assert not history.has_been_notified("long-gone", "team-alpha", "warning")
 
     def test_a_slack_failure_aborts_rather_than_recording_a_send(
-        self, mock_api, repo_config, fake_redis, monkeypatch
+        self, mock_api, criteria_config, fake_redis, monkeypatch
     ):
         from nkp_cluster_cleaner.notifications import manager
         from nkp_cluster_cleaner.storage.notification_history import NotificationHistory
@@ -599,7 +609,7 @@ class TestNotifyWithHistory:
 
         monkeypatch.setattr(manager.requests, "post", lambda *a, **k: Rejected())
 
-        code, output = self.notify(mock_api, repo_config, fake_redis)
+        code, output = self.notify(mock_api, criteria_config, fake_redis)
 
         assert code == 1
         assert "Failed to send notifications: HTTP 500" in output
@@ -613,14 +623,14 @@ class TestNotifyWithHistory:
 
 class TestCollectAnalytics:
     def test_snapshot_is_collected_and_summarised(
-        self, mock_api, repo_config, fake_redis
+        self, mock_api, criteria_config, fake_redis
     ):
         code, output = run(
             "collect-analytics",
             "--kubeconfig",
             mock_api.kubeconfig,
             "--config",
-            repo_config,
+            criteria_config,
             "--redis-host",
             fake_redis.host,
         )
@@ -634,7 +644,9 @@ class TestCollectAnalytics:
         assert "Total snapshots in Redis: 1" in output
         assert "Redis memory usage: 1.00M" in output
 
-    def test_the_snapshot_is_actually_in_redis(self, mock_api, repo_config, fake_redis):
+    def test_the_snapshot_is_actually_in_redis(
+        self, mock_api, criteria_config, fake_redis
+    ):
         from nkp_cluster_cleaner.storage.client import build_redis_client
 
         run(
@@ -642,7 +654,7 @@ class TestCollectAnalytics:
             "--kubeconfig",
             mock_api.kubeconfig,
             "--config",
-            repo_config,
+            criteria_config,
             "--redis-host",
             fake_redis.host,
         )
@@ -656,7 +668,7 @@ class TestCollectAnalytics:
         assert snapshot["collection_metadata"]["nkp_version"] == "v2.18.0"
 
     def test_retention_is_passed_through_as_a_ttl(
-        self, mock_api, repo_config, fake_redis
+        self, mock_api, criteria_config, fake_redis
     ):
         from nkp_cluster_cleaner.storage.client import build_redis_client
 
@@ -665,7 +677,7 @@ class TestCollectAnalytics:
             "--kubeconfig",
             mock_api.kubeconfig,
             "--config",
-            repo_config,
+            criteria_config,
             "--redis-host",
             fake_redis.host,
             "--keep-days",
@@ -695,7 +707,7 @@ class TestGenerateConfig:
 
 
 class TestServe:
-    def test_options_reach_the_server(self, monkeypatch, mock_api, repo_config):
+    def test_options_reach_the_server(self, monkeypatch, mock_api, criteria_config):
         """
         serve blocks forever, so the server itself is stubbed. What is being
         checked is the wiring: every option arriving where it should, spelled
@@ -711,7 +723,7 @@ class TestServe:
             "--kubeconfig",
             mock_api.kubeconfig,
             "--config",
-            repo_config,
+            criteria_config,
             "--host",
             "0.0.0.0",
             "--port",
@@ -732,7 +744,7 @@ class TestServe:
         assert captured["grace_period"] == "4h"
         assert captured["no_redis"] is True
         assert captured["kubeconfig_path"] == mock_api.kubeconfig
-        assert captured["config_path"] == repo_config
+        assert captured["config_path"] == criteria_config
         assert captured["redis"].host == "somewhere"
 
     def test_a_failure_to_start_aborts(self, monkeypatch):

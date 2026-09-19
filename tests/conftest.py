@@ -22,10 +22,11 @@ import redis as redis_module
 from nkp_cluster_cleaner.core.config import ConfigManager
 from nkp_cluster_cleaner.core.settings import RedisSettings
 
-#: The repository's own config.yaml. The mock estate's expected states are
-#: stated in terms of these rules, so tests against it must load this file
-#: rather than a default, ruleless ConfigManager.
-REPO_CONFIG = str(Path(__file__).resolve().parent.parent / "config.yaml")
+#: Deletion criteria the mock estate's expected states are stated in terms of,
+#: so tests against it must load this file rather than a default, ruleless
+#: ConfigManager. Deliberately not the config.yaml at the repository root: that
+#: one is gitignored as an operator's own file, and so is absent in CI.
+CRITERIA_CONFIG = str(Path(__file__).resolve().parent / "fixtures" / "config.yaml")
 
 
 @pytest.fixture
@@ -53,9 +54,9 @@ def owner_label_config(tmp_path):
 
 
 @pytest.fixture(scope="session")
-def repo_config():
-    """Path to the repository's config.yaml, which the mock fixtures assume."""
-    return REPO_CONFIG
+def criteria_config():
+    """Path to the config file the mock estate's expected states assume."""
+    return CRITERIA_CONFIG
 
 
 #

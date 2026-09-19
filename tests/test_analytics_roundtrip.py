@@ -79,7 +79,7 @@ class History:
 
 
 @pytest.fixture(scope="module")
-def history(repo_config) -> History:
+def history(criteria_config) -> History:
     """
     A fortnight of snapshots in Redis, written the way the CronJob writes them.
 
@@ -97,7 +97,7 @@ def history(repo_config) -> History:
             timestamps.append(when)
             when += timedelta(hours=INTERVAL_HOURS)
 
-        config_manager = ConfigManager(repo_config)
+        config_manager = ConfigManager(criteria_config)
         lives = generator.build_estate(random.Random(SEED), CLUSTERS, start, end)
         manager = generator.SimulatedClusterManager(lives, config_manager)
         collector = RedisDataCollector(
@@ -380,9 +380,9 @@ class TestRetention:
         return collector.redis_client.zrange("analytics:snapshots:index", 0, -1)
 
     def test_snapshots_outside_the_window_leave_no_index_entry(
-        self, fake_redis, repo_config
+        self, fake_redis, criteria_config
     ):
-        config_manager = ConfigManager(repo_config)
+        config_manager = ConfigManager(criteria_config)
         lives = generator.build_estate(
             random.Random(SEED),
             5,

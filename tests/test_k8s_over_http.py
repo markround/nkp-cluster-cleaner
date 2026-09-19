@@ -43,9 +43,9 @@ def manager_for(cluster, config_path, **kwargs) -> ClusterManager:
 
 
 @pytest.fixture(scope="module")
-def manager(mock_api, repo_config) -> ClusterManager:
+def manager(mock_api, criteria_config) -> ClusterManager:
     """A manager wired to the NKP 2.18+ mock, built once for the module."""
-    return manager_for(mock_api, repo_config)
+    return manager_for(mock_api, criteria_config)
 
 
 @pytest.fixture(scope="module")
@@ -55,9 +55,9 @@ def statuses(manager) -> dict:
 
 
 @pytest.fixture(scope="module")
-def legacy(legacy_mock_api, repo_config) -> ClusterManager:
+def legacy(legacy_mock_api, criteria_config) -> ClusterManager:
     """A manager wired to the pre-2.18 mock, where NKPCluster 404s."""
-    return manager_for(legacy_mock_api, repo_config)
+    return manager_for(legacy_mock_api, criteria_config)
 
 
 class TestFixtureOracle:
@@ -96,8 +96,8 @@ class TestFixtureOracle:
         covered |= {f["grace_1h"] for f in LISTED if f.get("grace_1h")}
         assert covered == {state.value for state in ClusterState}
 
-    def test_grace_period_changes_only_what_it_should(self, mock_api, repo_config):
-        graced = manager_for(mock_api, repo_config, grace_period="1h")
+    def test_grace_period_changes_only_what_it_should(self, mock_api, criteria_config):
+        graced = manager_for(mock_api, criteria_config, grace_period="1h")
         states = {s.cluster.name: s.state.value for s in graced.get_cluster_statuses()}
 
         expected = {f["name"]: f.get("grace_1h", f["state"]) for f in LISTED}
@@ -117,18 +117,20 @@ class TestTheWire:
     ]
 
     @pytest.mark.parametrize("path", EXPECTED_PATHS)
-    def test_resource_coordinates_reach_the_server(self, recorded, repo_config, path):
-        manager_for(recorded, repo_config).get_cluster_statuses()
+    def test_resource_coordinates_reach_the_server(
+        self, recorded, criteria_config, path
+    ):
+        manager_for(recorded, criteria_config).get_cluster_statuses()
 
         requested = {p.split("?")[0] for p in recorded.paths("GET")}
         assert path in requested
 
-    def test_namespace_filter_is_a_namespaced_request(self, recorded, repo_config):
+    def test_namespace_filter_is_a_namespaced_request(self, recorded, criteria_config):
         """
         A client-side filter would produce the same results from a cluster-wide
         list, so this checks the request, not just the answer.
         """
-        manager = manager_for(recorded, repo_config)
+        manager = manager_for(recorded, criteria_config)
         recorded.clear_requests()
 
         names = {s.cluster.name for s in manager.get_cluster_statuses("team-beta")}
@@ -139,8 +141,8 @@ class TestTheWire:
             "/kommanderclusters" in {p.split("?")[0] for p in recorded.paths("GET")}
         )
 
-    def test_reading_never_writes(self, recorded, repo_config):
-        manager_for(recorded, repo_config).get_cluster_statuses()
+    def test_reading_never_writes(self, recorded, criteria_config):
+        manager_for(recorded, criteria_config).get_cluster_statuses()
 
         mutations = [(verb, path) for verb, path in recorded.requests if verb != "GET"]
         assert mutations == []
@@ -169,12 +171,12 @@ class TestDeletionTargets:
         """
         assert statuses["alpha-renamed"].cluster.nkp.name == "alpha-renamed-h7k2p"
 
-    def test_delete_is_refused_by_the_read_only_mock(self, recorded, repo_config):
+    def test_delete_is_refused_by_the_read_only_mock(self, recorded, criteria_config):
         """
         The mock 403s every write, which is what makes the dry-run assertions
         elsewhere meaningful: a leaked delete would be visible here.
         """
-        manager = manager_for(recorded, repo_config)
+        manager = manager_for(recorded, criteria_config)
         cluster = manager.get_clusters_for_deletion()[0].cluster
         recorded.clear_requests()
 
@@ -184,8 +186,8 @@ class TestDeletionTargets:
             f"/{cluster.namespace}/nkpclusters/{cluster.name}"
         ]
 
-    def test_dry_run_puts_nothing_on_the_wire(self, recorded, repo_config):
-        manager = manager_for(recorded, repo_config)
+    def test_dry_run_puts_nothing_on_the_wire(self, recorded, criteria_config):
+        manager = manager_for(recorded, criteria_config)
         cluster = manager.get_clusters_for_deletion()[0].cluster
         recorded.clear_requests()
 

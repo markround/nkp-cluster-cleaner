@@ -8,7 +8,7 @@ whole tool can be run end to end without an NKP management cluster:
 
     ./misc/mock_k8s_api.py
     nkp-cluster-cleaner list-clusters --kubeconfig misc/mock.kubeconfig \\
-        --config config.yaml
+        --config tests/fixtures/config.yaml
 
 The fixtures deliberately cover every ClusterState the tool can produce, plus
 the two joins that are easy to get wrong (ownerReference-based and name-based)
@@ -49,6 +49,11 @@ KINDS = {
 MANAGEMENT_NAMESPACE = "kommander"
 MANAGEMENT_LABEL = "kommander.d2iq.io/host"
 WORKSPACE_NAMESPACE = "kommander-default-workspace"
+
+#: Deletion criteria the fixtures' expected states are stated in terms of.
+#: Tracked in the repository, unlike the config.yaml at the root, which is
+#: gitignored as an operator's own file and so is absent in a fresh clone.
+CRITERIA_CONFIG = "tests/fixtures/config.yaml"
 
 #: Namespaces served by /api/v1/namespaces.
 NAMESPACES = [
@@ -197,8 +202,8 @@ def kommander_core(version):
 # --------------------------------------------------------------------------
 
 #: Each entry describes one cluster and the state the tool should reach for it,
-#: assuming the repository's config.yaml and no grace period. None of this is
-#: served; it is the expected-results half of the fixture.
+#: assuming CRITERIA_CONFIG and no grace period. None of this is served; it is
+#: the expected-results half of the fixture.
 #:
 #: `state` mirrors a core.models.ClusterState value, spelled out rather than
 #: imported so this script stays standalone. None means the cluster should not
@@ -247,7 +252,7 @@ FIXTURES = [
         "reason": "expired",
         "expect": "For deletion — expired 4 days ago",
     },
-    # -- Has expires but not the required extra label from config.yaml. -----
+    # -- Has expires but not the required extra label from the config. ------
     {
         "name": "demo-no-owner",
         "namespace": WORKSPACE_NAMESPACE,
@@ -340,7 +345,7 @@ FIXTURES = [
         "state": "active",
         "expect": "Active — ~75% elapsed, good for the UI progress bar",
     },
-    # -- Protected by name: config.yaml lists `workload-1` literally. -------
+    # -- Protected by name: the config lists `workload-1` literally. --------
     {
         "name": "workload-1",
         "namespace": "team-beta",
@@ -698,7 +703,7 @@ def print_scenarios():
     ref_width = max(len(r) for r in refs.values())
     state_width = max(len(f["state"] or "-") for f in FIXTURES)
 
-    print("\nFixtures (expected results with config.yaml, no grace period):\n")
+    print(f"\nFixtures (expected results with {CRITERIA_CONFIG}, no grace):\n")
     for f in FIXTURES:
         state = f["state"] or "-"
         print(
@@ -716,7 +721,7 @@ def main():
             "Example:\n"
             "  ./misc/mock_k8s_api.py &\n"
             "  nkp-cluster-cleaner list-clusters \\\n"
-            "      --kubeconfig misc/mock.kubeconfig --config config.yaml\n"
+            f"      --kubeconfig misc/mock.kubeconfig --config {CRITERIA_CONFIG}\n"
         ),
     )
     parser.add_argument("--host", default="127.0.0.1", help="Bind address")
@@ -778,7 +783,7 @@ def main():
     print(f"  kubeconfig: {kubeconfig}")
     print()
     print("Try:")
-    common = f"--kubeconfig {kubeconfig} --config config.yaml"
+    common = f"--kubeconfig {kubeconfig} --config {CRITERIA_CONFIG}"
     for command in (
         f"nkp-cluster-cleaner list-clusters {common}",
         f"nkp-cluster-cleaner list-clusters {common} --grace 1h",
