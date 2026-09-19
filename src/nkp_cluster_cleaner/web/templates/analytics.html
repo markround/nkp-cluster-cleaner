@@ -51,6 +51,65 @@
 </div>
 {% endmacro %}
 
+{#
+  A donut card: the ring answers "what share", the list beside it answers
+  "which, and how many".
+
+  Only for a complete whole with few parts. The list is the identity channel,
+  so no slice depends on being told apart from its neighbour by colour, and the
+  table is still one click away underneath.
+#}
+{% macro donut_card(id, title, meta, slices, columns, caption='Total') %}
+<div class="card">
+    <div class="card__header">
+        <div class="card__title">{{ title }}</div>
+        <span class="card__meta">{{ meta }}</span>
+    </div>
+    <div class="card__body">
+        {% if slices %}
+        <div class="donut">
+            <div class="donut__chart"><canvas id="{{ id }}"></canvas></div>
+            <div class="donut__legend">
+                {% for slice in slices %}
+                <div class="donut__row">
+                    <span class="donut__dot" style="background: {{ slice.color }}"></span>
+                    <span class="donut__name" title="{{ slice.label }}">{{ slice.label }}</span>
+                    <span class="donut__count">{{ slice.value }}</span>
+                    <span class="donut__share">{{ slice.share }}%</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div class="empty">Nothing recorded in this window.</div>
+        {% endif %}
+    </div>
+    {% if slices and columns %}
+    <div class="card__footer">
+        <button class="chart-table-toggle" data-table-toggle="{{ id }}-table">Show as table</button>
+    </div>
+    <div id="{{ id }}-table" hidden class="chart-table">
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>{% for column in columns %}<th {% if not loop.first %}class="num"{% endif %}>{{ column }}</th>{% endfor %}</tr>
+                </thead>
+                <tbody>
+                    {% for slice in slices %}
+                    <tr>
+                        <td>{{ slice.label }}</td>
+                        <td class="num">{{ slice.value }}</td>
+                        <td class="num">{{ slice.share }}%</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endmacro %}
+
 {% block content %}
 {% if not error %}
 
@@ -129,12 +188,13 @@
 </div>
 
 <div class="chart-grid">
-    {{ chart_card(
+    {{ donut_card(
         'chart-reasons',
         'Why clusters were deleted',
         'Last 14 days',
-        columns=['Reason', 'Clusters'],
-        rows=(deletion_activity.deletion_reasons or {}) | dict_rows
+        slices=deletion_activity.deletion_reasons | reason_slices,
+        columns=['Reason', 'Clusters', 'Share'],
+        caption='Deletions'
     ) }}
 
     {{ chart_card(
@@ -197,13 +257,19 @@
         [{ label: 'Compliance %', data: {{ (compliance_stats.compliance_trend or []) | tojson }} }]
     );
 
-    // Magnitude comparisons: horizontal bars in one hue, categories on the axis.
-    const reasons = {{ (deletion_activity.deletion_reasons or {}) | tojson }};
-    NkpCharts.bar(
-        document.getElementById('chart-reasons'),
-        Object.keys(reasons),
-        Object.values(reasons)
-    );
+    // Part-to-whole: every deleted cluster had exactly one reason, so the
+    // fortnight's deletions divide cleanly into the ring. The colours and the
+    // order come from the server, so the legend beside it always agrees.
+    const reasons = {{ deletion_activity.deletion_reasons | reason_slices | tojson }};
+    if (reasons.length) {
+        NkpCharts.donut(
+            document.getElementById('chart-reasons'),
+            reasons.map(function (s) { return s.label; }),
+            reasons.map(function (s) { return s.value; }),
+            reasons.map(function (s) { return s.color; }),
+            'Deletions'
+        );
+    }
 
     // Expiry windows are ordered, so they take the ordinal ramp: darkest is
     // most urgent. Unknown keys fall back to the lightest step.

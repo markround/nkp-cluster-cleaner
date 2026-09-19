@@ -191,6 +191,75 @@ class TestAnalyticsPage:
         assert "Missing expires label" in body
         assert "kommander-default-workspace" in body
 
+    def test_deletion_reasons_render_as_a_donut(self, client):
+        """The ring's legend spells out every slice, which is what makes the
+        sub-3:1 slice colours legal."""
+        body = client.get("/analytics").data.decode()
+        assert body.count("donut__row") == 2  # the fake carries two reasons
+        assert "Cluster expired" in body
+        assert "Missing expires label" in body
+
+
+class TestReasonSlices:
+    """
+    The donut's colours are keyed to the reason, never to its rank: a reason
+    that slips from first to third keeps its colour, and the ring keeps its
+    order. The palette was validated all-pairs on that promise.
+    """
+
+    @staticmethod
+    def slices(client, mapping):
+        return client.application.jinja_env.filters["reason_slices"](mapping)
+
+    def test_order_follows_the_enum_not_the_counts(self, client):
+        rows = self.slices(client, {"Missing required label": 9, "Cluster expired": 1})
+        assert [row["label"] for row in rows] == [
+            "Cluster expired",
+            "Missing required label",
+        ]
+
+    def test_colour_survives_a_change_of_rank(self, client):
+        busy = self.slices(client, {"Cluster expired": 40, "Label pattern mismatch": 1})
+        quiet = self.slices(
+            client, {"Cluster expired": 1, "Label pattern mismatch": 40}
+        )
+        assert {row["label"]: row["color"] for row in busy} == {
+            row["label"]: row["color"] for row in quiet
+        }
+
+    def test_colours_are_distinct(self, client):
+        rows = self.slices(
+            client,
+            {
+                "Cluster expired": 1,
+                "Missing expires label": 1,
+                "Missing required label": 1,
+                "Label pattern mismatch": 1,
+                "Invalid expires format": 1,
+                "Missing creation timestamp": 1,
+            },
+        )
+        assert len({row["color"] for row in rows}) == 6
+
+    def test_shares_are_percentages_of_the_whole(self, client):
+        rows = self.slices(client, {"Cluster expired": 3, "Missing expires label": 1})
+        assert [row["share"] for row in rows] == [75, 25]
+
+    def test_zero_counts_are_not_drawn(self, client):
+        """A zero-width arc is not a slice."""
+        rows = self.slices(client, {"Cluster expired": 2, "Missing expires label": 0})
+        assert [row["label"] for row in rows] == ["Cluster expired"]
+
+    def test_unknown_reasons_still_appear(self, client):
+        """A reason the enum no longer carries is drawn neutral, not dropped."""
+        rows = self.slices(client, {"Some retired reason": 5})
+        assert [row["label"] for row in rows] == ["Some retired reason"]
+        assert rows[0]["color"] == "#5c6b7a"
+
+    def test_no_data_is_no_slices(self, client):
+        assert self.slices(client, {}) == []
+        assert self.slices(client, None) == []
+
 
 class TestNotificationsPage:
     def test_renders_with_data(self, client):

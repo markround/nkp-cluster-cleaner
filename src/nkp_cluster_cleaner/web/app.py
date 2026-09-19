@@ -15,7 +15,7 @@ from flask import Blueprint, Flask, jsonify
 
 import nkp_cluster_cleaner
 
-from ..core.models import ClusterState
+from ..core.models import ClusterState, DeletionReason
 from ..core.settings import RedisSettings
 from .blueprints import api, pages
 from .services import Services, WebSettings, services, settings
@@ -94,9 +94,30 @@ def normalise_prefix(url_prefix: str | None) -> str:
     return f"/{stripped}" if stripped else ""
 
 
+#
+# Donut slice colours, keyed by DeletionReason so a reason keeps its colour
+# whatever its rank in a given fortnight — a reason that drops from first to
+# third must not repaint the ring. Declaration order here is the order the ring
+# is drawn in: expiry, the routine reason, leads, then the label faults.
+#
+# The six match NkpCharts.palette.slices and were validated all-pairs, so any
+# subset in any order still clears the separation floors. Anything unmapped
+# falls to the neutral, which matches NkpCharts.palette.sliceOther.
+#
+_REASON_SLICES: dict[DeletionReason, str] = {
+    DeletionReason.EXPIRED: "#1b6bdb",
+    DeletionReason.MISSING_EXPIRES_LABEL: "#199e70",
+    DeletionReason.MISSING_REQUIRED_LABEL: "#eda100",
+    DeletionReason.LABEL_PATTERN_MISMATCH: "#e87ba4",
+    DeletionReason.INVALID_EXPIRES_FORMAT: "#7a3e8f",
+    DeletionReason.MISSING_CREATION_TIMESTAMP: "#b5651d",
+}
+_SLICE_OTHER = "#5c6b7a"
+
+
 def _register_table_filters(app: Flask):
     """
-    Filters that turn analytics payloads into table rows.
+    Filters that reshape analytics payloads for the charts and their tables.
 
     Every chart ships a table alternative, so that identity never rests on
     colour alone. These do the reshaping in Jinja rather than duplicating each
@@ -140,6 +161,48 @@ def _register_table_filters(app: Flask):
         rows = [[name, stats.get(key, 0)] for name, stats in (mapping or {}).items()]
         rows.sort(key=lambda row: row[1], reverse=True)
         return rows[:limit]
+
+    @app.template_filter("reason_slices")
+    def reason_slices(mapping):
+        """
+        Turn {reason label: count} into donut slices.
+
+        Slices come back in DeletionReason order rather than by size, so the
+        ring's neighbours stay put as counts move, and each carries the share
+        the legend prints beside its count. Reasons with no clusters are left
+        out entirely — a zero-width arc is not a slice.
+
+        Args:
+            mapping: Counts keyed by DeletionReason.label.
+
+        Returns:
+            A list of {label, value, color, share} dicts.
+        """
+        counts = dict(mapping or {})
+        ordered = [
+            (reason.label, color)
+            for reason, color in _REASON_SLICES.items()
+            if counts.get(reason.label)
+        ]
+        # Anything the enum no longer covers still gets drawn, in the neutral,
+        # rather than being dropped silently.
+        known = {reason.label for reason in _REASON_SLICES}
+        ordered += [
+            (label, _SLICE_OTHER)
+            for label, value in counts.items()
+            if label not in known and value
+        ]
+
+        total = sum(counts.get(label, 0) for label, _ in ordered)
+        return [
+            {
+                "label": label,
+                "value": counts[label],
+                "color": color,
+                "share": round(counts[label] / total * 100) if total else 0,
+            }
+            for label, color in ordered
+        ]
 
 
 def create_app(

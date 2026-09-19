@@ -644,8 +644,19 @@ a.stat:hover {
   margin-bottom: 16px;
 }
 
+/*
+ * Paired cards stretch to the taller of the two. Flexing the body keeps the
+ * footer on the bottom edge rather than stranding it mid-card, which a short
+ * donut beside a tall bar chart would otherwise do.
+ */
 .chart-grid .card {
   margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-grid .card__body {
+  flex: 1;
 }
 
 .chart-box {
@@ -673,6 +684,83 @@ a.stat:hover {
   height: 10px;
   border-radius: 2px;
   flex-shrink: 0;
+}
+
+/*
+ * Donut cards: the ring carries the share, the list beside it carries the
+ * names and the counts. The list is the identity channel — it is why slice
+ * colours below 3:1 on white are allowed here.
+ */
+.donut {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.donut__chart {
+  position: relative;
+  width: 190px;
+  height: 190px;
+  flex-shrink: 0;
+}
+
+.donut__legend {
+  flex: 1;
+  min-width: 0;
+}
+
+.donut__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.donut__row:last-child {
+  border-bottom: none;
+}
+
+.donut__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.donut__name {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.donut__count {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.donut__share {
+  color: var(--text-faint);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  min-width: 34px;
+  text-align: right;
+}
+
+/* Below the card's two-column width the ring goes above its list. */
+@media (max-width: 560px) {
+  .donut {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .donut__chart {
+    align-self: center;
+  }
 }
 
 /*
