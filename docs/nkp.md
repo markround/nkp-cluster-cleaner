@@ -25,17 +25,6 @@ nkp create catalog-application nkp-cluster-cleaner \
   --url oci://ghcr.io/markround/catalog/nkp-cluster-cleaner
 ```
 
-### NKP 2.15 or earlier
-
-To install the custom catalog on NKP v2.15 and earlier, run the following command:
-
-```bash
-nkp create catalog nkp-cluster-cleaner \
-    -w kommander-workspace \
-    --tag 0.15.0-rc1 \
-    --url https://github.com/markround/nkp-cluster-cleaner
-```
-
 You can then select the application in the Management Cluster Workspace and enable it. 
 
 > [!NOTE]
