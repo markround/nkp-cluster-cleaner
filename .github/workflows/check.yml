@@ -1,6 +1,12 @@
 name: Python Checks
 
 on:
+  push:
+    branches:
+      - main
+      - dev
+      - 'feature/**'
+      - 'release/**'
   pull_request:
     branches:
       - main
@@ -86,8 +92,15 @@ jobs:
           python - <<'EOF'
           import importlib.resources as resources
 
-          files = resources.files("nkp_cluster_cleaner")
-          for name in ("templates/base.html", "templates/clusters.html"):
+          files = resources.files("nkp_cluster_cleaner.web")
+          for name in (
+              "templates/base.html",
+              "templates/clusters.html",
+              "static/css/app.css",
+              "static/js/charts.js",
+              "static/vendor/chart.umd.min.js",
+              "static/favicon.svg",
+          ):
               assert (files / name).is_file(), f"missing from the wheel: {name}"
           print("packaged data files OK")
           EOF
