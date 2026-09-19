@@ -30,19 +30,8 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-      - name: Get chart version
-        id: get_chart_version
-        run: |
-          CHART_VERSION=$(grep "version:" ${{ env.CHART_PATH }}/Chart.yaml | awk '{print $2}')
-          echo "chart_version=$CHART_VERSION" >> $GITHUB_OUTPUT
-
-      - name: Verify version consistency
-        run: |
-          if [ "${{ steps.extract_version.outputs.version }}" != "${{ steps.get_chart_version.outputs.chart_version }}" ]; then
-            echo "Error: Tag version (${{ steps.extract_version.outputs.version }}) does not match chart version (${{ steps.get_chart_version.outputs.chart_version }})"
-            exit 1
-          fi
-          echo "✅ Version consistency verified: ${{ steps.extract_version.outputs.version }}"
+      # The tag is checked against Chart.yaml by the version stage in
+      # pipeline.yml, which runs before anything is published.
 
       - name: Install Helm
         uses: azure/setup-helm@v3
@@ -58,17 +47,22 @@ jobs:
 
       - name: Package and push OCI Helm chart
         run: |
-          # Package the chart
-          helm package ${{ env.CHART_PATH }} --destination ./oci-charts
-          
+          VERSION="${{ steps.extract_version.outputs.version }}"
+
+          # --version stamps the tag onto the package, so a prerelease tag
+          # publishes 0.15.0-rc1 rather than overwriting the real 0.15.0 chart.
+          # Without it helm names the file after Chart.yaml and the push below
+          # would look for a tarball that does not exist.
+          helm package ${{ env.CHART_PATH }} --version "$VERSION" --destination ./oci-charts
+
           # Push the chart to GHCR as OCI artifact
-          CHART_FILE="nkp-cluster-cleaner-${{ steps.extract_version.outputs.version }}.tgz"
+          CHART_FILE="nkp-cluster-cleaner-${VERSION}.tgz"
           OCI_REGISTRY="ghcr.io/${{ github.repository_owner }}/helm"
-          
-          echo "Pushing OCI chart to $OCI_REGISTRY:${{ steps.extract_version.outputs.version }}"
-          
+
+          echo "Pushing OCI chart to $OCI_REGISTRY:$VERSION"
+
           helm push "./oci-charts/$CHART_FILE" "oci://$OCI_REGISTRY"
-          
+
           echo "OCI Helm chart pushed successfully"
 
       # Hand the exact tarball that was pushed to the registry on to the release

@@ -31,19 +31,8 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-      - name: Get Python package version
-        id: get_package_version
-        run: |
-          PACKAGE_VERSION=$(grep "__version__" src/nkp_cluster_cleaner/__init__.py | cut -d'"' -f2)
-          echo "package_version=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
-
-      - name: Verify version consistency
-        run: |
-          if [ "${{ steps.extract_version.outputs.version }}" != "${{ steps.get_package_version.outputs.package_version }}" ]; then
-            echo "Error: Tag version (${{ steps.extract_version.outputs.version }}) does not match package version (${{ steps.get_package_version.outputs.package_version }})"
-            exit 1
-          fi
-          echo "✅ Version consistency verified: ${{ steps.extract_version.outputs.version }}"
+      # The tag is checked against __version__ by the version stage in
+      # pipeline.yml, which runs before anything is published.
 
       - name: Generate release body
         id: release_body
