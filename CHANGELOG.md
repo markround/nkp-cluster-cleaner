@@ -1,4 +1,10 @@
 # Changelog
+## Unreleased
+- Removed legacy Helm repository, OCI only
+- Added support for NKPCluster objects in 2.18+
+- Redesigned UI
+- Refactored into modules, code tidy, add tests
+
 ## 0.15.0
 - Newly created clusters can be given a grace period during which they will not be deleted or generate notifications, even if they are missing required labels or have already expired. This gives cluster creators time to properly label their clusters after creation.
 

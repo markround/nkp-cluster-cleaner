@@ -9,16 +9,17 @@ This Helm chart provides a complete deployment solution for the NKP Cluster Clea
 
 ## Installation
 
-### Install from the official Helm repository:
+### From OCI registry
+
+You can install from an OCI-based registry:
 
 ```bash
-helm repo add mdr https://helm.mdr.dev
-helm repo update
-helm install -n kommander nkp-cluster-cleaner mdr/nkp-cluster-cleaner
+helm -n kommander nkp-cluster-cleaner oci://ghcr.io/markround/helm/nkp-cluster-cleaner --version 0.15.0
 ```
 
-> [!IMPORTANT]
-> This chart must be installed in the `kommander` namespace of the NKP Management Cluster and will *not* work elsewhere.
+> [!NOTE]
+> Prior to Helm v3.8.0, OCI support is experimental and must be enabled. For more information, see [https://helm.sh/docs/topics/registries/](https://helm.sh/docs/topics/registries/)
+
 
 ### From Git Repository
 You can also install directly from the source repository using a specific version:
@@ -35,17 +36,6 @@ helm install -n kommander nkp-cluster-cleaner ./charts/nkp-cluster-cleaner
 git checkout 0.15.0
 helm install -n kommander nkp-cluster-cleaner ./charts/nkp-cluster-cleaner
 ```
-
-### From OCI registry
-
-You can also install from an OCI-based registry:
-
-```bash
-helm -n kommander nkp-cluster-cleaner oci://ghcr.io/markround/helm/nkp-cluster-cleaner --version 0.15.0
-```
-
-> [!NOTE]
-> Prior to Helm v3.8.0, OCI support is experimental and must be enabled. For more information, see [https://helm.sh/docs/topics/registries/](https://helm.sh/docs/topics/registries/)
 
 
 ### Version-Specific Installation
