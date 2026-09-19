@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Validate catalog repository
         run: |
@@ -32,7 +32,7 @@ jobs:
     
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Create catalog bundle
         run: |
@@ -44,7 +44,7 @@ jobs:
             create catalog-bundle --output-file nkp-cluster-cleaner.tar
 
       - name: Upload catalog bundle artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: catalog-bundle
           path: nkp-cluster-cleaner.tar
@@ -59,10 +59,10 @@ jobs:
     
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Download catalog bundle artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: catalog-bundle
 
