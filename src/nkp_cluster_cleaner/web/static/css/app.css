@@ -1,5 +1,5 @@
 /*
- * NKP Cluster Cleaner — design system.
+ * NKP Cluster Cleaner - design system.
  *
  * Follows the Nutanix visual language: dark navy sidebar, light grey canvas,
  * flat white surfaces separated by hairlines rather than shadows, a single blue
@@ -688,7 +688,7 @@ a.stat:hover {
 
 /*
  * Donut cards: the ring carries the share, the list beside it carries the
- * names and the counts. The list is the identity channel — it is why slice
+ * names and the counts. The list is the identity channel - it is why slice
  * colours below 3:1 on white are allowed here.
  */
 .donut {

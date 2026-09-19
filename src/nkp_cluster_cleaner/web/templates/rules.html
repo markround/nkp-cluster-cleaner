@@ -129,7 +129,7 @@
                         <tr>
                             <td class="cell-mono">{{ label.name }}</td>
                             <td class="cell-mono">{{ label.regex or 'any value' }}</td>
-                            <td class="cell-muted">{{ label.description or '—' }}</td>
+                            <td class="cell-muted">{{ label.description or '-' }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -206,7 +206,7 @@
     <div class="card__body">
         <dl class="deflist">
             <dt>Config file</dt>
-            <dd class="cell-mono">{{ config_path or 'None — no protection rules loaded' }}</dd>
+            <dd class="cell-mono">{{ config_path or 'None - no protection rules loaded' }}</dd>
             <dt>Kubeconfig</dt>
             <dd class="cell-mono">{{ kubeconfig_path or 'Default (~/.kube/config)' }}</dd>
             <dt>Grace period</dt>

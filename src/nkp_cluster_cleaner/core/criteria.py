@@ -27,11 +27,11 @@ def evaluate(
     Checks run in order of decreasing authority, so a cluster protected for more
     than one reason reports the most important one:
 
-    1. Management cluster — never deleted, whatever else is true of it.
-    2. Deletion already in progress — nothing useful left to do.
-    3. Protected by configuration — an explicit operator decision.
-    4. No deletion target — nothing to delete, so say so rather than guess.
-    5. Grace period — too new to judge.
+    1. Management cluster - never deleted, whatever else is true of it.
+    2. Deletion already in progress - nothing useful left to do.
+    3. Protected by configuration - an explicit operator decision.
+    4. No deletion target - nothing to delete, so say so rather than guess.
+    5. Grace period - too new to judge.
     6. Label compliance, then expiry.
 
     Args:

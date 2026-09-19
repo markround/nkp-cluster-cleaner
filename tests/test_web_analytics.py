@@ -294,7 +294,7 @@ class TestPayloadContract:
     """
     The fakes above are only useful if they match what the real service
     returns. A drifted key would otherwise let a chart render empty in
-    production while the tests stayed green — which is exactly what happened
+    production while the tests stayed green - which is exactly what happened
     with `compliance_trend`.
     """
 

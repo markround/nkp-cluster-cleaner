@@ -1,5 +1,5 @@
 """
-Cluster Manager — the entry point for everything that talks to a cluster.
+Cluster Manager - the entry point for everything that talks to a cluster.
 
 Ties together the three pieces it delegates to: `discovery` finds clusters,
 `criteria` decides what should happen to them, and `deletion` carries it out.

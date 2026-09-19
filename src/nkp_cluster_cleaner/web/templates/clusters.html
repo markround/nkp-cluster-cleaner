@@ -26,8 +26,8 @@
             <tr>
                 <td class="cell-name">{{ status.cluster.name }}</td>
                 <td class="cell-muted">{{ status.cluster.namespace }}</td>
-                <td>{{ status.cluster.labels.get('owner', '—') }}</td>
-                <td><span class="tag">{{ status.cluster.labels.get('expires', '—') }}</span></td>
+                <td>{{ status.cluster.labels.get('owner', '-') }}</td>
+                <td><span class="tag">{{ status.cluster.labels.get('expires', '-') }}</span></td>
                 <td>
                     {% if status.cluster.target %}
                         <span class="tag">{{ status.cluster.target.kind_name }}</span>

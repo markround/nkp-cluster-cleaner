@@ -253,13 +253,13 @@ def execute_notify_command(
         if critical:
             _display(
                 critical,
-                f"🚨 CRITICAL: {len(critical)} clusters (≥{critical_threshold}% elapsed):",
+                f"CRITICAL: {len(critical)} clusters (≥{critical_threshold}% elapsed):",
                 Fore.RED,
             )
         if warning:
             _display(
                 warning,
-                f"⚠️  WARNING: {len(warning)} clusters "
+                f"WARNING: {len(warning)} clusters "
                 f"({warning_threshold}%-{critical_threshold - 1}% elapsed):",
                 Fore.YELLOW,
             )

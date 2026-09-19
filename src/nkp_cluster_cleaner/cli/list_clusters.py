@@ -34,7 +34,7 @@ def _rows(
         statuses: The clusters to render.
         include_state: Add a State column. Useful when a table mixes states.
         include_target: Add a Target column naming the resource a delete would
-            act on — an NKPCluster on NKP 2.18+, a CAPI Cluster before that.
+            act on - an NKPCluster on NKP 2.18+, a CAPI Cluster before that.
 
     Returns:
         One row per cluster.

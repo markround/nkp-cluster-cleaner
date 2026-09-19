@@ -13,8 +13,8 @@ Snapshots are written by the real RedisDataCollector, with `now()` moved back
 in time for each one. That means the keys, TTLs, sorted-set indexes, summary
 records and every field inside a snapshot are produced by the same code the
 CronJob runs, and stay correct if that code changes. What this script fakes is
-only the estate itself: it simulates the life of each cluster — created,
-labelled or not, expiring, deleted — and lets the real criteria decide what
+only the estate itself: it simulates the life of each cluster - created,
+labelled or not, expiring, deleted - and lets the real criteria decide what
 state each one was in at each point in time.
 
 Only keys under `analytics:` are ever written or deleted. Generating starts by
@@ -197,8 +197,8 @@ def make_life(
     """
     Invent one cluster's life.
 
-    Labelling improves as the window progresses — a later birth means better
-    odds of a complete label set — so the compliance chart has a direction to
+    Labelling improves as the window progresses - a later birth means better
+    odds of a complete label set - so the compliance chart has a direction to
     show rather than being flat noise.
 
     Args:

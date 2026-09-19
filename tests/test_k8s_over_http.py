@@ -9,8 +9,8 @@ an actual cluster. These tests close that gap by running the real client
 against misc/mock_k8s_api.py, in-process on an ephemeral port.
 
 That mock's FIXTURES carry the state the tool should reach for each cluster, so
-this file is also the assertion that the fixture estate — the thing a developer
-eyeballs when running the mock by hand — means what it says it does.
+this file is also the assertion that the fixture estate - the thing a developer
+eyeballs when running the mock by hand - means what it says it does.
 """
 
 from __future__ import annotations
@@ -86,8 +86,8 @@ class TestFixtureOracle:
     def test_the_fixtures_cover_every_state(self):
         """
         Guards the oracle itself. Without this, a state could quietly stop
-        being exercised — by a fixture being edited, or by a new state being
-        added — and every test above would still pass.
+        being exercised - by a fixture being edited, or by a new state being
+        added - and every test above would still pass.
 
         IN_GRACE only exists under a grace period, so it comes from the
         `grace_1h` overrides rather than from the default states.
@@ -209,7 +209,7 @@ class TestLegacyCluster:
         """
         alpha-renamed carries its labels on the NKPCluster alone. Without that
         object there is no `expires` label, so a cluster that is Active on 2.18+
-        is deletable here — the clearest evidence the join really is gone.
+        is deletable here - the clearest evidence the join really is gone.
         """
         states = {s.cluster.name: s.state for s in legacy.get_cluster_statuses()}
         assert states["alpha-renamed"] is ClusterState.FOR_DELETION

@@ -4,8 +4,8 @@ The analytics write path and read path, checked against each other.
 tests/test_analytics_snapshot.py covers how a snapshot is *built*, and
 tests/test_web_analytics.py renders the templates against a hand-written fake
 service. Between them sits everything that actually stores and retrieves the
-data — the Redis keys, the sorted-set indexes, the TTLs, and every query in
-storage/analytics.py — which nothing exercised: the analytics service was the
+data - the Redis keys, the sorted-set indexes, the TTLs, and every query in
+storage/analytics.py - which nothing exercised: the analytics service was the
 least-covered module in the project.
 
 These tests close that loop. misc/generate_analytics_data.py writes a history
@@ -263,7 +263,7 @@ class TestNamespacesAndOwners:
         """
         Regression test for a figure that was always zero: the summary looked
         up "no-owner", a key nothing ever wrote, while the snapshots group
-        unowned clusters under Cluster.owner — which is UNKNOWN_OWNER.
+        unowned clusters under Cluster.owner - which is UNKNOWN_OWNER.
         """
         owners = service.get_owner_distribution(WINDOW)
 
@@ -328,8 +328,8 @@ class TestPayloadShape:
     Every query must return the same top-level keys whether or not it found
     data. The templates read those keys unconditionally, so a method that grows
     a key only on its populated branch renders an empty chart in production
-    while tests against the empty branch — which is all
-    tests/test_web_analytics.py has — stay green.
+    while tests against the empty branch - which is all
+    tests/test_web_analytics.py has - stay green.
     """
 
     QUERIES = {

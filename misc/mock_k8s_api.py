@@ -3,7 +3,7 @@
 A read-only mock Kubernetes API server for exercising nkp-cluster-cleaner.
 
 Serves a fixed set of minimal NKPCluster, KommanderCluster and CAPI Cluster
-objects — just the fields discovery and the criteria actually read — so the
+objects - just the fields discovery and the criteria actually read - so the
 whole tool can be run end to end without an NKP management cluster:
 
     ./misc/mock_k8s_api.py
@@ -218,7 +218,7 @@ FIXTURES = [
         "management": True,
         "labels": {},
         "state": "management",
-        "expect": "Management — never deleted, and it has no labels at all",
+        "expect": "Management - never deleted, and it has no labels at all",
     },
     # -- Compliant, in the default workspace. ------------------------------
     {
@@ -230,7 +230,7 @@ FIXTURES = [
         "nkp_labels": {"expires": "30d", "owner": "stale-value"},
         "created": timedelta(days=-2),
         "state": "active",
-        "expect": "Active — expires in ~28d, owner resolves to 'mdr'",
+        "expect": "Active - expires in ~28d, owner resolves to 'mdr'",
     },
     # -- No labels at all: the commonest reason for deletion. ---------------
     {
@@ -240,7 +240,7 @@ FIXTURES = [
         "created": timedelta(days=-9),
         "state": "for_deletion",
         "reason": "missing_expires_label",
-        "expect": "For deletion — missing 'expires' label",
+        "expect": "For deletion - missing 'expires' label",
     },
     # -- Labelled but past its expiry. --------------------------------------
     {
@@ -250,7 +250,7 @@ FIXTURES = [
         "created": timedelta(days=-5),
         "state": "for_deletion",
         "reason": "expired",
-        "expect": "For deletion — expired 4 days ago",
+        "expect": "For deletion - expired 4 days ago",
     },
     # -- Has expires but not the required extra label from the config. ------
     {
@@ -260,7 +260,7 @@ FIXTURES = [
         "created": timedelta(days=-1),
         "state": "for_deletion",
         "reason": "missing_required_label",
-        "expect": "For deletion — missing required label 'owner'",
+        "expect": "For deletion - missing required label 'owner'",
     },
     # -- Unparseable expires value. -----------------------------------------
     {
@@ -270,7 +270,7 @@ FIXTURES = [
         "created": timedelta(days=-3),
         "state": "for_deletion",
         "reason": "invalid_expires_format",
-        "expect": "For deletion — invalid 'expires' format",
+        "expect": "For deletion - invalid 'expires' format",
     },
     # -- Brand new and unlabelled: the case --grace exists for. -------------
     {
@@ -291,7 +291,7 @@ FIXTURES = [
         "created": timedelta(days=-4),
         "deleting": True,
         "state": "deleting",
-        "expect": "Deleting — target carries a deletionTimestamp",
+        "expect": "Deleting - target carries a deletionTimestamp",
     },
     # -- KommanderCluster with nothing behind it. ---------------------------
     {
@@ -302,7 +302,7 @@ FIXTURES = [
         "nkp": False,
         "capi": False,
         "state": "no_target",
-        "expect": "No target — expired, but neither NKPCluster nor CAPI Cluster exists",
+        "expect": "No target - expired, but neither NKPCluster nor CAPI Cluster exists",
     },
     # -- Attached, with the NKPCluster wrapper NKP 2.18 gives it. -----------
     {
@@ -311,7 +311,7 @@ FIXTURES = [
         "labels": {},
         "attached": True,
         "state": None,
-        "expect": "Not listed — attached, despite having an NKPCluster wrapper",
+        "expect": "Not listed - attached, despite having an NKPCluster wrapper",
     },
     # -- Expired lab cluster in a team namespace. ---------------------------
     {
@@ -321,7 +321,7 @@ FIXTURES = [
         "created": timedelta(days=-8),
         "state": "for_deletion",
         "reason": "expired",
-        "expect": "For deletion — expired 1 day ago",
+        "expect": "For deletion - expired 1 day ago",
     },
     # -- NKPCluster named differently, so only the ownerReference joins them.
     #    Its labels live only on the NKPCluster, which also exercises the
@@ -334,7 +334,7 @@ FIXTURES = [
         "nkp_labels": {"expires": "90d", "owner": "alice"},
         "created": timedelta(days=-20),
         "state": "active",
-        "expect": "Active — joined via ownerReference, labels inherited from the NKPCluster",
+        "expect": "Active - joined via ownerReference, labels inherited from the NKPCluster",
     },
     # -- Short-lived sandbox, part way through its life. --------------------
     {
@@ -343,7 +343,7 @@ FIXTURES = [
         "labels": {"expires": "12h", "owner": "bob"},
         "created": timedelta(hours=-9),
         "state": "active",
-        "expect": "Active — ~75% elapsed, good for the UI progress bar",
+        "expect": "Active - ~75% elapsed, good for the UI progress bar",
     },
     # -- Protected by name: the config lists `workload-1` literally. --------
     {
@@ -352,7 +352,7 @@ FIXTURES = [
         "labels": {},
         "created": timedelta(days=-40),
         "state": "protected",
-        "expect": "Protected — matches the 'workload-1' name pattern",
+        "expect": "Protected - matches the 'workload-1' name pattern",
     },
     # -- Protected by the `^production-.*` name pattern. --------------------
     {
@@ -361,7 +361,7 @@ FIXTURES = [
         "labels": {"expires": "1h", "owner": "bob"},
         "created": timedelta(days=-40),
         "state": "protected",
-        "expect": "Protected — matches '^production-.*' despite being long expired",
+        "expect": "Protected - matches '^production-.*' despite being long expired",
     },
     # -- Attached the pre-2.18 way: no NKPCluster wrapper at all. -----------
     {
@@ -371,7 +371,7 @@ FIXTURES = [
         "attached": True,
         "nkp": False,
         "state": None,
-        "expect": "Not listed — attached, with no NKPCluster at all",
+        "expect": "Not listed - attached, with no NKPCluster at all",
     },
     # -- Protected by the `.*-prod$` namespace pattern. ---------------------
     {
@@ -380,7 +380,7 @@ FIXTURES = [
         "labels": {},
         "created": timedelta(days=-60),
         "state": "protected",
-        "expect": "Protected — namespace matches '.*-prod$'",
+        "expect": "Protected - namespace matches '.*-prod$'",
     },
     # -- Protected by the `^default$` namespace pattern. --------------------
     {
@@ -389,7 +389,7 @@ FIXTURES = [
         "labels": {},
         "created": timedelta(days=-15),
         "state": "protected",
-        "expect": "Protected — namespace matches '^default$'",
+        "expect": "Protected - namespace matches '^default$'",
     },
 ]
 
@@ -489,7 +489,7 @@ class MockApiHandler(BaseHTTPRequestHandler):
     missing: set[tuple[str, str, str]] = set()
     verbose: bool = True
 
-    def do_GET(self):  # noqa: N802 — BaseHTTPRequestHandler's naming.
+    def do_GET(self):  # noqa: N802 - BaseHTTPRequestHandler's naming.
         parsed = urlparse(self.path)
         query = parse_qs(parsed.query)
         parts = [p for p in parsed.path.split("/") if p]

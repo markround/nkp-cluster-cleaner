@@ -136,7 +136,7 @@
                         <td class="cell-muted">
                             {{ job.start_time.strftime('%Y-%m-%d %H:%M') if job.start_time else 'Not started' }}
                         </td>
-                        <td class="cell-muted">{{ job.duration or '—' }}</td>
+                        <td class="cell-muted">{{ job.duration or '-' }}</td>
                         <td class="cell-muted">
                             {{ job.succeeded_pods }} ok{% if job.failed_pods %}, {{ job.failed_pods }} failed{% endif %}{% if job.active_pods %}, {{ job.active_pods }} running{% endif %}
                         </td>

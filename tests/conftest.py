@@ -1,7 +1,7 @@
 """
 Shared fixtures for the test suite. Object builders live in factories.py.
 
-Most of the suite mocks at a seam — a MagicMock CustomObjectsApi, a faked
+Most of the suite mocks at a seam - a MagicMock CustomObjectsApi, a faked
 analytics service. The fixtures below exist for the tests that deliberately do
 not: `mock_api` serves the real Kubernetes wire protocol over a socket, and
 `fake_redis` serves the real Redis protocol in memory, so the transport, the
@@ -124,7 +124,7 @@ def _start_mock_api(
         {
             # Subclassed rather than configured in place: MockApiHandler keeps
             # its store in class attributes, so two servers in one process
-            # would otherwise share — and overwrite — each other's fixtures.
+            # would otherwise share - and overwrite - each other's fixtures.
             "store": mock_k8s_api.build_store(nkp_version),
             "missing": set(missing),
             "verbose": False,

@@ -117,7 +117,7 @@ def nkp_cluster_crd_available(custom_api: CustomObjectsApi) -> bool:
         True if NKPCluster resources can be listed. False on a 404, which means
         pre-2.18. Any other API error is also treated as unavailable, with a
         warning, so that a transient problem degrades to the legacy path rather
-        than crashing — the legacy path is a no-op when there are no CAPI
+        than crashing - the legacy path is a no-op when there are no CAPI
         clusters to act on.
     """
     try:

@@ -2,8 +2,8 @@
 Parsing and formatting of the time values the tool works with.
 
 Everything here is timezone-aware UTC. The Kubernetes API reports timestamps in
-UTC, so comparing them against a naive local `datetime.now()` — as this tool
-used to — skews every expiry and grace decision by the machine's UTC offset.
+UTC, so comparing them against a naive local `datetime.now()` - as this tool
+used to - skews every expiry and grace decision by the machine's UTC offset.
 """
 
 from __future__ import annotations

@@ -2,7 +2,7 @@
 Tests for the deletion strategies.
 
 The critical assertion here is that on NKP 2.18+ the NKPCluster is deleted and
-the CAPI cluster is left alone — deleting the CAPI cluster directly fights the
+the CAPI cluster is left alone - deleting the CAPI cluster directly fights the
 NKPCluster controller's finalizers.
 """
 

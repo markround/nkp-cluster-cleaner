@@ -1,5 +1,5 @@
 """
-Notification Manager — decides which clusters warrant an alert, and sends it.
+Notification Manager - decides which clusters warrant an alert, and sends it.
 """
 
 from __future__ import annotations
@@ -124,7 +124,7 @@ class NotificationManager:
         it has burned through `critical_threshold` percent of its lifetime; it
         is a warning past `warning_threshold`.
 
-        Clusters already being torn down are deliberately excluded — NKPCluster
+        Clusters already being torn down are deliberately excluded - NKPCluster
         deletion is slow, and alerting on every run during teardown is noise.
 
         Args:

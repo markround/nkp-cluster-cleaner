@@ -2,7 +2,7 @@
 Tests for time parsing and formatting.
 
 This is the arithmetic every deletion decision rests on, so it is pinned in
-detail — in particular that everything comes back as timezone-aware UTC.
+detail - in particular that everything comes back as timezone-aware UTC.
 """
 
 from datetime import UTC, datetime, timedelta

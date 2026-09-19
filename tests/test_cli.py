@@ -3,7 +3,7 @@ Tests for the commands themselves, run end to end against the mock cluster.
 
 The CLI is the tool as an operator meets it, and was until now the only layer
 with no tests at all: option wiring, the envvar names the Helm chart depends
-on, the tables, and — most consequentially — whether a dry run is really dry.
+on, the tables, and - most consequentially - whether a dry run is really dry.
 That last one is checked against the mock server's request log rather than
 against what the command prints, since a delete that was issued and refused
 would still report as a failure rather than as a write.
@@ -45,7 +45,7 @@ SECTION_FOR_STATE = {
 
 #: Every environment variable the CLI reads. The tests clear all of them: the
 #: Helm chart drives the tool entirely through envvars, so a developer's shell
-#: — or mise.toml, which sets REDIS_HOST — would otherwise leak in and change
+#: - or mise.toml, which sets REDIS_HOST - would otherwise leak in and change
 #: what is being tested.
 CLI_ENVVARS = [
     "KUBECONFIG",

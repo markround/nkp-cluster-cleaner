@@ -1,7 +1,7 @@
 """
 Builders for the Kubernetes objects under test.
 
-Shaped to match what the API actually returns — see dev/nkpcluster.yaml and
+Shaped to match what the API actually returns - see dev/nkpcluster.yaml and
 dev/kommanderclusters.yaml for the real resources these are modelled on.
 """
 

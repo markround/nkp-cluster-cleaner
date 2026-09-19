@@ -193,7 +193,7 @@ class TestGracePeriod:
 class TestTimezoneHandling:
     """
     Timestamps from the Kubernetes API are UTC. Comparing them against a naive
-    local `datetime.now()` — as this tool used to — skews every expiry and grace
+    local `datetime.now()` - as this tool used to - skews every expiry and grace
     decision by the machine's UTC offset.
 
     These run under a fixed, deliberately extreme timezone so any regression is

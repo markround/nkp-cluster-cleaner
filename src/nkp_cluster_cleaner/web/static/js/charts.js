@@ -11,7 +11,7 @@
  *
  * The contrast warning is why every chart on the page also ships a table view:
  * identity never rests on colour alone. Series are capped at three for the same
- * reason — a fourth slot would not clear the all-pairs floors.
+ * reason - a fourth slot would not clear the all-pairs floors.
  *
  * Single-series charts use one hue and carry their categories on the axis, so
  * they need no categorical palette at all.
@@ -234,7 +234,7 @@
       ctx.fillText(caption, x, y - 11);
 
       // The figure is the one loud thing here, so it stays in ink and takes
-      // proportional digits — this is a standalone number, not a column.
+      // proportional digits - this is a standalone number, not a column.
       ctx.fillStyle = PALETTE.ink;
       ctx.font = "500 22px " + FONT;
       ctx.fillText(total.toLocaleString(), x, y + 9);

@@ -96,7 +96,7 @@ def normalise_prefix(url_prefix: str | None) -> str:
 
 #
 # Donut slice colours, keyed by DeletionReason so a reason keeps its colour
-# whatever its rank in a given fortnight — a reason that drops from first to
+# whatever its rank in a given fortnight - a reason that drops from first to
 # third must not repaint the ring. Declaration order here is the order the ring
 # is drawn in: expiry, the routine reason, leads, then the label faults.
 #
@@ -135,7 +135,7 @@ def _register_table_filters(app: Flask):
         columns = [list(first), *[list(column) for column in rest]]
         length = max((len(column) for column in columns), default=0)
         return [
-            [column[i] if i < len(column) else "—" for column in columns]
+            [column[i] if i < len(column) else "-" for column in columns]
             for i in range(length)
         ]
 
@@ -170,7 +170,7 @@ def _register_table_filters(app: Flask):
         Slices come back in DeletionReason order rather than by size, so the
         ring's neighbours stay put as counts move, and each carries the share
         the legend prints beside its count. Reasons with no clusters are left
-        out entirely — a zero-width arc is not a slice.
+        out entirely - a zero-width arc is not a slice.
 
         Args:
             mapping: Counts keyed by DeletionReason.label.
@@ -301,22 +301,22 @@ def run_server(
 
     base = f"http://{host}:{port}{prefix}"
 
-    print("🚀 Starting NKP Cluster Cleaner web server...")
-    print(f"📡 Server URL: {base}")
-    print(f"🔧 Debug mode: {'Enabled' if debug else 'Disabled'}")
+    print("Starting NKP Cluster Cleaner web server...")
+    print(f"Server URL: {base}")
+    print(f"Debug mode: {'Enabled' if debug else 'Disabled'}")
     print(
-        f"📋 Configuration: kubeconfig={kubeconfig_path or 'default'}, "
+        f"Configuration: kubeconfig={kubeconfig_path or 'default'}, "
         f"config={config_path or 'none'}"
     )
     if grace_period:
         print(
-            f"⏰ Grace period: {grace_period} "
+            f"Grace period: {grace_period} "
             "(clusters younger than this will be excluded)"
         )
     if not no_redis:
-        print(f"📊 Analytics storage: Redis at {redis}")
+        print(f"Analytics storage: Redis at {redis}")
     if prefix:
-        print(f"🔗 URL prefix: {prefix}")
+        print(f"URL prefix: {prefix}")
 
     endpoints = [
         ("/", "Dashboard"),
@@ -334,9 +334,9 @@ def run_server(
         ("/health", "Health check"),
     ]
 
-    print("🔗 Available endpoints:")
+    print("Available endpoints:")
     for path, description in endpoints:
         print(f"   • {base}{path} - {description}")
-    print("🛑 Press Ctrl+C to stop the server")
+    print("Press Ctrl+C to stop the server")
 
     app.run(host=host, port=port, debug=debug)

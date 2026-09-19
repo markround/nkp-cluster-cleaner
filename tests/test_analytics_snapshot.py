@@ -2,7 +2,7 @@
 Tests for the analytics snapshot builder.
 
 This code previously derived its buckets by pattern-matching the text of the
-reason message — including testing `f"~{i}d" in reason` to guess how soon a
+reason message - including testing `f"~{i}d" in reason` to guess how soon a
 cluster expired. These tests pin the replacement, which works off the computed
 expiry time and the state enum.
 """

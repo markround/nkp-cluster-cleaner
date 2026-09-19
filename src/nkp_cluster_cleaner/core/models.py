@@ -1,8 +1,8 @@
 """
 Core domain model.
 
-The point of this module is that a cluster's status is expressed as *data* —
-an enum plus structured fields — rather than as a prose string that other
+The point of this module is that a cluster's status is expressed as *data* -
+an enum plus structured fields - rather than as a prose string that other
 modules then have to re-parse. `Verdict.detail` exists only to be shown to a
 human; nothing should ever branch on its contents.
 """
@@ -38,7 +38,7 @@ LEGACY_MANAGEMENT_NAME = "host-cluster"
 
 #: Owner reported for a cluster with no `owner` label. Analytics groups by
 #: owner, so this is a key those results are looked up under, not just display
-#: text — hence a constant rather than a literal in two places.
+#: text - hence a constant rather than a literal in two places.
 UNKNOWN_OWNER = "unknown"
 
 
@@ -46,8 +46,8 @@ class ClusterState(Enum):
     """
     What the tool has decided about a cluster.
 
-    Exactly one state applies. Everything downstream — the CLI tables, the web
-    UI, notifications, metrics and analytics — branches on this rather than on
+    Exactly one state applies. Everything downstream - the CLI tables, the web
+    UI, notifications, metrics and analytics - branches on this rather than on
     message text.
     """
 
@@ -211,7 +211,7 @@ class Verdict:
     #: Set only when state is FOR_DELETION.
     reason: DeletionReason | None = None
 
-    #: Human-readable explanation. For display only — never branch on this.
+    #: Human-readable explanation. For display only - never branch on this.
     detail: str = ""
 
     #: When the cluster expires, if that could be determined. UTC.

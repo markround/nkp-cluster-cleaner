@@ -72,7 +72,7 @@
                     <tr>
                         <td class="cell-name">{{ status.cluster.name }}</td>
                         <td class="cell-muted">{{ status.cluster.namespace }}</td>
-                        <td>{{ status.cluster.labels.get('owner', '—') }}</td>
+                        <td>{{ status.cluster.labels.get('owner', '-') }}</td>
                         <td><span class="tag">{{ status.cluster.target.kind_name if status.cluster.target else 'none' }}</span></td>
                         <td class="cell-muted">{{ status.verdict.detail }}</td>
                     </tr>
@@ -105,7 +105,7 @@
                         {% for status in upcoming %}
                         <tr>
                             <td class="cell-name">{{ status.cluster.name }}</td>
-                            <td>{{ status.cluster.labels.get('owner', '—') }}</td>
+                            <td>{{ status.cluster.labels.get('owner', '-') }}</td>
                             <td class="cell-muted">{{ status.verdict.expires_at.strftime('%Y-%m-%d %H:%M') }} UTC</td>
                         </tr>
                         {% endfor %}
