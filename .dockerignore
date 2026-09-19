@@ -61,6 +61,8 @@ example-config.yaml
 docs/
 *.md
 !README.md
+# Needed by pyproject.toml's license field
+!LICENSE.md
 
 # Docker
 Dockerfile

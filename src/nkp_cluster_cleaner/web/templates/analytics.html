@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% import "_icons.html" as ui with context %}
+
+{% block title %}NKP Cluster Cleaner - Analytics{% endblock %}
+{% block header_title %}Analytics{% endblock %}
+{% block header_subtitle %}Historical trends from stored snapshots{% endblock %}
+
+{#
+  A chart card: canvas, its own legend, and a table alternative.
+
+  Every chart ships the table so identity never depends on colour, which is
+  also the relief the palette's contrast check requires.
+#}
+{% macro chart_card(id, title, meta, legend=None, columns=None, rows=None) %}
+<div class="card">
+    <div class="card__header">
+        <div class="card__title">{{ title }}</div>
+        <span class="card__meta">{{ meta }}</span>
+    </div>
+    {% if legend %}
+    <div class="chart-legend">
+        {% for item in legend %}
+        <span class="chart-legend__item">
+            <span class="chart-legend__swatch" style="background: {{ item.color }}"></span>{{ item.label }}
+        </span>
+        {% endfor %}
+    </div>
+    {% endif %}
+    <div class="card__body">
+        <div class="chart-box"><canvas id="{{ id }}"></canvas></div>
+    </div>
+    {% if columns %}
+    <div class="card__footer">
+        <button class="chart-table-toggle" data-table-toggle="{{ id }}-table">Show as table</button>
+    </div>
+    <div id="{{ id }}-table" hidden class="chart-table">
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>{% for column in columns %}<th {% if not loop.first %}class="num"{% endif %}>{{ column }}</th>{% endfor %}</tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    <tr>{% for cell in row %}<td {% if not loop.first %}class="num"{% endif %}>{{ cell }}</td>{% endfor %}</tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{% block content %}
+{% if not error %}
+
+{% set trends = cluster_trends_30d %}
+{% set has_data = trends and trends.dates %}
+
+{% if not has_data %}
+<div class="banner banner--info">
+    {{ ui.icon('info') }}
+    <div>
+        <div class="banner__title">No snapshots yet</div>
+        <div>
+            Analytics builds from snapshots taken by the <code class="cell-mono">collect-analytics</code>
+            command, which the chart runs hourly. Charts appear once the first snapshot lands.
+        </div>
+    </div>
+</div>
+{% else %}
+
+{% set current = dashboard_summary.current_status if dashboard_summary else {} %}
+<div class="stat-row">
+    <div class="stat">
+        <div class="stat__label">For deletion</div>
+        <div class="stat__value {% if current.get('clusters_for_deletion') %}stat__value--critical{% endif %}">
+            {{ current.get('clusters_for_deletion', 0) }}
+        </div>
+        <div class="stat__note">At the last snapshot</div>
+    </div>
+    <div class="stat">
+        <div class="stat__label">Deleting</div>
+        <div class="stat__value {% if current.get('clusters_deleting') %}stat__value--warning{% endif %}">
+            {{ current.get('clusters_deleting', 0) }}
+        </div>
+        <div class="stat__note">Teardown in progress</div>
+    </div>
+    <div class="stat">
+        <div class="stat__label">Protected</div>
+        <div class="stat__value">{{ current.get('clusters_protected', 0) }}</div>
+        <div class="stat__note">Not queued for deletion</div>
+    </div>
+    <div class="stat">
+        <div class="stat__label">Label compliance</div>
+        <div class="stat__value">{{ '%.0f'|format(current.get('compliance_rate', 0)) }}%</div>
+        <div class="stat__note">Carrying every required label</div>
+    </div>
+    <div class="stat">
+        <div class="stat__label">Deletion trend</div>
+        <div class="stat__value" style="font-size: var(--text-xl)">
+            {{ current.get('trend_direction', 'unknown')|capitalize }}
+        </div>
+        <div class="stat__note">Last 7 days vs the week before</div>
+    </div>
+</div>
+
+<div class="chart-grid">
+    {{ chart_card(
+        'chart-trends',
+        'Cluster counts over time',
+        'Last 30 days',
+        legend=[
+            {'label': 'For deletion', 'color': '#1b6bdb'},
+            {'label': 'Deleting', 'color': '#eb6834'},
+            {'label': 'Protected', 'color': '#1baf7a'},
+        ],
+        columns=['Date', 'For deletion', 'Deleting', 'Protected'],
+        rows=trends.dates | zip_rows(trends.deletion_counts, trends.deleting_counts, trends.protected_counts)
+    ) }}
+
+    {{ chart_card(
+        'chart-compliance',
+        'Label compliance',
+        'Last 30 days',
+        columns=['Date', 'Compliance %'],
+        rows=(compliance_stats.dates or []) | zip_rows(compliance_stats.compliance_trend or [])
+    ) }}
+</div>
+
+<div class="chart-grid">
+    {{ chart_card(
+        'chart-reasons',
+        'Why clusters were deleted',
+        'Last 14 days',
+        columns=['Reason', 'Clusters'],
+        rows=(deletion_activity.deletion_reasons or {}) | dict_rows
+    ) }}
+
+    {{ chart_card(
+        'chart-expiration',
+        'Time until expiry',
+        'Current',
+        columns=['Window', 'Clusters'],
+        rows=(expiration_analysis.current_distribution or {}) | dict_rows
+    ) }}
+</div>
+
+<div class="chart-grid">
+    {{ chart_card(
+        'chart-namespaces',
+        'Clusters by namespace',
+        'Top 8',
+        columns=['Namespace', 'Clusters'],
+        rows=(namespace_activity.top_namespaces or {}) | nested_rows('total_clusters')
+    ) }}
+
+    {{ chart_card(
+        'chart-owners',
+        'Clusters by owner',
+        'Top 8',
+        columns=['Owner', 'Clusters'],
+        rows=(owner_distribution.top_owners or {}) | nested_rows('total_clusters')
+    ) }}
+</div>
+
+{% endif %}
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if not error and cluster_trends_30d and cluster_trends_30d.dates %}
+<script src="{{ url_with_prefix('/static/vendor/chart.umd.min.js') }}"></script>
+<script src="{{ url_with_prefix('/static/js/charts.js') }}"></script>
+<script>
+(function () {
+    NkpCharts.applyDefaults();
+    NkpCharts.initTableToggles();
+
+    const P = NkpCharts.palette;
+
+    // Counts over time. Three series, the cap the palette validates for.
+    NkpCharts.line(
+        document.getElementById('chart-trends'),
+        {{ cluster_trends_30d.dates | tojson }},
+        [
+            { label: 'For deletion', data: {{ cluster_trends_30d.deletion_counts | tojson }} },
+            { label: 'Deleting', data: {{ cluster_trends_30d.deleting_counts | tojson }} },
+            { label: 'Protected', data: {{ cluster_trends_30d.protected_counts | tojson }} }
+        ]
+    );
+
+    // A single series: the title names it, so no legend.
+    NkpCharts.line(
+        document.getElementById('chart-compliance'),
+        {{ (compliance_stats.dates or []) | tojson }},
+        [{ label: 'Compliance %', data: {{ (compliance_stats.compliance_trend or []) | tojson }} }]
+    );
+
+    // Magnitude comparisons: horizontal bars in one hue, categories on the axis.
+    const reasons = {{ (deletion_activity.deletion_reasons or {}) | tojson }};
+    NkpCharts.bar(
+        document.getElementById('chart-reasons'),
+        Object.keys(reasons),
+        Object.values(reasons)
+    );
+
+    // Expiry windows are ordered, so they take the ordinal ramp: darkest is
+    // most urgent. Unknown keys fall back to the lightest step.
+    const EXPIRY_ORDER = [
+        ['expired', 'Expired'],
+        ['expires_soon', 'Within 24h'],
+        ['expires_this_week', 'This week'],
+        ['expires_this_month', 'This month'],
+        ['expires_later', 'Later'],
+        ['no_expiration', 'No expiry set']
+    ];
+    const expiry = {{ (expiration_analysis.current_distribution or {}) | tojson }};
+    const expiryLabels = [];
+    const expiryValues = [];
+    const expiryColors = [];
+
+    EXPIRY_ORDER.forEach(function (entry, i) {
+        if (!(entry[0] in expiry)) return;
+        expiryLabels.push(entry[1]);
+        expiryValues.push(expiry[entry[0]]);
+        expiryColors.push(entry[0] === 'no_expiration' ? '#8695a4' : P.ordinal[Math.min(i, P.ordinal.length - 1)]);
+    });
+
+    NkpCharts.bar(
+        document.getElementById('chart-expiration'),
+        expiryLabels, expiryValues, expiryColors
+    );
+
+    const namespaces = {{ (namespace_activity.top_namespaces or {}) | tojson }};
+    const nsNames = Object.keys(namespaces).slice(0, 8);
+    NkpCharts.bar(
+        document.getElementById('chart-namespaces'),
+        nsNames,
+        nsNames.map(function (n) { return namespaces[n].total_clusters; })
+    );
+
+    const owners = {{ (owner_distribution.top_owners or {}) | tojson }};
+    const ownerNames = Object.keys(owners).slice(0, 8);
+    NkpCharts.bar(
+        document.getElementById('chart-owners'),
+        ownerNames,
+        ownerNames.map(function (n) { return owners[n].total_clusters; })
+    );
+})();
+</script>
+{% endif %}
+{% endblock %}

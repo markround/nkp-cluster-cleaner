@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% import "_icons.html" as ui with context %}
+
+{% block title %}NKP Cluster Cleaner - Clusters{% endblock %}
+{% block header_title %}Clusters{% endblock %}
+{% block header_subtitle %}
+  {% if namespace_filter %}Namespace {{ namespace_filter }}{% else %}All namespaces{% endif %}
+{% endblock %}
+
+{% macro cluster_table(rows, show_state=false, show_reason=true) %}
+<div class="table-wrap">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Cluster</th>
+                <th>Namespace</th>
+                <th>Owner</th>
+                <th>Expires</th>
+                <th>Target</th>
+                {% if show_state %}<th>State</th>{% endif %}
+                {% if show_reason %}<th>Detail</th>{% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for status in rows %}
+            <tr>
+                <td class="cell-name">{{ status.cluster.name }}</td>
+                <td class="cell-muted">{{ status.cluster.namespace }}</td>
+                <td>{{ status.cluster.labels.get('owner', '—') }}</td>
+                <td><span class="tag">{{ status.cluster.labels.get('expires', '—') }}</span></td>
+                <td>
+                    {% if status.cluster.target %}
+                        <span class="tag">{{ status.cluster.target.kind_name }}</span>
+                    {% else %}
+                        <span class="cell-muted">none</span>
+                    {% endif %}
+                </td>
+                {% if show_state %}<td>{{ ui.state_pill(status.state) }}</td>{% endif %}
+                {% if show_reason %}<td class="cell-muted">{{ status.verdict.detail }}</td>{% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endmacro %}
+
+{% block content %}
+{% if not error %}
+
+<div class="banner banner--info">
+    {{ ui.icon('info') }}
+    <div>
+        Deleting a cluster removes its
+        <strong>{{ 'NKPCluster' if api_mode == 'nkpcluster' else 'CAPI Cluster' }}</strong>
+        object.
+        {% if api_mode == 'nkpcluster' %}
+        Teardown runs asynchronously and can take several minutes to complete.
+        {% endif %}
+        {% if grace_period %}
+        Clusters younger than {{ grace_period }} are excluded by the grace period.
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <div class="card__header">
+        <div class="card__title">
+            For deletion <span class="count-badge">{{ clusters_to_delete|length }}</span>
+        </div>
+        <span class="card__meta">Matches the deletion criteria</span>
+    </div>
+    <div class="card__body card__body--flush">
+        {% if clusters_to_delete %}
+            {{ cluster_table(clusters_to_delete) }}
+        {% else %}
+            <div class="empty">
+                {{ ui.icon('ok') }}
+                <div class="empty__title">Nothing queued for deletion</div>
+                <div class="empty__body">Every cluster is either protected or has not expired.</div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if deleting_clusters %}
+<div class="card">
+    <div class="card__header">
+        <div class="card__title">
+            Deletion in progress <span class="count-badge">{{ deleting_clusters|length }}</span>
+        </div>
+        <span class="card__meta">Excluded from further deletion attempts</span>
+    </div>
+    <div class="card__body card__body--flush">
+        {{ cluster_table(deleting_clusters, show_state=true, show_reason=false) }}
+    </div>
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card__header">
+        <div class="card__title">
+            Excluded <span class="count-badge">{{ excluded_clusters|length }}</span>
+        </div>
+        <span class="card__meta">Not eligible for deletion</span>
+    </div>
+    <div class="card__body card__body--flush">
+        {% if excluded_clusters %}
+            {{ cluster_table(excluded_clusters, show_state=true) }}
+        {% else %}
+            <div class="empty">
+                {{ ui.icon('inbox') }}
+                <div class="empty__title">No excluded clusters</div>
+                <div class="empty__body">Nothing was held back from deletion.</div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <div class="card__footer">
+        Attached clusters are not shown: they are registered with NKP rather than
+        provisioned by it, so this tool never deletes them.
+        Configuration: kubeconfig <code class="cell-mono">{{ kubeconfig_status }}</code>,
+        config <code class="cell-mono">{{ config_status }}</code>.
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}

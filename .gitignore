@@ -143,3 +143,5 @@ Thumbs.db
 # Project specific
 config.yaml
 *.kubeconfig
+dev/*
+*.local.json

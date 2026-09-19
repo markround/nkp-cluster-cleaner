@@ -1,0 +1,193 @@
+{#
+  Inline SVG icon set.
+
+  Icons are defined once in a hidden <symbol> sheet and referenced with <use>,
+  so repeating one in a table costs a reference rather than a copy of the path.
+  All are 16x16 on a 24-unit grid, stroke-based, and inherit currentColor.
+#}
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <g id="i-base" fill="none" stroke="currentColor" stroke-width="2"
+       stroke-linecap="round" stroke-linejoin="round"></g>
+  </defs>
+
+  <symbol id="icon-dashboard" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="3" width="7" height="9"></rect>
+    <rect x="14" y="3" width="7" height="5"></rect>
+    <rect x="14" y="12" width="7" height="9"></rect>
+    <rect x="3" y="16" width="7" height="5"></rect>
+  </symbol>
+
+  <symbol id="icon-clusters" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="3" width="20" height="6" rx="1"></rect>
+    <rect x="2" y="15" width="20" height="6" rx="1"></rect>
+    <line x1="6" y1="6" x2="6.01" y2="6"></line>
+    <line x1="6" y1="18" x2="6.01" y2="18"></line>
+  </symbol>
+
+  <symbol id="icon-rules" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+  </symbol>
+
+  <symbol id="icon-schedule" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="9"></circle>
+    <polyline points="12 7 12 12 15 14"></polyline>
+  </symbol>
+
+  <symbol id="icon-analytics" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="18" y1="20" x2="18" y2="10"></line>
+    <line x1="12" y1="20" x2="12" y2="4"></line>
+    <line x1="6" y1="20" x2="6" y2="14"></line>
+  </symbol>
+
+  <symbol id="icon-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+  </symbol>
+
+  <symbol id="icon-health" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+  </symbol>
+
+  <symbol id="icon-home" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+  </symbol>
+
+  {# The sidebar logo. Drawn edge to edge on a finer grid than the icons above,
+     so it keeps the 1.5 stroke it was designed with rather than the 2 used
+     elsewhere. Bin icon from Streamline (streamlinehq.com). #}
+  <symbol id="icon-bin" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18.0576 22.3846H5.94219c-0.45902 0 -0.89925 -0.1823 -1.22383 -0.5069 -0.32459 -0.3246 -0.50693 -0.7648 -0.50693 -1.2239V5.07692H19.7883V20.6538c0 0.4591 -0.1823 0.8993 -0.5069 1.2239s-0.7648 0.5069 -1.2238 0.5069Z"></path>
+    <path d="M9.40381 17.1923v-6.9231"></path>
+    <path d="M14.5962 17.1923v-6.9231"></path>
+    <path d="M0.75 5.07692h22.5"></path>
+    <path d="M14.5962 1.61539H9.40386c-0.45902 0 -0.89925 0.18235 -1.22383 0.50693 -0.32459 0.32458 -0.50693 0.76481 -0.50693 1.22384v1.73077h8.6538V3.34616c0 -0.45903 -0.1823 -0.89926 -0.5069 -1.22384 -0.3246 -0.32458 -0.7648 -0.50693 -1.2238 -0.50693Z"></path>
+  </symbol>
+
+  {# Status icons. Paired with a text label everywhere, so meaning never
+     depends on the colour alone. #}
+  <symbol id="icon-ok" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="10" stroke-width="2"></circle>
+    <polyline points="8 12.5 11 15.5 16 9"></polyline>
+  </symbol>
+
+  <symbol id="icon-critical" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path>
+    <line x1="12" y1="9" x2="12" y2="13"></line>
+    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+  </symbol>
+
+  <symbol id="icon-warning" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 2l10 10-10 10L2 12z"></path>
+    <line x1="12" y1="8" x2="12" y2="13"></line>
+    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+  </symbol>
+
+  <symbol id="icon-info" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="10"></circle>
+    <line x1="12" y1="11" x2="12" y2="16"></line>
+    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+  </symbol>
+
+  <symbol id="icon-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+  </symbol>
+
+  <symbol id="icon-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 12a9 9 0 1 1-6.2-8.5"></path>
+  </symbol>
+
+  <symbol id="icon-inbox" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
+    <path d="M5.5 5.1L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.7 4H7.3a2 2 0 0 0-1.8 1.1z"></path>
+  </symbol>
+
+  <symbol id="icon-chevron-left" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="15 18 9 12 15 6"></polyline>
+  </symbol>
+
+  <symbol id="icon-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="9 18 15 12 9 6"></polyline>
+  </symbol>
+
+  <symbol id="icon-play" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="6 3 20 12 6 21 6 3"></polygon>
+  </symbol>
+
+  <symbol id="icon-logs" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+    <polyline points="14 2 14 8 20 8"></polyline>
+    <line x1="8" y1="13" x2="15" y2="13"></line>
+    <line x1="8" y1="17" x2="13" y2="17"></line>
+  </symbol>
+
+  <symbol id="icon-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="3 6 5 6 21 6"></polyline>
+    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+  </symbol>
+</svg>
+
+{#
+  Render a status pill: an icon, a colour and a label.
+
+  Args:
+    state_label: text shown in the pill.
+    tone: one of ok / warning / serious / critical / info / neutral.
+#}
+{% macro pill(state_label, tone='neutral') -%}
+  {%- set icon = {
+        'ok': 'icon-ok',
+        'warning': 'icon-spinner',
+        'serious': 'icon-warning',
+        'critical': 'icon-critical',
+        'info': 'icon-shield',
+      }.get(tone, 'icon-info') -%}
+  <span class="pill pill--{{ tone }}">
+    <svg aria-hidden="true"><use href="#{{ icon }}"></use></svg>{{ state_label }}
+  </span>
+{%- endmacro %}
+
+{#
+  Map a ClusterState to a pill tone. Keeps the colour decision in one place
+  rather than repeated across the cluster, dashboard and analytics pages.
+#}
+{% macro state_pill(state) -%}
+  {%- set tone = {
+        'for_deletion': 'critical',
+        'deleting': 'warning',
+        'management': 'info',
+        'protected': 'info',
+        'in_grace': 'info',
+        'active': 'ok',
+        'no_target': 'serious',
+      }.get(state.value, 'neutral') -%}
+  {{ pill(state.label, tone) }}
+{%- endmacro %}
+
+{# A standalone icon. #}
+{% macro icon(name, cls='') -%}
+  <svg class="{{ cls }}" aria-hidden="true"><use href="#icon-{{ name }}"></use></svg>
+{%- endmacro %}

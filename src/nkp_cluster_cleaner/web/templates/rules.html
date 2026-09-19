@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% import "_icons.html" as ui with context %}
+
+{% block title %}NKP Cluster Cleaner - Deletion Rules{% endblock %}
+{% block header_title %}Deletion Rules{% endblock %}
+{% block header_subtitle %}What makes a cluster eligible for deletion{% endblock %}
+{% block header_meta %}{% endblock %}
+
+{% block content %}
+{% if not error %}
+
+<div class="stat-row">
+    <div class="stat">
+        <div class="stat__label">Deletion rules</div>
+        <div class="stat__value">{{ rule_count }}</div>
+        <div class="stat__note">Built in</div>
+    </div>
+    <div class="stat">
+        <div class="stat__label">Required labels</div>
+        <div class="stat__value">{{ extra_labels_count + 1 }}</div>
+        <div class="stat__note">Including <code class="cell-mono">expires</code></div>
+    </div>
+    <div class="stat">
+        <div class="stat__label">Protected patterns</div>
+        <div class="stat__value">{{ protected_cluster_count }}</div>
+        <div class="stat__note">Cluster name matches</div>
+    </div>
+    <div class="stat">
+        <div class="stat__label">Excluded namespaces</div>
+        <div class="stat__value">{{ excluded_namespace_count }}</div>
+        <div class="stat__note">Namespace matches</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card__header">
+        <div class="card__title">Evaluation order</div>
+        <span class="card__meta">First match wins</span>
+    </div>
+    <div class="card__body card__body--flush">
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th class="num">#</th>
+                        <th>Check</th>
+                        <th>Outcome</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="num">1</td>
+                        <td>Cluster is the NKP management cluster</td>
+                        <td>{{ ui.pill('Never deleted', 'info') }}</td>
+                    </tr>
+                    <tr>
+                        <td class="num">2</td>
+                        <td>Deletion is already in progress</td>
+                        <td>{{ ui.pill('Skipped', 'warning') }}</td>
+                    </tr>
+                    <tr>
+                        <td class="num">3</td>
+                        <td>Name or namespace matches a protection pattern</td>
+                        <td>{{ ui.pill('Protected', 'info') }}</td>
+                    </tr>
+                    <tr>
+                        <td class="num">4</td>
+                        <td>No NKPCluster or CAPI cluster to delete</td>
+                        <td>{{ ui.pill('Skipped', 'serious') }}</td>
+                    </tr>
+                    <tr>
+                        <td class="num">5</td>
+                        <td>Cluster is younger than the grace period</td>
+                        <td>{{ ui.pill('Protected', 'info') }}</td>
+                    </tr>
+                    <tr>
+                        <td class="num">6</td>
+                        <td>Missing the <code class="cell-mono">expires</code> label</td>
+                        <td>{{ ui.pill('Deleted', 'critical') }}</td>
+                    </tr>
+                    <tr>
+                        <td class="num">7</td>
+                        <td>Missing a required label, or its value fails the pattern</td>
+                        <td>{{ ui.pill('Deleted', 'critical') }}</td>
+                    </tr>
+                    <tr>
+                        <td class="num">8</td>
+                        <td>The <code class="cell-mono">expires</code> value is not a valid duration</td>
+                        <td>{{ ui.pill('Deleted', 'critical') }}</td>
+                    </tr>
+                    <tr>
+                        <td class="num">9</td>
+                        <td>Creation time plus <code class="cell-mono">expires</code> is in the past</td>
+                        <td>{{ ui.pill('Deleted', 'critical') }}</td>
+                    </tr>
+                    <tr>
+                        <td class="num">10</td>
+                        <td>Everything else</td>
+                        <td>{{ ui.pill('Active', 'ok') }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="chart-grid">
+    <div class="card">
+        <div class="card__header">
+            <div class="card__title">Required labels</div>
+        </div>
+        <div class="card__body card__body--flush">
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Label</th>
+                            <th>Pattern</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="cell-mono">expires</td>
+                            <td class="cell-mono">&lt;number&gt;&lt;h|d|w|y&gt;</td>
+                            <td class="cell-muted">Always required. Lifetime from creation.</td>
+                        </tr>
+                        {% for label in extra_labels %}
+                        <tr>
+                            <td class="cell-mono">{{ label.name }}</td>
+                            <td class="cell-mono">{{ label.regex or 'any value' }}</td>
+                            <td class="cell-muted">{{ label.description or '—' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card__header">
+            <div class="card__title">Time units</div>
+        </div>
+        <div class="card__body card__body--flush">
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr><th>Unit</th><th>Meaning</th><th>Example</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="cell-mono">h</td><td>Hours</td><td class="cell-mono">48h</td></tr>
+                        <tr><td class="cell-mono">d</td><td>Days</td><td class="cell-mono">30d</td></tr>
+                        <tr><td class="cell-mono">w</td><td>Weeks</td><td class="cell-mono">2w</td></tr>
+                        <tr><td class="cell-mono">y</td><td>Years (365 days)</td><td class="cell-mono">1y</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card__footer">
+            Times are evaluated in UTC against the cluster's creation timestamp.
+        </div>
+    </div>
+</div>
+
+<div class="chart-grid">
+    <div class="card">
+        <div class="card__header">
+            <div class="card__title">
+                Protected cluster patterns <span class="count-badge">{{ protected_cluster_count }}</span>
+            </div>
+        </div>
+        <div class="card__body">
+            {% if protected_cluster_patterns %}
+                {% for pattern in protected_cluster_patterns %}
+                    <div><code class="cell-mono">{{ pattern }}</code></div>
+                {% endfor %}
+            {% else %}
+                <div class="cell-muted">No patterns configured.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card__header">
+            <div class="card__title">
+                Excluded namespace patterns <span class="count-badge">{{ excluded_namespace_count }}</span>
+            </div>
+        </div>
+        <div class="card__body">
+            {% if excluded_namespace_patterns %}
+                {% for pattern in excluded_namespace_patterns %}
+                    <div><code class="cell-mono">{{ pattern }}</code></div>
+                {% endfor %}
+            {% else %}
+                <div class="cell-muted">No patterns configured.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card__header">
+        <div class="card__title">Active configuration</div>
+    </div>
+    <div class="card__body">
+        <dl class="deflist">
+            <dt>Config file</dt>
+            <dd class="cell-mono">{{ config_path or 'None — no protection rules loaded' }}</dd>
+            <dt>Kubeconfig</dt>
+            <dd class="cell-mono">{{ kubeconfig_path or 'Default (~/.kube/config)' }}</dd>
+            <dt>Grace period</dt>
+            <dd>{{ grace_period or 'Not set' }}</dd>
+        </dl>
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}

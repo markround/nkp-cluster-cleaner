@@ -1,0 +1,153 @@
+{% import "_icons.html" as ui with context %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}NKP Cluster Cleaner{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_with_prefix('/static/css/app.css') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ url_with_prefix('/static/favicon.svg') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    {% include "_icons.html" %}
+
+    <div class="app">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar__header">
+                <span class="sidebar__mark">{{ ui.icon('bin', 'nav__icon') }}</span>
+                <div>
+                    <div class="sidebar__title">Cluster Cleaner</div>
+                    <div class="sidebar__subtitle">NKP</div>
+                </div>
+            </div>
+
+            <nav class="sidebar__nav">
+                <div class="nav__section">
+                    <div class="nav__section-title">Monitor</div>
+                    <a href="{{ url_with_prefix('/') }}" class="nav__item" data-nav="/">
+                        {{ ui.icon('dashboard', 'nav__icon') }}
+                        <span class="nav__label">Dashboard</span>
+                    </a>
+                    <a href="{{ url_with_prefix('/clusters') }}" class="nav__item" data-nav="/clusters">
+                        {{ ui.icon('clusters', 'nav__icon') }}
+                        <span class="nav__label">Clusters</span>
+                    </a>
+                    {% if not no_redis %}
+                    <a href="{{ url_with_prefix('/notifications') }}" class="nav__item" data-nav="/notifications">
+                        {{ ui.icon('bell', 'nav__icon') }}
+                        <span class="nav__label">Notifications</span>
+                    </a>
+                    <a href="{{ url_with_prefix('/analytics') }}" class="nav__item" data-nav="/analytics">
+                        {{ ui.icon('analytics', 'nav__icon') }}
+                        <span class="nav__label">Analytics</span>
+                    </a>
+                    {% endif %}
+                </div>
+
+                <div class="nav__section">
+                    <div class="nav__section-title">Configure</div>
+                    <a href="{{ url_with_prefix('/rules') }}" class="nav__item" data-nav="/rules">
+                        {{ ui.icon('rules', 'nav__icon') }}
+                        <span class="nav__label">Deletion Rules</span>
+                    </a>
+                    <a href="{{ url_with_prefix('/scheduled-tasks') }}" class="nav__item" data-nav="/scheduled-tasks">
+                        {{ ui.icon('schedule', 'nav__icon') }}
+                        <span class="nav__label">Scheduled Tasks</span>
+                    </a>
+                </div>
+
+                <div class="nav__section">
+                    <div class="nav__section-title">System</div>
+                    <a href="{{ url_with_prefix('/health') }}" class="nav__item" data-nav="/health">
+                        {{ ui.icon('health', 'nav__icon') }}
+                        <span class="nav__label">Health</span>
+                    </a>
+                    <a href="https://github.com/markround/nkp-cluster-cleaner" class="nav__item">
+                        {{ ui.icon('home', 'nav__icon') }}
+                        <span class="nav__label">Project Home</span>
+                    </a>
+                </div>
+            </nav>
+
+            <div class="sidebar__footer">Version {{ version }}</div>
+            <button class="sidebar__toggle" id="sidebar-toggle" title="Toggle sidebar" aria-label="Toggle sidebar">
+                <svg style="width:14px;height:14px" aria-hidden="true"><use href="#icon-chevron-left" id="toggle-icon"></use></svg>
+            </button>
+        </aside>
+
+        <div class="main">
+            <header class="topbar">
+                <div>
+                    <h1 class="topbar__title">{% block header_title %}NKP Cluster Cleaner{% endblock %}</h1>
+                    <div class="topbar__subtitle">{% block header_subtitle %}Automated cluster lifecycle management{% endblock %}</div>
+                </div>
+                {% block header_meta %}
+                  {% if refresh_time %}
+                  <div class="topbar__meta">Updated {{ refresh_time }}</div>
+                  {% endif %}
+                {% endblock %}
+            </header>
+
+            <main class="content">
+                {% if error %}
+                <div class="banner banner--error">
+                    {{ ui.icon('critical') }}
+                    <div>
+                        <div class="banner__title">Something went wrong</div>
+                        <div>{{ error }}</div>
+                    </div>
+                </div>
+                {% endif %}
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            // Sidebar collapse, remembered across pages.
+            const sidebar = document.getElementById('sidebar');
+            const toggle = document.getElementById('sidebar-toggle');
+            const toggleIcon = document.getElementById('toggle-icon');
+
+            function setIcon() {
+                const collapsed = sidebar.classList.contains('collapsed');
+                toggleIcon.setAttribute('href', collapsed ? '#icon-chevron-right' : '#icon-chevron-left');
+            }
+
+            if (localStorage.getItem('sidebarCollapsed') === 'true') {
+                sidebar.classList.add('collapsed');
+            }
+            setIcon();
+
+            toggle.addEventListener('click', function () {
+                sidebar.classList.toggle('collapsed');
+                localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+                setIcon();
+            });
+
+            // Highlight the current page. Longest matching href wins, so
+            // /clusters does not also light up /.
+            const path = window.location.pathname.replace(/\/$/, '') || '/';
+            let best = null;
+            let bestLength = -1;
+
+            document.querySelectorAll('.nav__item[data-nav]').forEach(function (item) {
+                const href = item.getAttribute('href').replace(/\/$/, '') || '/';
+                const matches = href === '/' ? path === '/' : path.startsWith(href);
+                if (matches && href.length > bestLength) {
+                    best = item;
+                    bestLength = href.length;
+                }
+            });
+
+            if (best) {
+                best.classList.add('active');
+            }
+        })();
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+{% import "_icons.html" as ui with context %}
+
+{% block title %}NKP Cluster Cleaner - Scheduled Tasks{% endblock %}
+{% block header_title %}Scheduled Tasks{% endblock %}
+{% block header_subtitle %}CronJobs in the {{ namespace }} namespace{% endblock %}
+
+{% block content %}
+{% if not error %}
+
+<div class="stat-row">
+    <div class="stat">
+        <div class="stat__label">CronJobs</div>
+        <div class="stat__value">{{ summary.total_cronjobs }}</div>
+        <div class="stat__note">{{ summary.active_cronjobs }} active, {{ summary.suspended_cronjobs }} suspended</div>
+    </div>
+    <div class="stat">
+        <div class="stat__label">Recent successes</div>
+        <div class="stat__value stat__value--ok">{{ summary.successful_jobs }}</div>
+        <div class="stat__note">Completed without error</div>
+    </div>
+    <div class="stat">
+        <div class="stat__label">Recent failures</div>
+        <div class="stat__value {% if summary.failed_jobs %}stat__value--critical{% endif %}">{{ summary.failed_jobs }}</div>
+        <div class="stat__note">Need investigation</div>
+    </div>
+    <div class="stat">
+        <div class="stat__label">Running</div>
+        <div class="stat__value {% if summary.running_jobs %}stat__value--warning{% endif %}">{{ summary.running_jobs }}</div>
+        <div class="stat__note">In progress now</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card__header">
+        <div class="card__title">
+            CronJobs <span class="count-badge">{{ summary.cronjobs|length }}</span>
+        </div>
+        <span class="card__meta">Labelled <code class="cell-mono">app=nkp-cluster-cleaner</code></span>
+    </div>
+    <div class="card__body card__body--flush">
+        {% if summary.cronjobs %}
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Schedule</th>
+                        <th>Status</th>
+                        <th>Last run</th>
+                        <th class="num">Active</th>
+                        <th>Created</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cronjob in summary.cronjobs %}
+                    <tr>
+                        <td class="cell-name">{{ cronjob.name }}</td>
+                        <td><span class="tag">{{ cronjob.schedule }}</span></td>
+                        <td>
+                            {% if cronjob.suspend %}
+                                {{ ui.pill('Suspended', 'neutral') }}
+                            {% else %}
+                                {{ ui.pill('Active', 'ok') }}
+                            {% endif %}
+                        </td>
+                        <td class="cell-muted">
+                            {{ cronjob.last_schedule_time.strftime('%Y-%m-%d %H:%M') if cronjob.last_schedule_time else 'Never' }}
+                        </td>
+                        <td class="num">{{ cronjob.active_jobs }}</td>
+                        <td class="cell-muted">{{ cronjob.creation_timestamp.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            <button class="btn btn--sm js-trigger"
+                                    data-cronjob="{{ cronjob.name }}"
+                                    data-namespace="{{ cronjob.namespace }}"
+                                    data-destructive="{{ 'true' if 'delete' in cronjob.name else 'false' }}">
+                                {{ ui.icon('play', 'nav__icon') }} Run now
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty">
+            {{ ui.icon('schedule') }}
+            <div class="empty__title">No CronJobs found</div>
+            <div class="empty__body">
+                Nothing labelled <code class="cell-mono">app=nkp-cluster-cleaner</code> in {{ namespace }}.
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <div class="card__header">
+        <div class="card__title">
+            Recent executions <span class="count-badge">{{ summary.recent_jobs|length }}</span>
+        </div>
+        <span class="card__meta">Newest first</span>
+    </div>
+    <div class="card__body card__body--flush">
+        {% if summary.recent_jobs %}
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Job</th>
+                        <th>CronJob</th>
+                        <th>Status</th>
+                        <th>Started</th>
+                        <th>Duration</th>
+                        <th>Pods</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for job in summary.recent_jobs %}
+                    <tr>
+                        <td class="cell-name">{{ job.name }}</td>
+                        <td class="cell-muted">{{ job.cronjob_name }}</td>
+                        <td>
+                            {% if job.status == 'Succeeded' %}
+                                {{ ui.pill('Succeeded', 'ok') }}
+                            {% elif job.status == 'Failed' %}
+                                {{ ui.pill('Failed', 'critical') }}
+                            {% elif job.status == 'Running' %}
+                                {{ ui.pill('Running', 'warning') }}
+                            {% else %}
+                                {{ ui.pill(job.status, 'neutral') }}
+                            {% endif %}
+                        </td>
+                        <td class="cell-muted">
+                            {{ job.start_time.strftime('%Y-%m-%d %H:%M') if job.start_time else 'Not started' }}
+                        </td>
+                        <td class="cell-muted">{{ job.duration or '—' }}</td>
+                        <td class="cell-muted">
+                            {{ job.succeeded_pods }} ok{% if job.failed_pods %}, {{ job.failed_pods }} failed{% endif %}{% if job.active_pods %}, {{ job.active_pods }} running{% endif %}
+                        </td>
+                        <td>
+                            <button class="btn btn--sm js-logs"
+                                    data-job="{{ job.name }}"
+                                    data-namespace="{{ job.namespace }}"
+                                    {% if job.status not in ['Succeeded', 'Failed'] %}disabled{% endif %}>
+                                {{ ui.icon('logs', 'nav__icon') }} Logs
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty">
+            {{ ui.icon('inbox') }}
+            <div class="empty__title">No recent executions</div>
+            <div class="empty__body">The configured CronJobs have not run yet.</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="toast-area" id="toasts"></div>
+
+<div class="modal" id="confirm-modal">
+    <div class="modal__panel modal__panel--narrow">
+        <div class="modal__header">
+            <div class="modal__title">{{ ui.icon('critical') }} Trigger deletion job</div>
+        </div>
+        <div class="modal__body">
+            <p><strong>This job can permanently delete clusters.</strong></p>
+            <p class="cell-muted" style="margin-top:8px">
+                Every cluster matching the deletion criteria will be removed, subject to
+                the CronJob's own dry-run setting. This cannot be undone.
+            </p>
+        </div>
+        <div class="modal__footer">
+            <button class="btn" data-close>Cancel</button>
+            <button class="btn btn--primary" id="confirm-run">Trigger job</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="logs-modal">
+    <div class="modal__panel">
+        <div class="modal__header">
+            <div class="modal__title">{{ ui.icon('logs') }} <span id="logs-title">Job logs</span></div>
+            <button class="btn btn--sm" data-close>Close</button>
+        </div>
+        <div class="modal__body" id="logs-body"></div>
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const TRIGGER_URL = "{{ url_with_prefix('/api/trigger-cronjob') }}";
+    const LOGS_URL = "{{ url_with_prefix('/api/job-logs') }}";
+
+    const confirmModal = document.getElementById('confirm-modal');
+    const logsModal = document.getElementById('logs-modal');
+    const toasts = document.getElementById('toasts');
+    let pending = null;
+
+    function toast(message, tone) {
+        const el = document.createElement('div');
+        el.className = 'banner banner--' + tone;
+        el.textContent = message;
+        toasts.appendChild(el);
+        setTimeout(function () { el.remove(); }, 6000);
+    }
+
+    function open(modal) { modal.classList.add('open'); }
+    function close(modal) { modal.classList.remove('open'); }
+
+    // Close on the Cancel/Close buttons, on the backdrop, and on Escape.
+    document.querySelectorAll('[data-close]').forEach(function (btn) {
+        btn.addEventListener('click', function () { close(btn.closest('.modal')); });
+    });
+    document.querySelectorAll('.modal').forEach(function (modal) {
+        modal.addEventListener('click', function (e) {
+            if (e.target === modal) close(modal);
+        });
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') document.querySelectorAll('.modal.open').forEach(close);
+    });
+
+    function runCronJob(name, namespace) {
+        fetch(TRIGGER_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cronjob_name: name, namespace: namespace })
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.status === 'success') {
+                    toast('Started ' + data.job_name, 'ok');
+                    setTimeout(function () { window.location.reload(); }, 1500);
+                } else {
+                    toast(data.error || 'Failed to trigger the job', 'error');
+                }
+            })
+            .catch(function (e) { toast('Failed to trigger the job: ' + e, 'error'); });
+    }
+
+    document.querySelectorAll('.js-trigger').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const name = btn.dataset.cronjob;
+            const namespace = btn.dataset.namespace;
+
+            // A deletion job destroys clusters, so it gets a confirmation step.
+            if (btn.dataset.destructive === 'true') {
+                pending = { name: name, namespace: namespace };
+                open(confirmModal);
+            } else {
+                runCronJob(name, namespace);
+            }
+        });
+    });
+
+    document.getElementById('confirm-run').addEventListener('click', function () {
+        close(confirmModal);
+        if (pending) {
+            runCronJob(pending.name, pending.namespace);
+            pending = null;
+        }
+    });
+
+    document.querySelectorAll('.js-logs').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const job = btn.dataset.job;
+            const namespace = btn.dataset.namespace;
+
+            document.getElementById('logs-title').textContent = job;
+            const body = document.getElementById('logs-body');
+            body.innerHTML = '<div class="empty">Loading logs…</div>';
+            open(logsModal);
+
+            fetch(LOGS_URL + '?job_name=' + encodeURIComponent(job) +
+                  '&namespace=' + encodeURIComponent(namespace))
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.status !== 'success') {
+                        body.innerHTML = '';
+                        const err = document.createElement('div');
+                        err.className = 'banner banner--error';
+                        err.textContent = data.error || 'Could not load logs';
+                        body.appendChild(err);
+                        return;
+                    }
+                    if (!data.logs.length) {
+                        body.innerHTML = '<div class="empty">No logs available for this job.</div>';
+                        return;
+                    }
+                    body.innerHTML = '';
+                    data.logs.forEach(function (entry) {
+                        const heading = document.createElement('div');
+                        heading.className = 'card__meta';
+                        heading.style.marginBottom = '6px';
+                        heading.textContent = entry.pod_name + ' / ' + entry.container_name;
+
+                        const pre = document.createElement('pre');
+                        pre.className = 'logs';
+                        pre.style.marginBottom = '14px';
+                        // textContent, not innerHTML: log output is untrusted.
+                        pre.textContent = entry.logs;
+
+                        body.appendChild(heading);
+                        body.appendChild(pre);
+                    });
+                })
+                .catch(function (e) {
+                    body.innerHTML = '';
+                    const err = document.createElement('div');
+                    err.className = 'banner banner--error';
+                    err.textContent = 'Could not load logs: ' + e;
+                    body.appendChild(err);
+                });
+        });
+    });
+})();
+</script>
+{% endblock %}

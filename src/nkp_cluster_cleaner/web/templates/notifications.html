@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% import "_icons.html" as ui with context %}
+
+{% block title %}NKP Cluster Cleaner - Notifications{% endblock %}
+{% block header_title %}Notifications{% endblock %}
+{% block header_subtitle %}Clusters that currently warrant an alert{% endblock %}
+
+{% macro notification_table(rows, tone) %}
+<div class="table-wrap">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Cluster</th>
+                <th>Namespace</th>
+                <th>Owner</th>
+                <th>Expires</th>
+                <th class="num">Elapsed</th>
+                <th>Remaining</th>
+                <th>Reason</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for n in rows %}
+            <tr>
+                <td class="cell-name">{{ n.cluster_name }}</td>
+                <td class="cell-muted">{{ n.namespace }}</td>
+                <td>{{ n.owner }}</td>
+                <td class="cell-muted">{{ n.expires }}</td>
+                <td class="num">{{ '%.0f'|format(n.elapsed_percentage) }}%</td>
+                <td>{{ ui.pill(n.time_remaining, tone) }}</td>
+                <td class="cell-muted">{{ n.reason }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endmacro %}
+
+{% block content %}
+{% if not error %}
+
+<div class="stat-row">
+    <div class="stat">
+        <div class="stat__label">Critical</div>
+        <div class="stat__value {% if critical_count %}stat__value--critical{% endif %}">{{ critical_count }}</div>
+        <div class="stat__note">At or past {{ critical_threshold }}% of lifetime</div>
+    </div>
+    <div class="stat">
+        <div class="stat__label">Warning</div>
+        <div class="stat__value {% if warning_count %}stat__value--warning{% endif %}">{{ warning_count }}</div>
+        <div class="stat__note">Past {{ warning_threshold }}% of lifetime</div>
+    </div>
+    <div class="stat">
+        <div class="stat__label">Total</div>
+        <div class="stat__value">{{ total_count }}</div>
+        <div class="stat__note">Clusters needing attention</div>
+    </div>
+    <div class="stat">
+        <div class="stat__label">Tracked in Redis</div>
+        <div class="stat__value">{{ notification_stats.active_keys if notification_stats else 0 }}</div>
+        <div class="stat__note">Already-sent records</div>
+    </div>
+</div>
+
+<div class="banner banner--info">
+    {{ ui.icon('info') }}
+    <div>
+        This page shows what the <code class="cell-mono">notify</code> command would alert on right now.
+        Clusters already being torn down are excluded, since alerting during teardown is just noise.
+    </div>
+</div>
+
+<div class="card">
+    <div class="card__header">
+        <div class="card__title">
+            Critical <span class="count-badge">{{ critical_count }}</span>
+        </div>
+        <span class="card__meta">Due for deletion, or past {{ critical_threshold }}%</span>
+    </div>
+    <div class="card__body card__body--flush">
+        {% if critical_notifications %}
+            {{ notification_table(critical_notifications, 'critical') }}
+        {% else %}
+            <div class="empty">
+                {{ ui.icon('ok') }}
+                <div class="empty__title">Nothing critical</div>
+                <div class="empty__body">No cluster is due for deletion.</div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <div class="card__header">
+        <div class="card__title">
+            Warning <span class="count-badge">{{ warning_count }}</span>
+        </div>
+        <span class="card__meta">Between {{ warning_threshold }}% and {{ critical_threshold }}%</span>
+    </div>
+    <div class="card__body card__body--flush">
+        {% if warning_notifications %}
+            {{ notification_table(warning_notifications, 'warning') }}
+        {% else %}
+            <div class="empty">
+                {{ ui.icon('ok') }}
+                <div class="empty__title">Nothing approaching expiry</div>
+                <div class="empty__body">No cluster has passed the warning threshold.</div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <div class="card__header">
+        <div class="card__title">
+            Notification history <span class="count-badge">{{ active_notifications|length if active_notifications else 0 }}</span>
+        </div>
+        <span class="card__meta">Clearing a record lets the cluster be alerted on again</span>
+    </div>
+    <div class="card__body card__body--flush">
+        {% if active_notifications %}
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Cluster</th>
+                        <th>Namespace</th>
+                        <th>Sent at</th>
+                        <th>Expires in</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in active_notifications %}
+                    <tr>
+                        <td class="cell-name">{{ record.cluster_name }}</td>
+                        <td class="cell-muted">{{ record.namespace }}</td>
+                        <td>
+                            {% for severity in record.severities %}
+                                {{ ui.pill(severity|capitalize, 'critical' if severity == 'critical' else 'warning') }}
+                            {% endfor %}
+                        </td>
+                        <td class="cell-muted">
+                            {% if record.ttl_seconds and record.ttl_seconds > 0 %}
+                                {{ (record.ttl_seconds // 86400) }}d
+                            {% else %}
+                                No expiry
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button class="btn btn--sm js-clear"
+                                    data-cluster="{{ record.cluster_name }}"
+                                    data-namespace="{{ record.namespace }}">
+                                {{ ui.icon('trash', 'nav__icon') }} Clear
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty">
+            {{ ui.icon('inbox') }}
+            <div class="empty__title">No notification history</div>
+            <div class="empty__body">Nothing has been alerted on yet.</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="toast-area" id="toasts"></div>
+
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const CLEAR_URL = "{{ url_with_prefix('/api/delete-notification') }}";
+    const toasts = document.getElementById('toasts');
+
+    function toast(message, tone) {
+        const el = document.createElement('div');
+        el.className = 'banner banner--' + tone;
+        el.textContent = message;
+        toasts.appendChild(el);
+        setTimeout(function () { el.remove(); }, 6000);
+    }
+
+    document.querySelectorAll('.js-clear').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            btn.disabled = true;
+            fetch(CLEAR_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    cluster_name: btn.dataset.cluster,
+                    namespace: btn.dataset.namespace
+                })
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.status === 'success') {
+                        toast(data.message, 'ok');
+                        btn.closest('tr').remove();
+                    } else {
+                        toast(data.error || 'Could not clear the record', 'error');
+                        btn.disabled = false;
+                    }
+                })
+                .catch(function (e) {
+                    toast('Could not clear the record: ' + e, 'error');
+                    btn.disabled = false;
+                });
+        });
+    });
+})();
+</script>
+{% endblock %}
