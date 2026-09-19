@@ -44,5 +44,10 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src", "."]
+# "misc" is on the path so the integration tests can drive misc/mock_k8s_api.py
+# and misc/generate_analytics_data.py as modules rather than reimplementing them.
+pythonpath = ["src", ".", "misc"]
 addopts = "-ra --strict-markers"
+markers = [
+    "integration: drives the stack over a real transport (an in-process mock Kubernetes API, or a fake Redis) rather than mocking at a seam. Runs by default; deselect with -m 'not integration'.",
+]

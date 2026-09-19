@@ -12,9 +12,11 @@ whole tool can be run end to end without an NKP management cluster:
 
 The fixtures deliberately cover every ClusterState the tool can produce, plus
 the two joins that are easy to get wrong (ownerReference-based and name-based)
-and the attached clusters that must be skipped. Run with --scenarios to print
-the expected verdict for each one, which is what makes this useful as a test
-oracle rather than just a pile of YAML.
+and the attached clusters that must be skipped. Each one carries the state the
+tool should reach for it, so the fixtures are a test oracle rather than just a
+pile of YAML: run with --scenarios to print them. tests/test_k8s_over_http.py
+asserts the tool reaches those states, and tests/test_cli.py asserts each one
+is reported under the right heading, both against this server run in-process.
 
 Writes are refused with a 403: this only ever pretends to be an API you read.
 Everything is stdlib, so it runs without the package installed.
@@ -195,8 +197,14 @@ def kommander_core(version):
 # --------------------------------------------------------------------------
 
 #: Each entry describes one cluster and the state the tool should reach for it,
-#: assuming the repository's config.yaml and no grace period. `expect` is
-#: documentation and is printed by --scenarios; nothing serves it.
+#: assuming the repository's config.yaml and no grace period. None of this is
+#: served; it is the expected-results half of the fixture.
+#:
+#: `state` mirrors a core.models.ClusterState value, spelled out rather than
+#: imported so this script stays standalone. None means the cluster should not
+#: be listed at all. `reason` mirrors DeletionReason and is set only where the
+#: state is "for_deletion". `grace_1h` overrides `state` for a run with
+#: --grace 1h. `expect` is prose for --scenarios, and nothing asserts on it.
 FIXTURES = [
     # -- The management cluster. Protected whatever else is true of it. -----
     {
@@ -204,6 +212,7 @@ FIXTURES = [
         "namespace": MANAGEMENT_NAMESPACE,
         "management": True,
         "labels": {},
+        "state": "management",
         "expect": "Management — never deleted, and it has no labels at all",
     },
     # -- Compliant, in the default workspace. ------------------------------
@@ -215,6 +224,7 @@ FIXTURES = [
         # labels win when both carry the same key.
         "nkp_labels": {"expires": "30d", "owner": "stale-value"},
         "created": timedelta(days=-2),
+        "state": "active",
         "expect": "Active — expires in ~28d, owner resolves to 'mdr'",
     },
     # -- No labels at all: the commonest reason for deletion. ---------------
@@ -223,6 +233,8 @@ FIXTURES = [
         "namespace": WORKSPACE_NAMESPACE,
         "labels": {},
         "created": timedelta(days=-9),
+        "state": "for_deletion",
+        "reason": "missing_expires_label",
         "expect": "For deletion — missing 'expires' label",
     },
     # -- Labelled but past its expiry. --------------------------------------
@@ -231,6 +243,8 @@ FIXTURES = [
         "namespace": WORKSPACE_NAMESPACE,
         "labels": {"expires": "1d", "owner": "mdr"},
         "created": timedelta(days=-5),
+        "state": "for_deletion",
+        "reason": "expired",
         "expect": "For deletion — expired 4 days ago",
     },
     # -- Has expires but not the required extra label from config.yaml. -----
@@ -239,6 +253,8 @@ FIXTURES = [
         "namespace": WORKSPACE_NAMESPACE,
         "labels": {"expires": "30d"},
         "created": timedelta(days=-1),
+        "state": "for_deletion",
+        "reason": "missing_required_label",
         "expect": "For deletion — missing required label 'owner'",
     },
     # -- Unparseable expires value. -----------------------------------------
@@ -247,6 +263,8 @@ FIXTURES = [
         "namespace": WORKSPACE_NAMESPACE,
         "labels": {"expires": "next tuesday", "owner": "mdr"},
         "created": timedelta(days=-3),
+        "state": "for_deletion",
+        "reason": "invalid_expires_format",
         "expect": "For deletion — invalid 'expires' format",
     },
     # -- Brand new and unlabelled: the case --grace exists for. -------------
@@ -255,6 +273,9 @@ FIXTURES = [
         "namespace": WORKSPACE_NAMESPACE,
         "labels": {},
         "created": timedelta(minutes=-10),
+        "state": "for_deletion",
+        "reason": "missing_expires_label",
+        "grace_1h": "in_grace",
         "expect": "For deletion, but In grace with --grace 1h",
     },
     # -- Teardown already under way. ----------------------------------------
@@ -264,6 +285,7 @@ FIXTURES = [
         "labels": {"expires": "1d", "owner": "mdr"},
         "created": timedelta(days=-4),
         "deleting": True,
+        "state": "deleting",
         "expect": "Deleting — target carries a deletionTimestamp",
     },
     # -- KommanderCluster with nothing behind it. ---------------------------
@@ -274,6 +296,7 @@ FIXTURES = [
         "created": timedelta(days=-12),
         "nkp": False,
         "capi": False,
+        "state": "no_target",
         "expect": "No target — expired, but neither NKPCluster nor CAPI Cluster exists",
     },
     # -- Attached, with the NKPCluster wrapper NKP 2.18 gives it. -----------
@@ -282,6 +305,7 @@ FIXTURES = [
         "namespace": WORKSPACE_NAMESPACE,
         "labels": {},
         "attached": True,
+        "state": None,
         "expect": "Not listed — attached, despite having an NKPCluster wrapper",
     },
     # -- Expired lab cluster in a team namespace. ---------------------------
@@ -290,6 +314,8 @@ FIXTURES = [
         "namespace": "team-alpha",
         "labels": {"expires": "7d", "owner": "alice"},
         "created": timedelta(days=-8),
+        "state": "for_deletion",
+        "reason": "expired",
         "expect": "For deletion — expired 1 day ago",
     },
     # -- NKPCluster named differently, so only the ownerReference joins them.
@@ -302,6 +328,7 @@ FIXTURES = [
         "nkp_name": "alpha-renamed-h7k2p",
         "nkp_labels": {"expires": "90d", "owner": "alice"},
         "created": timedelta(days=-20),
+        "state": "active",
         "expect": "Active — joined via ownerReference, labels inherited from the NKPCluster",
     },
     # -- Short-lived sandbox, part way through its life. --------------------
@@ -310,6 +337,7 @@ FIXTURES = [
         "namespace": "team-beta",
         "labels": {"expires": "12h", "owner": "bob"},
         "created": timedelta(hours=-9),
+        "state": "active",
         "expect": "Active — ~75% elapsed, good for the UI progress bar",
     },
     # -- Protected by name: config.yaml lists `workload-1` literally. -------
@@ -318,6 +346,7 @@ FIXTURES = [
         "namespace": "team-beta",
         "labels": {},
         "created": timedelta(days=-40),
+        "state": "protected",
         "expect": "Protected — matches the 'workload-1' name pattern",
     },
     # -- Protected by the `^production-.*` name pattern. --------------------
@@ -326,6 +355,7 @@ FIXTURES = [
         "namespace": "team-beta",
         "labels": {"expires": "1h", "owner": "bob"},
         "created": timedelta(days=-40),
+        "state": "protected",
         "expect": "Protected — matches '^production-.*' despite being long expired",
     },
     # -- Attached the pre-2.18 way: no NKPCluster wrapper at all. -----------
@@ -335,6 +365,7 @@ FIXTURES = [
         "labels": {"expires": "1d"},
         "attached": True,
         "nkp": False,
+        "state": None,
         "expect": "Not listed — attached, with no NKPCluster at all",
     },
     # -- Protected by the `.*-prod$` namespace pattern. ---------------------
@@ -343,6 +374,7 @@ FIXTURES = [
         "namespace": "customer-prod",
         "labels": {},
         "created": timedelta(days=-60),
+        "state": "protected",
         "expect": "Protected — namespace matches '.*-prod$'",
     },
     # -- Protected by the `^default$` namespace pattern. --------------------
@@ -351,6 +383,7 @@ FIXTURES = [
         "namespace": "default",
         "labels": {},
         "created": timedelta(days=-15),
+        "state": "protected",
         "expect": "Protected — namespace matches '^default$'",
     },
 ]
@@ -661,12 +694,18 @@ def write_kubeconfig(path: Path, host: str, port: int) -> Path:
 
 def print_scenarios():
     """Print each fixture and the state the tool should reach for it."""
-    width = max(len(f"{f['namespace']}/{f['name']}") for f in FIXTURES)
+    refs = {f["name"]: f"{f['namespace']}/{f['name']}" for f in FIXTURES}
+    ref_width = max(len(r) for r in refs.values())
+    state_width = max(len(f["state"] or "-") for f in FIXTURES)
+
     print("\nFixtures (expected results with config.yaml, no grace period):\n")
     for f in FIXTURES:
-        ref = f"{f['namespace']}/{f['name']}"
-        print(f"  {ref:<{width}}  {f['expect']}")
-    print()
+        state = f["state"] or "-"
+        print(
+            f"  {refs[f['name']]:<{ref_width}}  {state:<{state_width}}  {f['expect']}"
+        )
+    print("\n  '-' means the cluster should not be listed at all.")
+    print("  These states are asserted by tests/test_k8s_over_http.py.\n")
 
 
 def main():

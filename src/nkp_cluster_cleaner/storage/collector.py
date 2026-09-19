@@ -117,10 +117,13 @@ class RedisDataCollector:
             "compliance_rate": snapshot["label_compliance"]["overall_compliance_rate"],
         }
 
+        # SET with an expiry rather than SETEX: redis-py deprecated the latter
+        # in 2.6.12, and Redis itself has considered it superseded since 2.6.12
+        # too. The two are the same command to the server.
         pipe = self.redis_client.pipeline()
-        pipe.setex(snapshot_key, ttl_seconds, json.dumps(snapshot))
+        pipe.set(snapshot_key, json.dumps(snapshot), ex=ttl_seconds)
         pipe.zadd("analytics:snapshots:index", {snapshot_key: score})
-        pipe.setex(summary_key, ttl_seconds, json.dumps(summary))
+        pipe.set(summary_key, json.dumps(summary), ex=ttl_seconds)
         pipe.zadd("analytics:summaries:index", {summary_key: score})
         pipe.execute()
 

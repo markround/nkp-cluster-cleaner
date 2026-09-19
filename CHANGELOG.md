@@ -4,6 +4,7 @@
 - Added support for NKPCluster objects in 2.18+
 - Redesigned UI
 - Refactored into modules, code tidy, add tests
+- Added integration tests covering CLI and the Redis analytics
 - Dropped GitRepository and support for NKP < 2.16
 
 ## 0.15.0
