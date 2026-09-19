@@ -52,7 +52,6 @@ For a full reference of the Helm values, see the included [Chart documentation](
 
 If you have an old version of the application installed, you can upgrade to the current version by first updating the catalog repository to point to the latest release:
 
-### NKP 2.16 or later
 ```bash
 kubectl patch \
   --type merge \
@@ -60,17 +59,6 @@ kubectl patch \
   ocirepository catalog-nkp-cluster-cleaner \
   --patch '{"spec": {"ref":{"tag":"0.15.0-rc1"}}}'
 ```
-
-### NKP 2.15 or earlier
-```bash
-kubectl patch \
-  --type merge \
-  -n kommander \
-  gitrepository nkp-cluster-cleaner \
-  --patch '{"spec": {"ref":{"tag":"0.15.0-rc1"}}}'
-```
-
-### All Versions
 
 You can then update your AppDeployment to the latest release to complete the upgrade:
 
