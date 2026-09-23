@@ -1,6 +1,6 @@
 # nkp-cluster-cleaner
 
-![Version: 1.0.0-rc3](https://img.shields.io/badge/Version-1.0.0-rc3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.0-rc3](https://img.shields.io/badge/AppVersion-1.0.0-rc3-informational?style=flat-square)
+![Version: 1.0.0](https://img.shields.io/badge/Version-1.0.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.0](https://img.shields.io/badge/AppVersion-1.0.0-informational?style=flat-square)
 
 A simple tool to automatically delete Nutanix NKP clusters that do not meet a specific criteria. Note that this chart is designed to be installed directly into the NKP Management Cluster, so various settings/templates have been hard-coded or configured accordingly.
 
@@ -8,7 +8,7 @@ A simple tool to automatically delete Nutanix NKP clusters that do not meet a sp
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| deployment.image | string | `"ghcr.io/markround/nkp-cluster-cleaner:1.0.0-rc3"` | Container image to use |
+| deployment.image | string | `"ghcr.io/markround/nkp-cluster-cleaner:1.0.0"` | Container image to use |
 | deployment.replicas | int | `1` | Number of replicas to deploy |
 | ingress.enabled | bool | `true` | Enables ingress through the Kommander Traefik deployment |
 | ingress.prefix | string | `"/mdr/nkp-cluster-cleaner"` | URL Prefix for the dashboard |
