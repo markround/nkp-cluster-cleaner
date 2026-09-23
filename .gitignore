@@ -141,5 +141,7 @@ dmypy.json
 Thumbs.db
 
 # Project specific
-config.yaml
+/config.yaml
 *.kubeconfig
+dev/*
+*.local.json

@@ -1,19 +1,8 @@
 name: Build and Push Docker Image
 
+# Triggers and stage ordering live in pipeline.yml.
 on:
-  push:
-    branches:
-      - main
-      - dev
-      - 'feature/**'
-      - 'release/**'
-    tags:
-      - 'v*'
-      - '[0-9]+.[0-9]+.[0-9]+'
-  pull_request:
-    branches:
-      - main
-      - dev
+  workflow_call:
 
 env:
   REGISTRY: ghcr.io
@@ -28,14 +17,14 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to Container Registry
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -43,7 +32,7 @@ jobs:
 
       - name: Extract metadata (tags, labels)
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
@@ -61,8 +50,9 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             # Raw tag name (e.g., 0.1.0 -> 0.1.0)
             type=ref,event=tag
-            # Latest tag for any tag push
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
+            # Latest tag for release tags only; a prerelease such as 0.15.0-rc1
+            # must not move latest off the last real release.
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') && !contains(github.ref_name, '-') }}
           labels: |
             org.opencontainers.image.title=NKP Cluster Cleaner
             org.opencontainers.image.description=Delete CAPI clusters based on label criteria
@@ -71,7 +61,7 @@ jobs:
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile

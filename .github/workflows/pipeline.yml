@@ -1,0 +1,81 @@
+name: CI/CD Pipeline
+
+# The only workflow with event triggers. Everything else in this directory is a
+# reusable workflow called from here, so the whole build appears as a single run
+# with an explicit dependency graph. Adding a trigger to one of the called
+# workflows would run it twice for the same commit.
+on:
+  push:
+    branches:
+      - main
+      - dev
+      - 'feature/**'
+      - 'release/**'
+    tags:
+      - 'v*'
+      - '[0-9]+.[0-9]+.[0-9]+'
+      # Prerelease tags (0.15.0-rc1, 0.15.0-test). These filters must match the
+      # whole ref, so the plain pattern above cannot absorb a suffix.
+      - '[0-9]+.[0-9]+.[0-9]+-*'
+  pull_request:
+    branches:
+      - main
+      - dev
+
+jobs:
+  # Runs for every branch push, tag and pull request.
+  checks:
+    name: Python Checks
+    uses: ./.github/workflows/check.yml
+    permissions:
+      contents: read
+
+  # Tag pushes only. Gates the Docker build rather than sitting further down the
+  # chain, because the image push is the first irreversible step of a release.
+  version:
+    name: Verify Versions
+    if: startsWith(github.ref, 'refs/tags/')
+    uses: ./.github/workflows/version.yml
+    permissions:
+      contents: read
+
+  docker:
+    name: Docker Image
+    needs: [checks, version]
+    # version is skipped on branch and pull request builds, and a skipped
+    # dependency would otherwise skip this job too. This form runs the build
+    # when its dependencies succeeded or were skipped, but not when one failed.
+    if: ${{ !failure() && !cancelled() }}
+    uses: ./.github/workflows/docker.yml
+    permissions:
+      contents: read
+      packages: write
+
+  # The publish and release stages only make sense for a version tag. Each one
+  # still waits on the stage before it, so a failure anywhere stops the chain.
+  helm:
+    name: Helm Chart
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: docker
+    uses: ./.github/workflows/helm.yml
+    permissions:
+      contents: read
+      packages: write
+
+  catalog:
+    name: Catalog Bundle
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: helm
+    uses: ./.github/workflows/catalog.yml
+    permissions:
+      contents: read
+      packages: write
+
+  release:
+    name: GitHub Release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: catalog
+    uses: ./.github/workflows/release.yml
+    permissions:
+      contents: write
+      packages: read

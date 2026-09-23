@@ -1,105 +1,14 @@
 name: Publish Helm Chart
 
+# Triggers and stage ordering live in pipeline.yml, which only reaches this
+# stage for a tag push, so GITHUB_REF below is always refs/tags/<version>.
 on:
-  push:
-    tags:
-      - 'v*'
-      - '[0-9]+.[0-9]+.[0-9]+'
+  workflow_call:
 
 env:
-  HELM_REPO_URL: https://helm.mdr.dev
   CHART_PATH: charts/nkp-cluster-cleaner
 
 jobs:
-  publish-helm-chart:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Extract version from tag
-        id: extract_version
-        run: |
-          # Remove 'v' prefix if present
-          VERSION=${GITHUB_REF#refs/tags/}
-          VERSION=${VERSION#v}
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-
-      - name: Get chart version
-        id: get_chart_version
-        run: |
-          CHART_VERSION=$(grep "version:" ${{ env.CHART_PATH }}/Chart.yaml | awk '{print $2}')
-          echo "chart_version=$CHART_VERSION" >> $GITHUB_OUTPUT
-
-      - name: Verify version consistency
-        run: |
-          if [ "${{ steps.extract_version.outputs.version }}" != "${{ steps.get_chart_version.outputs.chart_version }}" ]; then
-            echo "Error: Tag version (${{ steps.extract_version.outputs.version }}) does not match chart version (${{ steps.get_chart_version.outputs.chart_version }})"
-            exit 1
-          fi
-          echo "✅ Version consistency verified: ${{ steps.extract_version.outputs.version }}"
-
-      - name: Install Helm
-        uses: azure/setup-helm@v3
-        with:
-          version: '3.13.0'
-
-      - name: Package Helm chart
-        run: |
-          helm package ${{ env.CHART_PATH }} --destination ./packaged-charts
-          echo "Chart packaged successfully"
-          ls -la ./packaged-charts/
-
-      - name: Upload chart to Helm repository
-        run: |
-          CHART_FILE="nkp-cluster-cleaner-${{ steps.extract_version.outputs.version }}.tgz"
-          
-          echo "Uploading $CHART_FILE to ${{ env.HELM_REPO_URL }}"
-          
-          curl -u "${{ secrets.HELM_REPO_USERNAME }}:${{ secrets.HELM_REPO_PASSWORD }}" \
-            --data-binary "@./packaged-charts/$CHART_FILE" \
-            "${{ env.HELM_REPO_URL }}/api/charts"
-          
-          echo "Chart upload completed"
-
-      - name: Verify chart upload
-        run: |
-          # Wait a moment for the repository to update
-          sleep 5
-          
-          # Check if the chart is available in the repository
-          echo "Verifying chart availability..."
-          helm repo add mdr ${{ env.HELM_REPO_URL }}
-          helm repo update
-          
-          if helm search repo mdr/nkp-cluster-cleaner --version ${{ steps.extract_version.outputs.version }} | grep -q "${{ steps.extract_version.outputs.version }}"; then
-            echo "✅ Chart successfully published and available in repository"
-          else
-            echo "❌ Chart not found in repository after upload"
-            exit 1
-          fi
-
-      - name: Output publication details
-        run: |
-          echo "## 📦 Helm Chart Published Successfully!" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Chart:** nkp-cluster-cleaner" >> $GITHUB_STEP_SUMMARY
-          echo "**Version:** ${{ steps.extract_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Repository:** ${{ env.HELM_REPO_URL }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Installation Commands:" >> $GITHUB_STEP_SUMMARY
-          echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "helm repo add mdr ${{ env.HELM_REPO_URL }}" >> $GITHUB_STEP_SUMMARY
-          echo "helm repo update" >> $GITHUB_STEP_SUMMARY
-          echo "helm install nkp-cluster-cleaner mdr/nkp-cluster-cleaner --version ${{ steps.extract_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-
   publish-oci-helm-chart:
     runs-on: ubuntu-latest
     permissions:
@@ -108,7 +17,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -121,27 +30,16 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-      - name: Get chart version
-        id: get_chart_version
-        run: |
-          CHART_VERSION=$(grep "version:" ${{ env.CHART_PATH }}/Chart.yaml | awk '{print $2}')
-          echo "chart_version=$CHART_VERSION" >> $GITHUB_OUTPUT
-
-      - name: Verify version consistency
-        run: |
-          if [ "${{ steps.extract_version.outputs.version }}" != "${{ steps.get_chart_version.outputs.chart_version }}" ]; then
-            echo "Error: Tag version (${{ steps.extract_version.outputs.version }}) does not match chart version (${{ steps.get_chart_version.outputs.chart_version }})"
-            exit 1
-          fi
-          echo "✅ Version consistency verified: ${{ steps.extract_version.outputs.version }}"
+      # The tag is checked against Chart.yaml by the version stage in
+      # pipeline.yml, which runs before anything is published.
 
       - name: Install Helm
-        uses: azure/setup-helm@v3
+        uses: azure/setup-helm@v5
         with:
-          version: '3.13.0'
+          version: 'v4.3.0'
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -149,18 +47,33 @@ jobs:
 
       - name: Package and push OCI Helm chart
         run: |
-          # Package the chart
-          helm package ${{ env.CHART_PATH }} --destination ./oci-charts
-          
+          VERSION="${{ steps.extract_version.outputs.version }}"
+
+          # --version stamps the tag onto the package, so a prerelease tag
+          # publishes 0.15.0-rc1 rather than overwriting the real 0.15.0 chart.
+          # Without it helm names the file after Chart.yaml and the push below
+          # would look for a tarball that does not exist.
+          helm package ${{ env.CHART_PATH }} --version "$VERSION" --destination ./oci-charts
+
           # Push the chart to GHCR as OCI artifact
-          CHART_FILE="nkp-cluster-cleaner-${{ steps.extract_version.outputs.version }}.tgz"
+          CHART_FILE="nkp-cluster-cleaner-${VERSION}.tgz"
           OCI_REGISTRY="ghcr.io/${{ github.repository_owner }}/helm"
-          
-          echo "Pushing OCI chart to $OCI_REGISTRY:${{ steps.extract_version.outputs.version }}"
-          
+
+          echo "Pushing OCI chart to $OCI_REGISTRY:$VERSION"
+
           helm push "./oci-charts/$CHART_FILE" "oci://$OCI_REGISTRY"
-          
+
           echo "OCI Helm chart pushed successfully"
+
+      # Hand the exact tarball that was pushed to the registry on to the release
+      # stage, so the release asset and the OCI artifact cannot drift apart.
+      - name: Upload packaged chart for the release stage
+        uses: actions/upload-artifact@v7
+        with:
+          name: helm-chart
+          path: ./oci-charts/*.tgz
+          if-no-files-found: error
+          retention-days: 1
 
       - name: Output OCI publication details
         run: |

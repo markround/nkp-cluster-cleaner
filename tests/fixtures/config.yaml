@@ -1,0 +1,29 @@
+# Deletion criteria used by the tests that run against misc/mock_k8s_api.py.
+#
+# The mock's FIXTURES declare the state the tool should reach for each cluster,
+# and those states are stated in terms of *these* rules: `workload-1` and
+# `production-api` are Protected because they match a pattern below,
+# `edge-cluster` and `dev-scratch` because of their namespaces, and
+# `demo-no-owner` is For deletion because `owner` is required here.
+#
+# This lives in the repository, unlike the config.yaml at the root, which is
+# gitignored as an operator's own file. Editing this without also updating the
+# fixtures will fail tests/test_k8s_over_http.py.
+#
+# To reproduce what the tests assert, by hand:
+#
+#   ./misc/mock_k8s_api.py &
+#   nkp-cluster-cleaner list-clusters \
+#       --kubeconfig misc/mock.kubeconfig --config tests/fixtures/config.yaml
+
+protected_cluster_patterns:
+- ^production-.*
+- .*-prod$
+- critical-.*
+- workload-1
+excluded_namespace_patterns:
+- ^default$
+- .*-prod$
+extra_labels:
+- name: owner
+  description: Cluster owner identifier

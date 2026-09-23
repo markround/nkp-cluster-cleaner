@@ -16,8 +16,6 @@ FILES=(
   charts/nkp-cluster-cleaner/templates/dashboard.yaml
   docs/nkp.md
   docs/helm.md
-  services/nkp-cluster-cleaner/$OLD_VERSION/helm.yaml
-  services/nkp-cluster-cleaner/$OLD_VERSION/defaults/cm.yaml
   src/nkp_cluster_cleaner/__init__.py
   applications/nkp-cluster-cleaner/$OLD_VERSION/helmrelease/helmrelease.yaml
 )
@@ -41,7 +39,6 @@ for file in "${FILES[@]}"; do
 done
 
 mv applications/nkp-cluster-cleaner/$OLD_VERSION applications/nkp-cluster-cleaner/$NEW_VERSION
-mv services/nkp-cluster-cleaner/$OLD_VERSION services/nkp-cluster-cleaner/$NEW_VERSION
 
 git add .
 

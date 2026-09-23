@@ -1,0 +1,54 @@
+name: Verify Versions
+
+# Triggers and stage ordering live in pipeline.yml, which only reaches this
+# stage for a tag push. It deliberately runs before the Docker build: that is
+# the first stage to publish anything, and a pushed image tag cannot be taken
+# back. Checking here means a forgotten misc/bump_version.sh costs a failed run
+# rather than a stray image sitting in the registry.
+on:
+  workflow_call:
+
+env:
+  CHART_PATH: charts/nkp-cluster-cleaner
+  PACKAGE_INIT: src/nkp_cluster_cleaner/__init__.py
+
+jobs:
+  verify-versions:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Verify the tag matches the chart and package versions
+        run: |
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG_NAME#v}"
+
+          # ^version: so the appVersion line cannot be picked up as well.
+          CHART_VERSION=$(grep "^version:" "$CHART_PATH/Chart.yaml" | awk '{print $2}')
+          PACKAGE_VERSION=$(grep "__version__" "$PACKAGE_INIT" | cut -d'"' -f2)
+
+          # Compared on the base version, with any prerelease suffix stripped
+          # from both sides. That accepts a throwaway 0.15.0-rc1 tag against a
+          # plain 0.15.0 tree, and equally a tree bumped to 0.15.0-rc1, while
+          # still catching the case this stage exists for: a tag whose release
+          # version was never bumped into the repository.
+          base() { echo "${1%%-*}"; }
+
+          status=0
+          if [ "$(base "$VERSION")" != "$(base "$CHART_VERSION")" ]; then
+            echo "::error::Tag $VERSION does not match Chart.yaml version $CHART_VERSION"
+            status=1
+          fi
+          if [ "$(base "$VERSION")" != "$(base "$PACKAGE_VERSION")" ]; then
+            echo "::error::Tag $VERSION does not match __version__ $PACKAGE_VERSION"
+            status=1
+          fi
+
+          if [ "$status" -ne 0 ]; then
+            echo "Run 'misc/bump_version.sh <version>' and commit before tagging."
+            exit 1
+          fi
+
+          echo "✅ Tag $VERSION matches chart ($CHART_VERSION) and package ($PACKAGE_VERSION)"

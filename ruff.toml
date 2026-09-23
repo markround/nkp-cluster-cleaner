@@ -32,11 +32,17 @@ exclude = [
 line-length = 88
 indent-width = 4
 
-# Assume Python 3.9
-target-version = "py39"
+# Assume Python 3.11
+target-version = "py311"
 
 [lint]
-ignore = ["E722"]
+# E,F are the ruff defaults; I sorts imports, UP modernises idiom now that the
+# floor is 3.11, B catches the usual bugbears.
+select = ["E", "F", "I", "UP", "B"]
+ignore = [
+    # Long lines are mostly user-facing message strings; the formatter handles code.
+    "E501",
+]
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
