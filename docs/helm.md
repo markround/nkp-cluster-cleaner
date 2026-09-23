@@ -3,7 +3,7 @@ This Helm chart provides a complete deployment solution for the NKP Cluster Clea
 
 ## Prerequisites
 
-- Helm 3.x installed
+- Helm 4 installed
 - Access to the NKP Management Cluster
 - Admin privileges in the `kommander` namespace
 
