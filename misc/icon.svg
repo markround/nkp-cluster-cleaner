@@ -2,7 +2,7 @@
   <desc>
     NKP Cluster Cleaner icon
   </desc>
-  <polygon points="12.000,1.355 20.835,5.610 23.017,15.170 16.903,22.836 7.097,22.836 0.983,15.170 3.165,5.610" fill="#8a9099" stroke="rgb(63, 94, 142)" stroke-width="1.2" stroke-linejoin="round"></polygon>
+  <polygon points="12.000,1.355 20.835,5.610 23.017,15.170 16.903,22.836 7.097,22.836 0.983,15.170 3.165,5.610" fill="#8e939a" stroke="#8a9099" stroke-width="1.2" stroke-linejoin="round"></polygon>
   <g transform="translate(12 12.355) scale(0.56) translate(-12 -12)">
   <path stroke="#191919" stroke-linecap="round" stroke-linejoin="round" d="M0.5 6.50699h23" stroke-width="1.6"></path>
   <path fill="#e4f1f5" d="M20.5 6.5v15c0 0.5304 -0.2107 1.0391 -0.5858 1.4142S19.0304 23.5 18.5 23.5h-13c-0.53043 0 -1.03914 -0.2107 -1.41421 -0.5858C3.71071 22.5391 3.5 22.0304 3.5 21.5v-15h17Z" stroke-width="1.6"></path>
