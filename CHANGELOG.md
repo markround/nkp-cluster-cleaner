@@ -6,6 +6,7 @@
 - Refactored into modules, code tidy, add tests
 - Added integration tests covering CLI and the Redis analytics
 - Dropped GitRepository and support for NKP < 2.16
+- Fixed job logs in the scheduled jobs view rendering as an escaped `b'...'` string instead of the log text
 
 ## 0.15.0
 - Newly created clusters can be given a grace period during which they will not be deleted or generate notifications, even if they are missing required labels or have already expired. This gives cluster creators time to properly label their clusters after creation.

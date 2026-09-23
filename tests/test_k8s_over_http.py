@@ -25,6 +25,7 @@ from nkp_cluster_cleaner.core.models import (
     ClusterState,
 )
 from nkp_cluster_cleaner.k8s.clusters import ClusterManager
+from nkp_cluster_cleaner.k8s.cronjobs import CronJobManager
 
 pytestmark = pytest.mark.integration
 
@@ -52,6 +53,12 @@ def manager(mock_api, criteria_config) -> ClusterManager:
 def statuses(manager) -> dict:
     """Every discovered cluster's status, keyed by name."""
     return {s.cluster.name: s for s in manager.get_cluster_statuses()}
+
+
+@pytest.fixture(scope="module")
+def cronjobs(mock_api) -> CronJobManager:
+    """A CronJobManager talking to the mock over HTTP."""
+    return CronJobManager(mock_api.kubeconfig)
 
 
 @pytest.fixture(scope="module")
@@ -219,3 +226,59 @@ class TestLegacyCluster:
         expected = {f["name"]: f["state"] for f in LISTED}
         expected["alpha-renamed"] = "for_deletion"
         assert states == expected
+
+
+class TestScheduledJobLogs:
+    """
+    The CronJob -> Job -> Pod walk behind the scheduled jobs view.
+
+    Logs are the one thing the API hands back as text/plain rather than an API
+    object, and the client deserialises that by calling str() on the raw bytes
+    - which turns a log into its b'...' repr, newlines and all. Only a real
+    response over a real socket shows that, so these tests live here.
+    """
+
+    def test_cronjob_is_listed(self, cronjobs):
+        names = [c["name"] for c in cronjobs.get_nkp_cronjobs()]
+        assert names == [mock_k8s_api.CRONJOB_NAME]
+
+    def test_job_is_joined_to_its_cronjob(self, cronjobs):
+        jobs = cronjobs.get_jobs_for_cronjob(mock_k8s_api.CRONJOB_NAME)
+        assert [j["name"] for j in jobs] == [mock_k8s_api.JOB_NAME]
+        assert jobs[0]["status"] == "Succeeded"
+
+    def test_pod_is_found_by_job_name_label(self, cronjobs):
+        pods = cronjobs.get_job_pods(mock_k8s_api.JOB_NAME)
+        assert [p["name"] for p in pods] == [mock_k8s_api.POD_NAME]
+
+    def test_logs_come_back_as_the_container_wrote_them(self, cronjobs):
+        logs = cronjobs.get_pod_logs(
+            pod_name=mock_k8s_api.POD_NAME,
+            container_name=mock_k8s_api.CONTAINER_NAME,
+            job_name=mock_k8s_api.JOB_NAME,
+        )
+        assert logs == mock_k8s_api.POD_LOG
+
+    def test_logs_are_not_a_bytes_repr(self, cronjobs):
+        """
+        The failure this guards against is cosmetic but total: every line of
+        the log arrives as one unbroken string of \\n escapes and \\x hex.
+        """
+        logs = cronjobs.get_pod_logs(
+            pod_name=mock_k8s_api.POD_NAME,
+            container_name=mock_k8s_api.CONTAINER_NAME,
+            job_name=mock_k8s_api.JOB_NAME,
+        )
+        assert not logs.startswith("b'")
+        assert "\\n" not in logs
+        assert logs.count("\n") == mock_k8s_api.POD_LOG.count("\n")
+        assert "• Total clusters found: 2" in logs
+
+    def test_logs_are_refused_for_a_pod_we_do_not_own(self, cronjobs):
+        """A pod name that does not resolve must not reach the log endpoint."""
+        logs = cronjobs.get_pod_logs(
+            pod_name="someone-elses-pod",
+            container_name=mock_k8s_api.CONTAINER_NAME,
+            job_name=mock_k8s_api.JOB_NAME,
+        )
+        assert logs.startswith("Access denied")

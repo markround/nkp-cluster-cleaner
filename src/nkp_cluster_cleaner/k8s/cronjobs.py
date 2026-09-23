@@ -223,14 +223,21 @@ class CronJobManager:
                     "Access denied: Pod was not created by an nkp-cluster-cleaner job"
                 )
 
-            logs = self.core_v1.read_namespaced_pod_log(
+            # Bypass the client's deserialization: for a "str" response type it
+            # does str(data) on the raw bytes, which renders logs as a b'...'
+            # repr with escaped newlines. Decode the response ourselves instead.
+            response = self.core_v1.read_namespaced_pod_log(
                 name=pod_name,
                 namespace=namespace,
                 container=container_name,
                 tail_lines=tail_lines,
                 timestamps=True,
+                _preload_content=False,
             )
-            return logs
+            try:
+                return response.data.decode("utf-8", errors="replace")
+            finally:
+                response.release_conn()
         except ApiException as e:
             return f"Failed to retrieve logs: {e}"
 

@@ -37,6 +37,9 @@ KOMMANDER = ("kommander.mesosphere.io", "v1beta1", "kommanderclusters")
 NKP = ("clusters.nkp.nutanix.com", "v1alpha1", "nkpclusters")
 CAPI = ("cluster.x-k8s.io", "v1beta1", "clusters")
 KOMMANDER_CORE = ("dkp.d2iq.io", "v1alpha1", "kommandercores")
+CRONJOBS = ("batch", "v1", "cronjobs")
+JOBS = ("batch", "v1", "jobs")
+PODS = ("", "v1", "pods")
 
 #: Plural -> Kind, for the List responses the client deserialises.
 KINDS = {
@@ -44,6 +47,9 @@ KINDS = {
     "nkpclusters": "NKPCluster",
     "clusters": "Cluster",
     "kommandercores": "KommanderCore",
+    "cronjobs": "CronJob",
+    "jobs": "Job",
+    "pods": "Pod",
 }
 
 MANAGEMENT_NAMESPACE = "kommander"
@@ -194,6 +200,133 @@ def kommander_core(version):
         "metadata": {"name": "kommandercore", "namespace": MANAGEMENT_NAMESPACE},
         "spec": {},
         "status": {"version": version},
+    }
+
+
+# --------------------------------------------------------------------------
+# The scheduled jobs the web UI's CronJob views walk
+# --------------------------------------------------------------------------
+
+#: The CronJob -> Job -> Pod chain the scheduled jobs view follows, and the
+#: names it joins them on. The web UI only shows a pod's logs once it has
+#: walked ownerReferences back to a CronJob carrying our app label, so the
+#: whole chain has to be served for the log endpoint to be reachable.
+CRONJOB_NAME = "nkp-cluster-cleaner-analytics"
+JOB_NAME = f"{CRONJOB_NAME}-29344800"
+POD_NAME = f"{JOB_NAME}-x7k2p"
+CONTAINER_NAME = "cluster-cleaner"
+CONTAINER_IMAGE = "nkp-cluster-cleaner:mock"
+
+#: The pod spec the Job and CronJob carry. Nothing reads it, but the typed
+#: client refuses to deserialise a Job without one.
+POD_TEMPLATE = {
+    "template": {
+        "spec": {
+            "restartPolicy": "OnFailure",
+            "containers": [{"name": CONTAINER_NAME, "image": CONTAINER_IMAGE}],
+        }
+    }
+}
+
+#: What the pod's container wrote. Non-ASCII on purpose: the bullets are how a
+#: log that was decoded as anything other than UTF-8 gives itself away.
+POD_LOG = (
+    "2026-09-23T10:40:31.658077816Z Collecting analytics snapshot...\n"
+    "2026-09-23T10:40:31.681275428Z Analytics snapshot collected successfully!\n"
+    "2026-09-23T10:40:31.681294738Z Summary:\n"
+    "2026-09-23T10:40:31.681299572Z   \u2022 Total clusters found: 2\n"
+    "2026-09-23T10:40:31.681446552Z   \u2022 Clusters for deletion: 0\n"
+    "2026-09-23T10:40:31.681521219Z   \u2022 Label compliance: 50.0%\n"
+)
+
+
+def owner_ref(kind, name, api_version):
+    """Build the ownerReference the tool walks from pod to job to cronjob."""
+    return {
+        "apiVersion": api_version,
+        "kind": kind,
+        "name": name,
+        "uid": f"uid-{name}",
+        "controller": True,
+    }
+
+
+def cleaner_cronjob():
+    """Build the CronJob the scheduled jobs view lists, with our app label."""
+    return {
+        "apiVersion": "batch/v1",
+        "kind": "CronJob",
+        "metadata": {
+            "name": CRONJOB_NAME,
+            "namespace": MANAGEMENT_NAMESPACE,
+            "uid": f"uid-{CRONJOB_NAME}",
+            "creationTimestamp": ts(timedelta(days=-7)),
+            "labels": {"app": "nkp-cluster-cleaner"},
+        },
+        "spec": {
+            "schedule": "*/10 * * * *",
+            "suspend": False,
+            "successfulJobsHistoryLimit": 3,
+            "failedJobsHistoryLimit": 1,
+            "jobTemplate": {"spec": POD_TEMPLATE},
+        },
+        "status": {"lastScheduleTime": ts(timedelta(minutes=-10))},
+    }
+
+
+def cleaner_job():
+    """Build the completed Job that CronJob's last run created."""
+    return {
+        "apiVersion": "batch/v1",
+        "kind": "Job",
+        "metadata": {
+            "name": JOB_NAME,
+            "namespace": MANAGEMENT_NAMESPACE,
+            "uid": f"uid-{JOB_NAME}",
+            "creationTimestamp": ts(timedelta(minutes=-10)),
+            "labels": {"job-name": JOB_NAME},
+            "ownerReferences": [owner_ref("CronJob", CRONJOB_NAME, "batch/v1")],
+        },
+        "spec": POD_TEMPLATE,
+        "status": {
+            "startTime": ts(timedelta(minutes=-10)),
+            "completionTime": ts(timedelta(minutes=-9)),
+            "succeeded": 1,
+            "conditions": [{"type": "Complete", "status": "True"}],
+        },
+    }
+
+
+def cleaner_pod():
+    """Build the Pod that Job ran, which is what holds the logs."""
+    return {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "metadata": {
+            "name": POD_NAME,
+            "namespace": MANAGEMENT_NAMESPACE,
+            "uid": f"uid-{POD_NAME}",
+            "creationTimestamp": ts(timedelta(minutes=-10)),
+            "labels": {"job-name": JOB_NAME},
+            "ownerReferences": [owner_ref("Job", JOB_NAME, "batch/v1")],
+        },
+        "spec": POD_TEMPLATE["template"]["spec"],
+        "status": {
+            "phase": "Succeeded",
+            "startTime": ts(timedelta(minutes=-10)),
+            "containerStatuses": [
+                {
+                    "name": CONTAINER_NAME,
+                    "image": CONTAINER_IMAGE,
+                    "imageID": f"docker://{CONTAINER_IMAGE}",
+                    "ready": False,
+                    "restartCount": 0,
+                    "state": {
+                        "terminated": {"reason": "Completed", "exitCode": 0},
+                    },
+                }
+            ],
+        },
     }
 
 
@@ -458,6 +591,9 @@ def build_store(nkp_version: str) -> dict[tuple[str, str, str], list[dict]]:
         NKP: nkps,
         CAPI: capis,
         KOMMANDER_CORE: [kommander_core(nkp_version)],
+        CRONJOBS: [cleaner_cronjob()],
+        JOBS: [cleaner_job()],
+        PODS: [cleaner_pod()],
     }
 
 
@@ -532,7 +668,7 @@ class MockApiHandler(BaseHTTPRequestHandler):
         if length:
             self.rfile.read(length)
 
-    def route(self, parts: list[str], query: dict) -> tuple[dict, int]:
+    def route(self, parts: list[str], query: dict) -> tuple[dict | str, int]:
         """
         Map a request path to a response body and status code.
 
@@ -561,7 +697,7 @@ class MockApiHandler(BaseHTTPRequestHandler):
 
         return status_body(404, "NotFound", f"Unhandled path /{'/'.join(parts)}"), 404
 
-    def route_core(self, parts: list[str], query: dict) -> tuple[dict, int]:
+    def route_core(self, parts: list[str], query: dict) -> tuple[dict | str, int]:
         """Handle /api/v1/... requests."""
         # /api/v1/namespaces
         if parts == ["namespaces"]:
@@ -578,16 +714,68 @@ class MockApiHandler(BaseHTTPRequestHandler):
 
         # /api/v1/namespaces/{ns}/{resource}[/{name}[/log]]
         if len(parts) >= 3 and parts[0] == "namespaces":
-            resource = parts[2]
-            if len(parts) == 3:
-                kind = resource.rstrip("s").capitalize()
+            namespace, resource = parts[1], parts[2]
+            name = parts[3] if len(parts) > 3 else None
+
+            if resource == "pods":
+                return self.route_pods(namespace, name, parts[4:], query)
+
+            if name is None:
+                kind = KINDS.get(resource, resource.rstrip("s").capitalize())
                 return self.list_response("v1", kind, [], query), 200
             return (
-                status_body(404, "NotFound", f"No {resource} named {parts[3]}"),
+                status_body(404, "NotFound", f"No {resource} named {name}"),
                 404,
             )
 
         return status_body(404, "NotFound", f"Unhandled core path {parts}"), 404
+
+    def route_pods(
+        self, namespace: str, name: str | None, rest: list[str], query: dict
+    ) -> tuple[dict | str, int]:
+        """
+        Handle /api/v1/namespaces/{ns}/pods[/{name}[/log]] requests.
+
+        Args:
+            namespace: Namespace from the path.
+            name: Pod name, or None for a list request.
+            rest: Path segments after the pod name, e.g. ["log"].
+            query: Parsed query string.
+
+        Returns:
+            A (body, status code) pair, where the body is a plain string for
+            the log sub-resource and a JSON-serialisable object otherwise.
+        """
+        pods = [
+            p
+            for p in self.store.get(PODS, [])
+            if p["metadata"]["namespace"] == namespace
+        ]
+
+        if name is None:
+            # Only the one selector the tool sends, job-name=, is understood.
+            for selector in query.get("labelSelector", []):
+                key, _, value = selector.partition("=")
+                pods = [
+                    p
+                    for p in pods
+                    if (p["metadata"].get("labels") or {}).get(key) == value
+                ]
+            return self.list_response("v1", "Pod", pods, query), 200
+
+        pod = next((p for p in pods if p["metadata"]["name"] == name), None)
+        if pod is None:
+            return status_body(404, "NotFound", f"pods {name} not found"), 404
+
+        # The log sub-resource is text/plain, not JSON - the one endpoint in
+        # this server that does not hand back an API object.
+        if rest == ["log"]:
+            return POD_LOG, 200
+
+        if not rest:
+            return pod, 200
+
+        return status_body(404, "NotFound", f"Unhandled pod path {rest}"), 404
 
     def route_group(
         self, group: str, version: str, rest: list[str], query: dict
@@ -650,11 +838,16 @@ class MockApiHandler(BaseHTTPRequestHandler):
             "items": items,
         }
 
-    def respond(self, body: dict, code: int):
-        """Send a JSON response."""
-        payload = json.dumps(body).encode()
+    def respond(self, body: dict | str, code: int):
+        """Send a response: JSON for API objects, text/plain for pod logs."""
+        if isinstance(body, str):
+            payload = body.encode("utf-8")
+            content_type = "text/plain; charset=utf-8"
+        else:
+            payload = json.dumps(body).encode()
+            content_type = "application/json"
         self.send_response(code)
-        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(payload)))
         self.end_headers()
         self.wfile.write(payload)
