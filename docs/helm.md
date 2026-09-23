@@ -14,7 +14,7 @@ This Helm chart provides a complete deployment solution for the NKP Cluster Clea
 You can install from an OCI-based registry:
 
 ```bash
-helm -n kommander nkp-cluster-cleaner oci://ghcr.io/markround/helm/nkp-cluster-cleaner --version 1.0.0-rc2
+helm -n kommander nkp-cluster-cleaner oci://ghcr.io/markround/helm/nkp-cluster-cleaner --version 1.0.0-rc3
 ```
 
 > [!NOTE]
@@ -33,7 +33,7 @@ cd nkp-cluster-cleaner
 helm install -n kommander nkp-cluster-cleaner ./charts/nkp-cluster-cleaner
 
 # Or install from a specific tag
-git checkout 1.0.0-rc2
+git checkout 1.0.0-rc3
 helm install -n kommander nkp-cluster-cleaner ./charts/nkp-cluster-cleaner
 ```
 
@@ -42,7 +42,7 @@ helm install -n kommander nkp-cluster-cleaner ./charts/nkp-cluster-cleaner
 To install a specific version from the Helm repository:
 
 ```bash
-helm install -n kommander nkp-cluster-cleaner mdr/nkp-cluster-cleaner --version 1.0.0-rc2
+helm install -n kommander nkp-cluster-cleaner mdr/nkp-cluster-cleaner --version 1.0.0-rc3
 ```
 
 
@@ -56,7 +56,7 @@ helm upgrade -n kommander nkp-cluster-cleaner mdr/nkp-cluster-cleaner
 ### To Specific Version
 To upgrade to a specific version:
 ```bash
-helm upgrade -n kommander nkp-cluster-cleaner mdr/nkp-cluster-cleaner --version 1.0.0-rc2
+helm upgrade -n kommander nkp-cluster-cleaner mdr/nkp-cluster-cleaner --version 1.0.0-rc3
 ```
 
 ### Upgrade Considerations

@@ -7,7 +7,7 @@ metadata:
 spec:
   interval: 6h0m0s
   ref:
-    tag: 1.0.0-rc2
+    tag: 1.0.0-rc3
   url: oci://ghcr.io/markround/helm/nkp-cluster-cleaner
 ---
 apiVersion: helm.toolkit.fluxcd.io/v2
