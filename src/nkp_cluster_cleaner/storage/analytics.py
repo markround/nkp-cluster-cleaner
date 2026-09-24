@@ -10,9 +10,22 @@ from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 from typing import Any
 
-from ..core.models import UNKNOWN_OWNER
+from ..core.models import UNKNOWN_OWNER, DeletionReason
 from ..core.settings import RedisSettings
 from .client import build_redis_client
+
+#
+# Snapshots written before 1.0 keyed deletion reasons in Title Case ("Cluster
+# Expired"); 1.0 keys them by DeletionReason.label ("Cluster expired"). Folding
+# case maps both onto the current label, so a window that spans the upgrade
+# counts each reason once and the donut can find its colour.
+#
+_REASON_LABELS = {reason.label.casefold(): reason.label for reason in DeletionReason}
+
+
+def _canonical_reason(label: str) -> str:
+    """Map a stored reason key onto the current DeletionReason label, if any."""
+    return _REASON_LABELS.get(label.casefold(), label)
 
 
 class RedisAnalyticsService:
@@ -184,7 +197,7 @@ class RedisAnalyticsService:
             # Count deletion reasons
             if "deletion_reasons" in snapshot:
                 for reason, count in snapshot["deletion_reasons"].items():
-                    deletion_reasons[reason] += count
+                    deletion_reasons[_canonical_reason(reason)] += count
 
             # Track activity by hour and day
             deletion_count = snapshot["cluster_counts"]["for_deletion"]

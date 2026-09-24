@@ -233,6 +233,34 @@ class TestDeletionActivity:
         assert activity["deletion_reasons"]
         assert set(activity["deletion_reasons"]) <= known
 
+    def test_pre_1_0_reason_keys_fold_into_the_enum_label(self, monkeypatch):
+        """
+        Snapshots from before 1.0 keyed reasons in Title Case. Left as they
+        were, they missed the donut's colour lookup and all drew in the neutral,
+        and a window spanning the upgrade listed each reason twice.
+        """
+        monkeypatch.setattr(RedisAnalyticsService, "__init__", lambda self: None)
+        legacy = RedisAnalyticsService()
+        snapshots = [
+            {
+                "timestamp": "2026-01-01T00:00:00",
+                "cluster_counts": {"for_deletion": 3},
+                "deletion_reasons": {"Missing Expires Label": 2, "Cluster Expired": 1},
+            },
+            {
+                "timestamp": "2026-01-02T00:00:00",
+                "cluster_counts": {"for_deletion": 1},
+                "deletion_reasons": {"Cluster expired": 1, "Other": 1},
+            },
+        ]
+        monkeypatch.setattr(legacy, "_get_historical_data", lambda days: snapshots)
+
+        assert legacy.get_deletion_activity(WINDOW)["deletion_reasons"] == {
+            DeletionReason.MISSING_EXPIRES_LABEL.label: 2,
+            DeletionReason.EXPIRED.label: 2,
+            "Other": 1,
+        }
+
     def test_the_total_counts_every_reason(self, service):
         activity = service.get_deletion_activity(WINDOW)
         # Only the top five reasons are charted, so the total may exceed their
