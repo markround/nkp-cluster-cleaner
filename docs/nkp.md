@@ -21,7 +21,7 @@ The application is available as an OCI catalog-application bundle, introduced in
 ```bash
 nkp create catalog-application nkp-cluster-cleaner \
   --workspace kommander-workspace \
-  --tag 1.0.0 \
+  --tag 1.0.1 \
   --url oci://ghcr.io/markround/catalog/nkp-cluster-cleaner
 ```
 
@@ -57,7 +57,7 @@ kubectl patch \
   --type merge \
   -n kommander \
   ocirepository catalog-nkp-cluster-cleaner \
-  --patch '{"spec": {"ref":{"tag":"1.0.0"}}}'
+  --patch '{"spec": {"ref":{"tag":"1.0.1"}}}'
 ```
 
 You can then update your AppDeployment to the latest release to complete the upgrade:
@@ -67,5 +67,5 @@ kubectl patch \
   --type merge \
   -n kommander \
   AppDeployment nkp-cluster-cleaner \
-  --patch '{"spec":{"appRef":{"name":"nkp-cluster-cleaner-1.0.0"}}}'
+  --patch '{"spec":{"appRef":{"name":"nkp-cluster-cleaner-1.0.1"}}}'
 ```

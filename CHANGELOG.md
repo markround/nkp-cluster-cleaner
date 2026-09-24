@@ -1,4 +1,7 @@
 # Changelog
+## 1.0.1
+- Fix for wrongly categorised deletion reasons when analysing pre-1.0.0 metrics in Redis.
+
 ## 1.0.0
 ### User facing changes:
 - Removed legacy Helm repository, chart is now only available as an OCI artifact.

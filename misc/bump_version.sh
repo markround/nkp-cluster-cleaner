@@ -8,6 +8,18 @@ fi
 OLD_VERSION="$(cat src/nkp_cluster_cleaner/__init__.py | grep __version__ | cut -d\" -f2)"
 NEW_VERSION="$1"
 
+# In-place editing needs GNU sed: that is plain sed on Linux, gsed on macOS
+# (brew install gnu-sed).
+if [ "$(uname -s)" = "Darwin" ]; then
+    SED=gsed
+else
+    SED=sed
+fi
+if ! command -v "$SED" >/dev/null 2>&1; then
+    echo "Error: $SED not found"
+    exit 1
+fi
+
 FILES=(
   README.md
   charts/nkp-cluster-cleaner/Chart.yaml 
@@ -27,7 +39,7 @@ echo "Updating version from $OLD_VERSION to $NEW_VERSION..."
 for file in "${FILES[@]}"; do
     if [ -f "$file" ]; then
         echo "Processing: $file"
-        gsed -i "s/$OLD_VERSION/$NEW_VERSION/g" "$file"
+        "$SED" -i "s/$OLD_VERSION/$NEW_VERSION/g" "$file"
         if [ $? -eq 0 ]; then
             echo "  ✓ Updated $file"
         else
