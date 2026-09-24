@@ -1,6 +1,6 @@
 # NKP Catalog Application
 > [!IMPORTANT]  
-> The catalog installation method detailed below is only supported on NKP Ultimate and above license tiers. If you are running NKP Pro or lower, you can still use the application but must install it manually from the [Helm Chart](./helm.md)
+> The catalog installation method detailed below is only supported on NKP Ultimate. If you are running NKP Pro or lower, you can still use the application but must install it manually from the [Helm Chart](./helm.md)
 
 <img src="/docs/catalog.png" width="200">
 
@@ -28,7 +28,7 @@ nkp create catalog-application nkp-cluster-cleaner \
 You can then select the application in the Management Cluster Workspace and enable it. 
 
 > [!NOTE]
-> In NKP 2.16, the application may be available in other workspaces. Only enable the application in the Management Cluster Workspace - It will **not** work in any other workspace, and can only run on the Management Cluster. 
+> The application may be available in other workspaces. Only enable the application in the Management Cluster Workspace - It will **not** work in any other workspace, and can only run on the Management Cluster. 
 
 After it has been deployed, the dashboard can be accessed in the usual way, e.g. by browsing to the Management Cluster and selecting the Applications tab (or "Application Dashboards" in older releases):
 
